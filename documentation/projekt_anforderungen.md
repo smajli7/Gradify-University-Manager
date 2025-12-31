@@ -16,7 +16,7 @@ Prüfungsordnung (PO) zur Verfügung gestellt. In der spezifischen PO ist genau 
 der Notendurchschnitt berechnet. Z. B. wird die Gesamtnote gemäß §12 „Bildung der
 Gesamtnote“ und der damit verbundenen Anlage 2 zur Gewichtung der Noten bestimmt.
 - Unsere Studiengänge: **Bioverfahrenstechnik 2 BA** & **Forschung in der Sozialen Arbeit 4 MA**
-- Die jeweiligen Modul- und Gewichtungsübersichten sind in jeweils **bioverfahrenstechnik.md** und **fsozialearbeit.md** zu finden 
+- Die jeweiligen Modul- und Gewichtungsübersichten sind in jeweils **bioverfahrenstechnik.md** und **forschungsozialearbeit.md** zu finden 
 
 2. Anforderungen an das mit Spring Boot zu entwickelnde System:
 Das Anwendungssystem muss aus unterschiedlichen Services zusammengestellt sein, die
