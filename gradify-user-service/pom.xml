@@ -52,6 +52,12 @@
             <artifactId>gradify-shared</artifactId>
         </dependency>
 
+        <!-- Security (für PasswordEncoder) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-security</artifactId>
+        </dependency>
+
         <!-- Validation -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

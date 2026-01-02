@@ -4,6 +4,8 @@ server:
 spring:
   application:
     name: gradify-user-service
+  profiles:
+    active: dev
   
   # Datenbank Konfiguration
   datasource:
@@ -51,6 +53,17 @@ logging:
     de.gradify: DEBUG
 
 ---
+# Profil für Entwicklung (lokale Datenbank mit Seed-Daten)
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+---
 # Profil für Produktion (Supabase)
 spring:
   config:
@@ -60,5 +73,8 @@ spring:
     url: ${SUPABASE_DB_URL}
     username: ${SUPABASE_DB_USER}
     password: ${SUPABASE_DB_PASSWORD}
+  jpa:
+    hibernate:
+      ddl-auto: validate
 
 
