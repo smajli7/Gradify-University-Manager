@@ -1,0 +1,92 @@
+type Query {
+    # Benutzer Queries
+    users: [User!]!
+    user(id: ID!): User
+    
+    # Studenten Queries
+    students: [Student!]!
+    student(id: ID!): Student
+    studentByMatrikel(matrikelnummer: String!): Student
+}
+
+type Mutation {
+    # Benutzer Mutations
+    createUser(input: CreateUserInput!): User!
+    updateUser(id: ID!, input: UpdateUserInput!): User!
+    deleteUser(id: ID!): Boolean!
+    
+    # Rollen Mutations
+    assignRole(userId: ID!, roleId: ID!): User!
+    removeRole(userId: ID!, roleId: ID!): User!
+    
+    # Student Mutations
+    createStudent(input: CreateStudentInput!): Student!
+    updateStudent(id: ID!, input: UpdateStudentInput!): Student!
+}
+
+type User {
+    id: ID!
+    benutzername: String!
+    email: String!
+    vorname: String!
+    nachname: String!
+    mandantId: ID!
+    aktiv: Boolean!
+    rollen: [Role!]!
+    student: Student
+    letzterLogin: String
+    erstelltAm: String!
+}
+
+type Student {
+    id: ID!
+    benutzer: User!
+    matrikelnummer: String!
+    vorname: String!
+    nachname: String!
+    email: String!
+    geburtsdatum: String
+    status: StudentStatus!
+}
+
+type Role {
+    id: ID!
+    name: String!
+    beschreibung: String
+}
+
+enum StudentStatus {
+    AKTIV
+    BEURLAUBT
+    EXMATRIKULIERT
+}
+
+input CreateUserInput {
+    benutzername: String!
+    email: String!
+    passwort: String!
+    vorname: String!
+    nachname: String!
+    mandantId: ID!
+    rollenIds: [ID!]
+}
+
+input UpdateUserInput {
+    email: String
+    vorname: String
+    nachname: String
+    aktiv: Boolean
+}
+
+input CreateStudentInput {
+    benutzerId: ID!
+    matrikelnummer: String!
+    geburtsdatum: String
+}
+
+input UpdateStudentInput {
+    geburtsdatum: String
+    status: StudentStatus
+}
+
+

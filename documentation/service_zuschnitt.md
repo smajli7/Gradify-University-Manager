@@ -380,3 +380,4 @@ Phase 5 (Integration & Polish):
 
 *Zuletzt aktualisiert: 31.12.2025*
 
+

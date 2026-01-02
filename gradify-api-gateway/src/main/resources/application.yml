@@ -1,0 +1,111 @@
+server:
+  port: 8080
+
+spring:
+  application:
+    name: gradify-api-gateway
+  cloud:
+    gateway:
+      # CORS Konfiguration
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost:4200"
+              - "http://127.0.0.1:4200"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+            maxAge: 3600
+
+      # Routen zu den Services
+      routes:
+        # Auth Service
+        - id: auth-service
+          uri: http://localhost:8081
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
+
+        # User Service
+        - id: user-service
+          uri: http://localhost:8082
+          predicates:
+            - Path=/api/users/**, /api/students/**
+          filters:
+            - StripPrefix=0
+
+        # Studiengang Service
+        - id: studiengang-service
+          uri: http://localhost:8083
+          predicates:
+            - Path=/api/mandanten/**, /api/studiengaenge/**, /api/module/**, /api/pruefungsordnungen/**, /api/einschreibungen/**
+          filters:
+            - StripPrefix=0
+
+        # Noten Service
+        - id: noten-service
+          uri: http://localhost:8084
+          predicates:
+            - Path=/api/noten/**
+          filters:
+            - StripPrefix=0
+
+        # Berechnungs Service
+        - id: berechnungs-service
+          uri: http://localhost:8085
+          predicates:
+            - Path=/api/berechnungen/**
+          filters:
+            - StripPrefix=0
+
+        # GraphQL - User Service
+        - id: graphql-user
+          uri: http://localhost:8082
+          predicates:
+            - Path=/graphql/user/**
+          filters:
+            - StripPrefix=1
+
+        # GraphQL - Studiengang Service
+        - id: graphql-studiengang
+          uri: http://localhost:8083
+          predicates:
+            - Path=/graphql/studiengang/**
+          filters:
+            - StripPrefix=1
+
+        # GraphQL - Noten Service
+        - id: graphql-noten
+          uri: http://localhost:8084
+          predicates:
+            - Path=/graphql/noten/**
+          filters:
+            - StripPrefix=1
+
+# Actuator Endpoints
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info, gateway
+  endpoint:
+    health:
+      show-details: always
+    gateway:
+      enabled: true
+
+# Logging
+logging:
+  level:
+    org.springframework.cloud.gateway: INFO
+    de.gradify: DEBUG
+
+

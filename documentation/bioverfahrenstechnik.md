@@ -37,7 +37,7 @@ nicht in die Berechnung der Gesamtnote der Bachelor-Prüfung ein.
 ## Allgemeine Studienvariante
 
 ### Semester 1
-- **1 Einführung in die Bioverfahrenstechnik** – 5 ECTS – Sem. 1 – Projektbericht (Bearbeitungszeit 7 Wochen) mit Präsentation (3–5 Min.); Bewertung: *Bestanden / nicht bestanden* – **Gew. 0**
+- **1 Einführung in die Bioverfahrenstechnik** – 5 ECTS – Sem. 1 – Projektbericht (Bearbeitungszeit 7 Wochen) mit Präsentation (3–5 Min.); Bewgertung: *Bestanden / nicht bestanden* – **Gew. 0**
 - **2 Technische Mechanik** – 5 ECTS – Sem. 1 – Klausur (90 Min.) – **Gew. 1**
 - **3 Konstruktion** – 5 ECTS – Sem. 1 – Klausur (90 Min.); Vorleistung: Übungen mit schriftlicher Ausarbeitung (Bearbeitungszeit 3 Wochen) – **Gew. 1**
 - **4 Mathematik 1** – 10 ECTS – Sem. 1 – Klausur (90 Min.) – **Gew. 2**

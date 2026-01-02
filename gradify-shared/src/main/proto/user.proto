@@ -1,0 +1,84 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "de.gradify.shared.grpc.user";
+option java_outer_classname = "UserProto";
+
+package user;
+
+// Service für User-Validierung (Auth -> User)
+service UserValidationService {
+  // Prüft Zugangsdaten bei Login
+  rpc ValidateCredentials(CredentialsRequest) returns (CredentialsResponse);
+  
+  // Holt Benutzer anhand ID
+  rpc GetUserById(UserIdRequest) returns (UserResponse);
+  
+  // Holt Benutzer anhand Benutzername
+  rpc GetUserByUsername(UsernameRequest) returns (UserResponse);
+}
+
+// Service für Studentendaten (Studiengang -> User)
+service StudentDataService {
+  // Holt Student anhand ID
+  rpc GetStudent(StudentIdRequest) returns (StudentResponse);
+  
+  // Holt alle Studenten eines Studiengangs
+  rpc GetStudentsByStudiengang(StudiengangIdRequest) returns (StudentListResponse);
+}
+
+// Request/Response Messages
+
+message CredentialsRequest {
+  string username = 1;
+  string password_hash = 2;
+}
+
+message CredentialsResponse {
+  bool valid = 1;
+  string user_id = 2;
+  repeated string roles = 3;
+  string mandant_id = 4;
+}
+
+message UserIdRequest {
+  string user_id = 1;
+}
+
+message UsernameRequest {
+  string username = 1;
+}
+
+message UserResponse {
+  string id = 1;
+  string username = 2;
+  string email = 3;
+  string vorname = 4;
+  string nachname = 5;
+  repeated string roles = 6;
+  string mandant_id = 7;
+  bool active = 8;
+}
+
+message StudentIdRequest {
+  string student_id = 1;
+}
+
+message StudiengangIdRequest {
+  string studiengang_id = 1;
+}
+
+message StudentResponse {
+  string id = 1;
+  string user_id = 2;
+  string matrikelnummer = 3;
+  string vorname = 4;
+  string nachname = 5;
+  string status = 6;
+}
+
+message StudentListResponse {
+  repeated StudentResponse students = 1;
+}
+
+

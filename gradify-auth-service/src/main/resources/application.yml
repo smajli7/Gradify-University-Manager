@@ -1,0 +1,67 @@
+server:
+  port: 8081
+
+spring:
+  application:
+    name: gradify-auth-service
+  
+  # Datenbank Konfiguration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/gradify_auth
+    username: gradify
+    password: gradify123
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+# JWT Konfiguration
+jwt:
+  secret: gradify-secret-key-change-in-production-min-256-bit
+  access-token-expiration: 900000  # 15 Minuten in Millisekunden
+  refresh-token-expiration: 604800000  # 7 Tage in Millisekunden
+
+# gRPC Client Konfiguration (für User-Service)
+grpc:
+  client:
+    user-service:
+      address: static://localhost:9082
+      negotiationType: PLAINTEXT
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    de.gradify: DEBUG
+    org.springframework.security: INFO
+
+---
+# Profil für Produktion (Supabase)
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${SUPABASE_DB_URL}
+    username: ${SUPABASE_DB_USER}
+    password: ${SUPABASE_DB_PASSWORD}
+
+jwt:
+  secret: ${JWT_SECRET}
+
+

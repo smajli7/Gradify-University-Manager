@@ -1,0 +1,102 @@
+syntax = "proto3";
+
+option java_multiple_files = true;
+option java_package = "de.gradify.shared.grpc.berechnung";
+option java_outer_classname = "BerechnungProto";
+
+package berechnung;
+
+// Service für Notenberechnung (Noten -> Berechnung)
+service BerechnungsService {
+  // Triggert Neuberechnung der Gesamtnote
+  rpc TriggerNeuberechnung(NeuberechnungRequest) returns (NeuberechnungResponse);
+  
+  // Holt berechnete Gesamtnote
+  rpc GetGesamtnote(GesamtnoteRequest) returns (GesamtnoteResponse);
+}
+
+// Service für Noten-Abruf (Berechnung -> Noten)
+service NotenDataService {
+  // Holt alle Noten einer Einschreibung für Berechnung
+  rpc GetNotenFuerBerechnung(NotenRequest) returns (NotenListResponse);
+}
+
+// Service für Regelwerk (Berechnung -> Studiengang)
+service RegelwerkService {
+  // Holt PO-Regelwerk für Berechnung
+  rpc GetRegelwerk(RegelwerkRequest) returns (RegelwerkResponse);
+  
+  // Holt Modul-Gewichtungen
+  rpc GetModulGewichtungen(ModulGewichtungRequest) returns (ModulGewichtungListResponse);
+}
+
+// Messages
+
+message NeuberechnungRequest {
+  string einschreibung_id = 1;
+}
+
+message NeuberechnungResponse {
+  bool success = 1;
+  double gesamtnote = 2;
+  string status = 3;
+  string message = 4;
+}
+
+message GesamtnoteRequest {
+  string einschreibung_id = 1;
+}
+
+message GesamtnoteResponse {
+  string einschreibung_id = 1;
+  double gesamtnote = 2;
+  double gesamtnote_roh = 3;
+  string status = 4;
+  string berechnet_am = 5;
+  int32 module_bestanden = 6;
+  int32 module_gesamt = 7;
+}
+
+message NotenRequest {
+  string einschreibung_id = 1;
+}
+
+message NoteData {
+  string modul_id = 1;
+  double note_wert = 2;
+  double gewichtung = 3;
+  bool in_gesamtnote = 4;
+  bool bestanden = 5;
+}
+
+message NotenListResponse {
+  repeated NoteData noten = 1;
+}
+
+message RegelwerkRequest {
+  string po_id = 1;
+}
+
+message RegelwerkResponse {
+  string po_id = 1;
+  string berechnungsart = 2;
+  string formel = 3;
+  string parameter_json = 4;
+}
+
+message ModulGewichtungRequest {
+  string po_id = 1;
+}
+
+message ModulGewichtung {
+  string modul_id = 1;
+  string modul_nr = 2;
+  double gewichtung = 3;
+  bool in_gesamtnote = 4;
+}
+
+message ModulGewichtungListResponse {
+  repeated ModulGewichtung module = 1;
+}
+
+

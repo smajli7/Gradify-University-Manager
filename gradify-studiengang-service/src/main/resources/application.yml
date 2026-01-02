@@ -1,0 +1,65 @@
+server:
+  port: 8083
+
+spring:
+  application:
+    name: gradify-studiengang-service
+  
+  # Datenbank Konfiguration
+  datasource:
+    url: jdbc:postgresql://localhost:5432/gradify_studiengang
+    username: gradify
+    password: gradify123
+    driver-class-name: org.postgresql.Driver
+  
+  jpa:
+    hibernate:
+      ddl-auto: update
+    show-sql: false
+    properties:
+      hibernate:
+        dialect: org.hibernate.dialect.PostgreSQLDialect
+        format_sql: true
+
+  # GraphQL
+  graphql:
+    graphiql:
+      enabled: true
+    path: /graphql
+
+# gRPC Server + Client
+grpc:
+  server:
+    port: 9083
+  client:
+    user-service:
+      address: static://localhost:9082
+      negotiationType: PLAINTEXT
+
+# Actuator
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health, info
+  endpoint:
+    health:
+      show-details: always
+
+# Logging
+logging:
+  level:
+    de.gradify: DEBUG
+
+---
+# Profil für Produktion (Supabase)
+spring:
+  config:
+    activate:
+      on-profile: prod
+  datasource:
+    url: ${SUPABASE_DB_URL}
+    username: ${SUPABASE_DB_USER}
+    password: ${SUPABASE_DB_PASSWORD}
+
+

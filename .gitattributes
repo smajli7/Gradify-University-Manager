@@ -1,0 +1,86 @@
+# Git Attributes - https://git-scm.com/docs/gitattributes
+# Ensure consistent line endings and file handling
+
+# Auto detect text files and normalize line endings to LF
+* text=auto eol=lf
+
+# Java
+*.java text eol=lf
+*.properties text eol=lf
+
+# XML / Maven
+*.xml text eol=lf
+pom.xml text eol=lf
+
+# YAML
+*.yml text eol=lf
+*.yaml text eol=lf
+
+# JSON
+*.json text eol=lf
+
+# Web
+*.html text eol=lf
+*.css text eol=lf
+*.scss text eol=lf
+*.js text eol=lf
+*.ts text eol=lf
+
+# GraphQL
+*.graphql text eol=lf
+*.graphqls text eol=lf
+
+# Proto
+*.proto text eol=lf
+
+# Markdown / Documentation
+*.md text eol=lf
+*.txt text eol=lf
+
+# Shell scripts
+*.sh text eol=lf
+
+# Windows batch files (require CRLF)
+*.bat text eol=crlf
+*.cmd text eol=crlf
+
+# SQL
+*.sql text eol=lf
+
+# Docker
+Dockerfile text eol=lf
+docker-compose*.yml text eol=lf
+
+# Binary files (no line ending conversion)
+*.jar binary
+*.war binary
+*.ear binary
+*.class binary
+*.png binary
+*.jpg binary
+*.jpeg binary
+*.gif binary
+*.ico binary
+*.pdf binary
+*.zip binary
+*.gz binary
+*.tar binary
+*.exe binary
+*.dll binary
+*.so binary
+
+# Git config
+.gitignore text eol=lf
+.gitattributes text eol=lf
+.editorconfig text eol=lf
+
+# Lock files
+package-lock.json text eol=lf -diff
+pnpm-lock.yaml text eol=lf -diff
+
+# Treat Maven wrapper as binary
+mvnw text eol=lf
+mvnw.cmd text eol=crlf
+.mvn/wrapper/maven-wrapper.jar binary
+
+
