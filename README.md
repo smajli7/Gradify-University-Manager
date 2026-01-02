@@ -248,3 +248,5 @@ Dieses Projekt ist Teil einer Hochschul-Lehrveranstaltung.
 ## Deadline
 
 **23.02.2026 - 23:59**
+
+Aktualisiert: 02.01.2026
