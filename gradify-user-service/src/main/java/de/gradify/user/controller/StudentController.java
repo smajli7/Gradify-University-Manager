@@ -28,7 +28,7 @@ public class StudentController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<StudentDto>>> getAllStudents(
-            @RequestParam(required = false) UUID mandantId) {
+            @RequestParam(value = "mandantId", required = false) UUID mandantId) {
         log.info("Getting students - mandantId: {}", mandantId);
         
         List<StudentDto> students;
@@ -83,7 +83,7 @@ public class StudentController {
     @PostMapping
     public ResponseEntity<ApiResponse<StudentDto>> createStudent(
             @Valid @RequestBody CreateStudentRequest request,
-            @RequestParam String mandantKuerzel) {
+            @RequestParam(value = "mandantKuerzel") String mandantKuerzel) {
         log.info("Creating student for mandant: {}", mandantKuerzel);
         
         try {

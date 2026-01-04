@@ -38,14 +38,14 @@ public class DataSeeder implements CommandLineRunner {
 
         log.info("Initialisiere Studiengang Seed-Daten...");
 
-        // Mandant erstellen (THM)
+        // Mandant erstellen (THM) - saveAndFlush für sofortigen Commit
         Mandant thm = Mandant.builder()
             .id(THM_MANDANT_ID)
             .name("Technische Hochschule Mittelhessen")
             .kuerzel("THM")
             .aktiv(true)
             .build();
-        mandantRepository.save(thm);
+        thm = mandantRepository.saveAndFlush(thm);
 
         // Studiengang: Bioverfahrenstechnik (Bachelor)
         Studiengang biotech = createStudiengang(thm, "Bioverfahrenstechnik", "BVT",

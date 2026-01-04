@@ -36,9 +36,16 @@ public class StudentService {
      */
     @Transactional(readOnly = true)
     public List<StudentDto> getAllStudents() {
-        return studentRepository.findAll().stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        try {
+            List<Student> students = studentRepository.findAll();
+            log.debug("Found {} students", students.size());
+            return students.stream()
+                    .map(this::toDto)
+                    .collect(Collectors.toList());
+        } catch (Exception e) {
+            log.error("Error getting all students", e);
+            throw e;
+        }
     }
 
     /**
@@ -240,7 +247,19 @@ public class StudentService {
      * Konvertiert Student Entity zu DTO.
      */
     private StudentDto toDto(Student student) {
+        if (student == null) {
+            log.warn("Student is null");
+            return null;
+        }
         Benutzer benutzer = student.getBenutzer();
+        if (benutzer == null) {
+            log.warn("Benutzer is null for student: {}", student.getId());
+            return StudentDto.builder()
+                    .id(student.getId())
+                    .matrikelnummer(student.getMatrikelnummer())
+                    .status(student.getStatus() != null ? student.getStatus().name() : "UNKNOWN")
+                    .build();
+        }
         return StudentDto.builder()
                 .id(student.getId())
                 .benutzerId(benutzer.getId())

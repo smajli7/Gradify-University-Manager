@@ -11,6 +11,8 @@ import de.gradify.studiengang.repository.PruefungsordnungRepository;
 import de.gradify.studiengang.repository.StudiengangRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
@@ -21,7 +23,6 @@ import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
-@RequiredArgsConstructor
 @Slf4j
 public class EinschreibungService {
 
@@ -29,6 +30,18 @@ public class EinschreibungService {
     private final StudiengangRepository studiengangRepository;
     private final PruefungsordnungRepository pruefungsordnungRepository;
     private final StudentGrpcClient studentGrpcClient;
+    
+    @Autowired
+    public EinschreibungService(
+            EinschreibungRepository einschreibungRepository,
+            StudiengangRepository studiengangRepository,
+            PruefungsordnungRepository pruefungsordnungRepository,
+            @Lazy StudentGrpcClient studentGrpcClient) {
+        this.einschreibungRepository = einschreibungRepository;
+        this.studiengangRepository = studiengangRepository;
+        this.pruefungsordnungRepository = pruefungsordnungRepository;
+        this.studentGrpcClient = studentGrpcClient;
+    }
 
     /**
      * Holt alle Einschreibungen.
