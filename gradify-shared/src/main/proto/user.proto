@@ -20,6 +20,9 @@ service UserValidationService {
 
 // Service für Studentendaten (Studiengang -> User)
 service StudentDataService {
+  // Prüft ob Student existiert
+  rpc StudentExists(StudentIdRequest) returns (StudentExistsResponse);
+  
   // Holt Student anhand ID
   rpc GetStudent(StudentIdRequest) returns (StudentResponse);
   
@@ -79,6 +82,12 @@ message StudentResponse {
 
 message StudentListResponse {
   repeated StudentResponse students = 1;
+}
+
+message StudentExistsResponse {
+  bool exists = 1;
+  string student_id = 2;
+  string matrikelnummer = 3;
 }
 
 
