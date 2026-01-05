@@ -30,7 +30,7 @@ public class CreateStudentRequest {
     @Email(message = "Ungültiges Email-Format")
     private String email;
     
-    @NotNull(message = "Mandant-ID darf nicht leer sein")
+    // MandantId ist optional - wird über mandantKuerzel Query-Parameter ermittelt
     private UUID mandantId;
     
     private LocalDate geburtsdatum;

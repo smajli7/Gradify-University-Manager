@@ -98,13 +98,16 @@ public class StudentService {
             throw new IllegalArgumentException("Email existiert bereits: " + request.getEmail());
         }
 
+        // MandantId aus Kürzel ermitteln (für jetzt: feste Mapping)
+        UUID mandantId = getMandantIdFromKuerzel(mandantKuerzel);
+        
         // Benutzer erstellen oder laden
         Benutzer benutzer;
         if (request.getBenutzerId() != null) {
             benutzer = benutzerRepository.findById(request.getBenutzerId())
                     .orElseThrow(() -> new IllegalArgumentException("Benutzer nicht gefunden: " + request.getBenutzerId()));
         } else {
-            benutzer = createBenutzer(request);
+            benutzer = createBenutzer(request, mandantId);
         }
 
         // Matrikelnummer generieren
@@ -185,9 +188,21 @@ public class StudentService {
     }
 
     /**
+     * Ermittelt die MandantId aus dem Kürzel.
+     * TODO: In Produktion über gRPC vom Studiengang-Service abrufen.
+     */
+    private UUID getMandantIdFromKuerzel(String kuerzel) {
+        // Feste Mapping für Entwicklung (gleiche IDs wie in DataSeeder)
+        if ("THM".equalsIgnoreCase(kuerzel)) {
+            return UUID.fromString("11111111-1111-1111-1111-111111111111");
+        }
+        throw new IllegalArgumentException("Unbekanntes Mandant-Kürzel: " + kuerzel);
+    }
+
+    /**
      * Erstellt einen Benutzer für den Studenten.
      */
-    private Benutzer createBenutzer(CreateStudentRequest request) {
+    private Benutzer createBenutzer(CreateStudentRequest request, UUID mandantId) {
         // Benutzername generieren (vorname.nachname)
         String benutzername = generateBenutzername(request.getVorname(), request.getNachname());
         
@@ -207,7 +222,7 @@ public class StudentService {
                 .passwortHash(passwordEncoder.encode(passwort))
                 .vorname(request.getVorname())
                 .nachname(request.getNachname())
-                .mandantId(request.getMandantId())
+                .mandantId(mandantId)
                 .aktiv(true)
                 .build();
         
