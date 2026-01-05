@@ -5,6 +5,7 @@ import de.gradify.noten.dto.NoteDto;
 import de.gradify.noten.dto.UpdateNoteRequest;
 import de.gradify.noten.entity.Note;
 import de.gradify.noten.service.NotenService;
+import de.gradify.noten.validation.NoteValidator;
 import de.gradify.shared.dto.ApiResponse;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
@@ -13,7 +14,9 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.math.BigDecimal;
 import java.util.List;
+import java.util.Set;
 import java.util.UUID;
 
 @RestController
@@ -23,6 +26,7 @@ import java.util.UUID;
 public class NotenController {
 
     private final NotenService notenService;
+    private final NoteValidator noteValidator;
 
     /**
      * Alle Noten abrufen, optional gefiltert.
@@ -192,5 +196,13 @@ public class NotenController {
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }
+    }
+
+    /**
+     * Gültige Notenwerte abrufen.
+     */
+    @GetMapping("/gueltige-noten")
+    public ResponseEntity<ApiResponse<Set<BigDecimal>>> getGueltigeNoten() {
+        return ResponseEntity.ok(ApiResponse.success(noteValidator.getGueltigeNoten()));
     }
 }

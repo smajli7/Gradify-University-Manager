@@ -5,6 +5,7 @@ import de.gradify.noten.dto.NoteDto;
 import de.gradify.noten.dto.UpdateNoteRequest;
 import de.gradify.noten.entity.Note;
 import de.gradify.noten.repository.NoteRepository;
+import de.gradify.noten.validation.NoteValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -22,6 +23,7 @@ import java.util.stream.Collectors;
 public class NotenService {
 
     private final NoteRepository noteRepository;
+    private final NoteValidator noteValidator;
 
     /**
      * Holt alle Noten, optional gefiltert.
@@ -81,6 +83,12 @@ public class NotenService {
         log.info("Creating note for einschreibung: {}, modul: {}", 
                 request.getEinschreibungId(), request.getModulId());
 
+        // Validierung durchführen
+        List<String> errors = noteValidator.validateCreate(request);
+        if (!errors.isEmpty()) {
+            throw new IllegalArgumentException(String.join("; ", errors));
+        }
+
         // Versuch ermitteln falls nicht angegeben
         int versuch = request.getVersuch();
         if (versuch <= 0) {
@@ -124,7 +132,12 @@ public class NotenService {
                 throw new IllegalStateException("Note kann nur im Status ERFASST bearbeitet werden");
             }
 
+            // Notenwert validieren
             if (request.getNoteWert() != null) {
+                if (!noteValidator.isValidNoteWert(request.getNoteWert())) {
+                    throw new IllegalArgumentException(
+                            "Ungültiger Notenwert. Erlaubt: 1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 5.0");
+                }
                 note.setNoteWert(request.getNoteWert());
                 // Bestanden-Status neu berechnen
                 if (request.getBestanden() == null) {
