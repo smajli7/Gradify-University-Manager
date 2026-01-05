@@ -57,7 +57,7 @@ public class NotenController {
      * Note nach ID abrufen.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<NoteDto>> getNoteById(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<NoteDto>> getNoteById(@PathVariable("id") UUID id) {
         log.info("Getting Note by id: {}", id);
         
         return notenService.getNoteById(id)
@@ -71,7 +71,7 @@ public class NotenController {
      */
     @GetMapping("/einschreibung/{einschreibungId}")
     public ResponseEntity<ApiResponse<List<NoteDto>>> getNotenByEinschreibung(
-            @PathVariable UUID einschreibungId) {
+            @PathVariable("einschreibungId") UUID einschreibungId) {
         log.info("Getting Noten for einschreibung: {}", einschreibungId);
         
         List<NoteDto> noten = notenService.getNotenByEinschreibung(einschreibungId);
@@ -82,7 +82,7 @@ public class NotenController {
      * Alle Noten eines Moduls abrufen.
      */
     @GetMapping("/modul/{modulId}")
-    public ResponseEntity<ApiResponse<List<NoteDto>>> getNotenByModul(@PathVariable UUID modulId) {
+    public ResponseEntity<ApiResponse<List<NoteDto>>> getNotenByModul(@PathVariable("modulId") UUID modulId) {
         log.info("Getting Noten for modul: {}", modulId);
         
         List<NoteDto> noten = notenService.getNotenByModul(modulId);
@@ -95,7 +95,7 @@ public class NotenController {
     @PostMapping
     public ResponseEntity<ApiResponse<NoteDto>> createNote(
             @Valid @RequestBody CreateNoteRequest request,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
+            @RequestHeader(name = "X-User-Id", required = false) UUID userId) {
         log.info("Creating Note for einschreibung: {}, modul: {}", 
                 request.getEinschreibungId(), request.getModulId());
         
@@ -118,7 +118,7 @@ public class NotenController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<NoteDto>> updateNote(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @Valid @RequestBody UpdateNoteRequest request) {
         log.info("Updating Note: {}", id);
         
@@ -139,9 +139,9 @@ public class NotenController {
      */
     @PostMapping("/{id}/validate")
     public ResponseEntity<ApiResponse<NoteDto>> validateNote(
-            @PathVariable UUID id,
+            @PathVariable("id") UUID id,
             @RequestParam(value = "kommentar", required = false) String kommentar,
-            @RequestHeader(value = "X-User-Id", required = false) UUID userId) {
+            @RequestHeader(name = "X-User-Id", required = false) UUID userId) {
         log.info("Validating Note: {}", id);
         
         UUID validiertVon = userId != null ? userId : UUID.randomUUID();
@@ -162,7 +162,7 @@ public class NotenController {
      * Note freigeben (Studiengangleitung).
      */
     @PostMapping("/{id}/release")
-    public ResponseEntity<ApiResponse<NoteDto>> releaseNote(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<NoteDto>> releaseNote(@PathVariable("id") UUID id) {
         log.info("Releasing Note: {}", id);
         
         try {
@@ -181,7 +181,7 @@ public class NotenController {
      * Note löschen (nur ERFASST).
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteNote(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<Void>> deleteNote(@PathVariable("id") UUID id) {
         log.info("Deleting Note: {}", id);
         
         try {
