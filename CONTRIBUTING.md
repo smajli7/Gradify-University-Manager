@@ -2,36 +2,6 @@
 
 ## Entwicklungsworkflow
 
-### Branch-Namenskonvention
-
-```
-feature/<kurzbeschreibung>    # Neue Features
-bugfix/<kurzbeschreibung>     # Bugfixes
-hotfix/<kurzbeschreibung>     # Dringende Fixes für Production
-docs/<kurzbeschreibung>       # Dokumentation
-```
-
-**Beispiele:**
-- `feature/login-page`
-- `bugfix/grade-calculation`
-- `docs/api-documentation`
-
-
-**Types:**
-- `feat`: Neues Feature
-- `fix`: Bugfix
-- `docs`: Dokumentation
-- `style`: Formatierung (kein Code-Change)
-- `refactor`: Code-Refactoring
-- `test`: Tests hinzufügen/ändern
-- `chore`: Build, Dependencies, etc.
-
-**Beispiele:**
-```
-feat(auth): add JWT token refresh endpoint
-fix(noten): correct grade calculation for weighted modules
-docs(readme): update setup instructions
-```
 
 ## Code-Style
 
@@ -53,14 +23,6 @@ docs(readme): update setup instructions
 - Keine Trailing Whitespaces
 - UTF-8 Encoding
 - LF Line Endings
-
-## Pull Requests
-
-1. Feature-Branch von `main` erstellen
-2. Änderungen committen
-3. PR erstellen mit Beschreibung
-4. Code Review abwarten
-5. Nach Approval: Squash & Merge
 
 ## Lokales Setup
 
