@@ -40,5 +40,7 @@ public interface NoteRepository extends JpaRepository<Note, UUID> {
     List<Note> findByErfasstVon(@Param("benutzerId") UUID benutzerId);
 
     boolean existsByEinschreibungIdAndModulId(UUID einschreibungId, UUID modulId);
+
+    List<Note> findByEinschreibungIdAndStatus(UUID einschreibungId, Note.NoteStatus status);
 }
 

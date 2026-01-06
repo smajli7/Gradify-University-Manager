@@ -5,8 +5,12 @@ import de.gradify.berechnung.dto.DetailBerechnungDto;
 import de.gradify.berechnung.dto.FortschrittDto;
 import de.gradify.berechnung.entity.Berechnungsergebnis;
 import de.gradify.berechnung.entity.ModulBerechnung;
+import de.gradify.berechnung.grpc.NotenGrpcClient;
+import de.gradify.berechnung.grpc.StudiengangGrpcClient;
 import de.gradify.berechnung.repository.BerechnungsergebnisRepository;
 import de.gradify.berechnung.repository.ModulBerechnungRepository;
+import de.gradify.shared.grpc.berechnung.ModulGewichtung;
+import de.gradify.shared.grpc.berechnung.NoteData;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
@@ -14,9 +18,7 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
-import java.util.List;
-import java.util.Optional;
-import java.util.UUID;
+import java.util.*;
 import java.util.stream.Collectors;
 
 @Service
@@ -26,6 +28,8 @@ public class BerechnungsService {
 
     private final BerechnungsergebnisRepository berechnungsergebnisRepository;
     private final ModulBerechnungRepository modulBerechnungRepository;
+    private final NotenGrpcClient notenGrpcClient;
+    private final StudiengangGrpcClient studiengangGrpcClient;
 
     /**
      * Holt die Gesamtnote für eine Einschreibung.
@@ -58,12 +62,67 @@ public class BerechnungsService {
     }
 
     /**
-     * Berechnet die Gesamtnote neu und speichert das Ergebnis.
-     * Diese Methode wird in Commit 3e-2/3e-3 erweitert um Noten via gRPC abzurufen.
+     * Berechnet die Gesamtnote neu basierend auf Daten via gRPC.
+     * 
+     * @param einschreibungId Die Einschreibungs-ID
+     * @param poId Die Prüfungsordnungs-ID für Regelwerk und Gewichtungen
+     * @param ectsGesamt Gesamt-ECTS des Studiengangs
+     */
+    @Transactional
+    public BerechnungDto berechneGesamtnote(UUID einschreibungId, UUID poId, int ectsGesamt) {
+        log.info("Calculating Gesamtnote for einschreibung: {}, PO: {}", einschreibungId, poId);
+
+        // 1. Noten via gRPC abrufen
+        List<NoteData> notenDaten = notenGrpcClient.getNotenFuerBerechnung(einschreibungId);
+        log.info("Received {} Noten via gRPC", notenDaten.size());
+
+        // 2. Modul-Gewichtungen via gRPC abrufen
+        List<ModulGewichtung> gewichtungen = studiengangGrpcClient.getModulGewichtungen(poId);
+        log.info("Received {} Modul-Gewichtungen via gRPC", gewichtungen.size());
+
+        // 3. Regelwerk abrufen
+        Optional<StudiengangGrpcClient.RegelwerkInfo> regelwerkOpt = studiengangGrpcClient.getRegelwerk(poId);
+        String berechnungsart = regelwerkOpt.map(StudiengangGrpcClient.RegelwerkInfo::berechnungsart)
+                .orElse("GEWICHTET");
+
+        // 4. Noten und Gewichtungen zusammenführen
+        Map<String, ModulGewichtung> gewichtungMap = gewichtungen.stream()
+                .collect(Collectors.toMap(ModulGewichtung::getModulId, g -> g));
+
+        List<ModulBerechnung> modulBerechnungen = new ArrayList<>();
+        
+        for (NoteData note : notenDaten) {
+            ModulGewichtung gew = gewichtungMap.get(note.getModulId());
+            
+            ModulBerechnung mb = ModulBerechnung.builder()
+                    .modulId(UUID.fromString(note.getModulId()))
+                    .modulNr(gew != null ? gew.getModulNr() : "?")
+                    .modulName("Modul " + (gew != null ? gew.getModulNr() : note.getModulId()))
+                    .note(BigDecimal.valueOf(note.getNoteWert()))
+                    .gewichtung(gew != null ? BigDecimal.valueOf(gew.getGewichtung()) : BigDecimal.ONE)
+                    .inGesamtnote(gew != null ? gew.getInGesamtnote() : true)
+                    .bestanden(note.getBestanden())
+                    .ects(5) // TODO: ECTS aus Modul-Daten
+                    .build();
+            
+            // Gewichteten Beitrag berechnen
+            if (mb.isInGesamtnote() && mb.getNote() != null) {
+                mb.setGewichteterBeitrag(mb.getNote().multiply(mb.getGewichtung()));
+            }
+            
+            modulBerechnungen.add(mb);
+        }
+
+        // 5. Berechnung aktualisieren
+        return aktualisiereBerechnung(einschreibungId, modulBerechnungen, berechnungsart, ectsGesamt);
+    }
+
+    /**
+     * Einfache Berechnung ohne gRPC (für Tests / wenn Services nicht erreichbar).
      */
     @Transactional
     public BerechnungDto berechneGesamtnote(UUID einschreibungId) {
-        log.info("Calculating Gesamtnote for einschreibung: {}", einschreibungId);
+        log.info("Calculating Gesamtnote for einschreibung (ohne gRPC): {}", einschreibungId);
 
         // Bestehende Berechnung laden oder neue erstellen
         Berechnungsergebnis ergebnis = berechnungsergebnisRepository
@@ -75,9 +134,6 @@ public class BerechnungsService {
                         .ectsErreicht(0)
                         .ectsGesamt(0)
                         .build());
-
-        // TODO: In 3e-2/3e-3 werden hier die Modulnoten via gRPC abgerufen
-        // und die Berechnung durchgeführt
         
         ergebnis = berechnungsergebnisRepository.save(ergebnis);
         log.info("Saved Berechnungsergebnis: {}", ergebnis.getId());

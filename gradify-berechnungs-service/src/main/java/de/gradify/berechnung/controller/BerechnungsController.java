@@ -66,14 +66,25 @@ public class BerechnungsController {
 
     /**
      * Berechnet die Gesamtnote neu (triggert Neuberechnung).
+     * Ohne Parameter: Einfache Berechnung
+     * Mit poId: Vollständige Berechnung via gRPC
      */
     @PostMapping("/einschreibung/{einschreibungId}/berechnen")
     public ResponseEntity<ApiResponse<BerechnungDto>> berechneGesamtnote(
-            @PathVariable("einschreibungId") UUID einschreibungId) {
-        log.info("Calculating Gesamtnote for einschreibung: {}", einschreibungId);
+            @PathVariable("einschreibungId") UUID einschreibungId,
+            @RequestParam(value = "poId", required = false) UUID poId,
+            @RequestParam(value = "ectsGesamt", required = false, defaultValue = "180") int ectsGesamt) {
+        log.info("Calculating Gesamtnote for einschreibung: {}, PO: {}", einschreibungId, poId);
         
         try {
-            BerechnungDto result = berechnungsService.berechneGesamtnote(einschreibungId);
+            BerechnungDto result;
+            if (poId != null) {
+                // Vollständige Berechnung mit gRPC
+                result = berechnungsService.berechneGesamtnote(einschreibungId, poId, ectsGesamt);
+            } else {
+                // Einfache Berechnung ohne gRPC
+                result = berechnungsService.berechneGesamtnote(einschreibungId);
+            }
             return ResponseEntity.ok(ApiResponse.success(result, "Berechnung durchgeführt"));
         } catch (Exception e) {
             log.error("Error calculating Gesamtnote: {}", e.getMessage());
