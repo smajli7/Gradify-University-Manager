@@ -1,10 +1,12 @@
 package de.gradify.berechnung.controller;
 
 import de.gradify.berechnung.dto.BerechnungDto;
+import de.gradify.berechnung.dto.BerechnungRequest;
 import de.gradify.berechnung.dto.DetailBerechnungDto;
 import de.gradify.berechnung.dto.FortschrittDto;
 import de.gradify.berechnung.service.BerechnungsService;
 import de.gradify.shared.dto.ApiResponse;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -94,6 +96,39 @@ public class BerechnungsController {
     }
 
     /**
+     * Berechnet die Gesamtnote mit allen Parametern (Request Body).
+     * 
+     * Berechnungsarten:
+     * - GEWICHTET (Bachelor): Σ(Note × ECTS) / Σ(ECTS)
+     * - ARITHMETISCH_GEMISCHT (Master): (2 × Thesis + Modulmittel) / 3
+     */
+    @PostMapping("/berechnen")
+    public ResponseEntity<ApiResponse<BerechnungDto>> berechneGesamtnoteVollstaendig(
+            @Valid @RequestBody BerechnungRequest request) {
+        log.info("Full calculation request for einschreibung: {}, PO: {}", 
+                request.getEinschreibungId(), request.getPruefungsordnungId());
+        
+        try {
+            int ectsGesamt = request.getEctsGesamt() > 0 ? request.getEctsGesamt() : 180;
+            
+            BerechnungDto result = berechnungsService.berechneGesamtnote(
+                    request.getEinschreibungId(),
+                    request.getPruefungsordnungId(),
+                    ectsGesamt
+            );
+            
+            String message = String.format("Gesamtnote berechnet: %s", 
+                    result.getGesamtnote() != null ? result.getGesamtnote() : "noch nicht berechenbar");
+            
+            return ResponseEntity.ok(ApiResponse.success(result, message));
+        } catch (Exception e) {
+            log.error("Error in full calculation: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Berechnung fehlgeschlagen: " + e.getMessage()));
+        }
+    }
+
+    /**
      * Holt die Durchschnittsnote aller abgeschlossenen Studiengänge.
      */
     @GetMapping("/statistik/durchschnitt")
@@ -106,5 +141,19 @@ public class BerechnungsController {
         } else {
             return ResponseEntity.ok(ApiResponse.success(null, "Keine endgültigen Berechnungen vorhanden"));
         }
+    }
+
+    /**
+     * Gibt eine Übersicht der verfügbaren Berechnungsarten.
+     */
+    @GetMapping("/berechnungsarten")
+    public ResponseEntity<ApiResponse<Object>> getBerechnungsarten() {
+        var arten = new Object() {
+            public final String GEWICHTET = "ECTS-gewichteter Durchschnitt (Bachelor)";
+            public final String GEWICHTET_FORMEL = "Gesamtnote = Σ(Modulnote × ECTS) / Σ(ECTS)";
+            public final String ARITHMETISCH_GEMISCHT = "Thesis-gewichteter Durchschnitt (Master)";
+            public final String ARITHMETISCH_GEMISCHT_FORMEL = "Gesamtnote = (2 × Thesis-Note + Modulmittel) / 3";
+        };
+        return ResponseEntity.ok(ApiResponse.success(arten));
     }
 }
