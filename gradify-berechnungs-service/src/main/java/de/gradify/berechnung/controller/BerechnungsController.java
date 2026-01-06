@@ -25,7 +25,7 @@ public class BerechnungsController {
     private final BerechnungsService berechnungsService;
 
     /**
-     * Holt die Gesamtnote für eine Einschreibung.
+     * Holt die Gesamtnote fuer eine Einschreibung.
      */
     @GetMapping("/einschreibung/{einschreibungId}")
     public ResponseEntity<ApiResponse<BerechnungDto>> getGesamtnote(
@@ -35,11 +35,11 @@ public class BerechnungsController {
         return berechnungsService.getGesamtnote(einschreibungId)
                 .map(dto -> ResponseEntity.ok(ApiResponse.success(dto)))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.error("Keine Berechnung gefunden für Einschreibung: " + einschreibungId)));
+                        .body(ApiResponse.error("Keine Berechnung gefunden fuer Einschreibung: " + einschreibungId)));
     }
 
     /**
-     * Holt die Detail-Berechnung mit allen Modulbeiträgen.
+     * Holt die Detail-Berechnung mit allen Modulbeitraegen.
      */
     @GetMapping("/einschreibung/{einschreibungId}/details")
     public ResponseEntity<ApiResponse<DetailBerechnungDto>> getDetailBerechnung(
@@ -69,7 +69,7 @@ public class BerechnungsController {
     /**
      * Berechnet die Gesamtnote neu (triggert Neuberechnung).
      * Ohne Parameter: Einfache Berechnung
-     * Mit poId: Vollständige Berechnung via gRPC
+     * Mit poId: Vollstaendige Berechnung via gRPC
      */
     @PostMapping("/einschreibung/{einschreibungId}/berechnen")
     public ResponseEntity<ApiResponse<BerechnungDto>> berechneGesamtnote(
@@ -87,7 +87,7 @@ public class BerechnungsController {
                 // Einfache Berechnung ohne gRPC
                 result = berechnungsService.berechneGesamtnote(einschreibungId);
             }
-            return ResponseEntity.ok(ApiResponse.success(result, "Berechnung durchgeführt"));
+            return ResponseEntity.ok(ApiResponse.success(result, "Berechnung durchgefuehrt"));
         } catch (Exception e) {
             log.error("Error calculating Gesamtnote: {}", e.getMessage());
             return ResponseEntity.badRequest()
@@ -99,8 +99,8 @@ public class BerechnungsController {
      * Berechnet die Gesamtnote mit allen Parametern (Request Body).
      * 
      * Berechnungsarten:
-     * - GEWICHTET (Bachelor): Σ(Note × ECTS) / Σ(ECTS)
-     * - ARITHMETISCH_GEMISCHT (Master): (2 × Thesis + Modulmittel) / 3
+     * - GEWICHTET (Bachelor): SUM(Note * ECTS) / SUM(ECTS)
+     * - ARITHMETISCH_GEMISCHT (Master): (2 * Thesis + Modulmittel) / 3
      */
     @PostMapping("/berechnen")
     public ResponseEntity<ApiResponse<BerechnungDto>> berechneGesamtnoteVollstaendig(
@@ -129,7 +129,7 @@ public class BerechnungsController {
     }
 
     /**
-     * Holt die Durchschnittsnote aller abgeschlossenen Studiengänge.
+     * Holt die Durchschnittsnote aller abgeschlossenen Studiengaenge.
      */
     @GetMapping("/statistik/durchschnitt")
     public ResponseEntity<ApiResponse<BigDecimal>> getDurchschnittsnote() {
@@ -139,20 +139,20 @@ public class BerechnungsController {
         if (durchschnitt != null) {
             return ResponseEntity.ok(ApiResponse.success(durchschnitt));
         } else {
-            return ResponseEntity.ok(ApiResponse.success(null, "Keine endgültigen Berechnungen vorhanden"));
+            return ResponseEntity.ok(ApiResponse.success(null, "Keine endgueltigen Berechnungen vorhanden"));
         }
     }
 
     /**
-     * Gibt eine Übersicht der verfügbaren Berechnungsarten.
+     * Gibt eine Uebersicht der verfuegbaren Berechnungsarten.
      */
     @GetMapping("/berechnungsarten")
     public ResponseEntity<ApiResponse<Object>> getBerechnungsarten() {
         var arten = new Object() {
             public final String GEWICHTET = "ECTS-gewichteter Durchschnitt (Bachelor)";
-            public final String GEWICHTET_FORMEL = "Gesamtnote = Σ(Modulnote × ECTS) / Σ(ECTS)";
+            public final String GEWICHTET_FORMEL = "Gesamtnote = SUM(Modulnote * ECTS) / SUM(ECTS)";
             public final String ARITHMETISCH_GEMISCHT = "Thesis-gewichteter Durchschnitt (Master)";
-            public final String ARITHMETISCH_GEMISCHT_FORMEL = "Gesamtnote = (2 × Thesis-Note + Modulmittel) / 3";
+            public final String ARITHMETISCH_GEMISCHT_FORMEL = "Gesamtnote = (2 * Thesis-Note + Modulmittel) / 3";
         };
         return ResponseEntity.ok(ApiResponse.success(arten));
     }
