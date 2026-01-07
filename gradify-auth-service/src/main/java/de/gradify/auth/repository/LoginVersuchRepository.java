@@ -25,3 +25,4 @@ public interface LoginVersuchRepository extends JpaRepository<LoginVersuch, UUID
     List<LoginVersuch> findFehlgeschlageneSeit(@Param("seit") LocalDateTime seit);
 }
 
+

@@ -32,3 +32,4 @@ public interface BenutzerRepository extends JpaRepository<Benutzer, UUID> {
     List<Benutzer> findByRollenNameAndMandantId(@Param("rollenName") String rollenName, @Param("mandantId") UUID mandantId);
 }
 
+

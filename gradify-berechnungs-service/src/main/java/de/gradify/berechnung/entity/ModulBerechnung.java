@@ -51,3 +51,4 @@ public class ModulBerechnung {
     private BigDecimal gewichteterBeitrag;
 }
 
+

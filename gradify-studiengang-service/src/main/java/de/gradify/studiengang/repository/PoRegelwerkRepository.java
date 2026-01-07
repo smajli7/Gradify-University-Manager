@@ -13,3 +13,4 @@ public interface PoRegelwerkRepository extends JpaRepository<PoRegelwerk, UUID> 
     Optional<PoRegelwerk> findByPruefungsordnungId(UUID poId);
 }
 
+

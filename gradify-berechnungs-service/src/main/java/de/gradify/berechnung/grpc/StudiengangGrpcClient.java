@@ -87,3 +87,4 @@ public class StudiengangGrpcClient {
     public record RegelwerkInfo(String berechnungsart, String formel, String parameter) {}
 }
 
+

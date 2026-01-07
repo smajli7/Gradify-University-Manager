@@ -68,3 +68,4 @@ public class NotenGrpcClient {
     public record NotenInfo(UUID modulId, double noteWert, boolean bestanden, boolean inGesamtnote) {}
 }
 
+

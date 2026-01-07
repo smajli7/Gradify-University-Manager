@@ -31,3 +31,4 @@ public interface StudentRepository extends JpaRepository<Student, UUID> {
     List<Student> findAllAktive();
 }
 
+

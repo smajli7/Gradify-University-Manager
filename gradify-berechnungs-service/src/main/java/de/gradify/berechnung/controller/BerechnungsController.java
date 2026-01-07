@@ -6,6 +6,9 @@ import de.gradify.berechnung.dto.DetailBerechnungDto;
 import de.gradify.berechnung.dto.FortschrittDto;
 import de.gradify.berechnung.service.BerechnungsService;
 import de.gradify.shared.dto.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -20,13 +23,12 @@ import java.util.UUID;
 @RequestMapping("/api/berechnungen")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Berechnungen", description = "API fuer Notenberechnung nach Pruefungsordnung")
 public class BerechnungsController {
 
     private final BerechnungsService berechnungsService;
 
-    /**
-     * Holt die Gesamtnote fuer eine Einschreibung.
-     */
+    @Operation(summary = "Gesamtnote abrufen", description = "Liefert die berechnete Gesamtnote einer Einschreibung")
     @GetMapping("/einschreibung/{einschreibungId}")
     public ResponseEntity<ApiResponse<BerechnungDto>> getGesamtnote(
             @PathVariable("einschreibungId") UUID einschreibungId) {
@@ -38,9 +40,7 @@ public class BerechnungsController {
                         .body(ApiResponse.error("Keine Berechnung gefunden fuer Einschreibung: " + einschreibungId)));
     }
 
-    /**
-     * Holt die Detail-Berechnung mit allen Modulbeitraegen.
-     */
+    @Operation(summary = "Detail-Berechnung abrufen", description = "Zeigt die Einzelbeitraege aller Module zur Gesamtnote")
     @GetMapping("/einschreibung/{einschreibungId}/details")
     public ResponseEntity<ApiResponse<DetailBerechnungDto>> getDetailBerechnung(
             @PathVariable("einschreibungId") UUID einschreibungId) {
@@ -95,13 +95,7 @@ public class BerechnungsController {
         }
     }
 
-    /**
-     * Berechnet die Gesamtnote mit allen Parametern (Request Body).
-     * 
-     * Berechnungsarten:
-     * - GEWICHTET (Bachelor): SUM(Note * ECTS) / SUM(ECTS)
-     * - ARITHMETISCH_GEMISCHT (Master): (2 * Thesis + Modulmittel) / 3
-     */
+    @Operation(summary = "Gesamtnote berechnen", description = "Fuehrt eine vollstaendige Berechnung nach PO durch")
     @PostMapping("/berechnen")
     public ResponseEntity<ApiResponse<BerechnungDto>> berechneGesamtnoteVollstaendig(
             @Valid @RequestBody BerechnungRequest request) {
@@ -143,9 +137,7 @@ public class BerechnungsController {
         }
     }
 
-    /**
-     * Gibt eine Uebersicht der verfuegbaren Berechnungsarten.
-     */
+    @Operation(summary = "Berechnungsarten anzeigen", description = "Zeigt die verfuegbaren Berechnungsformeln (Bachelor/Master)")
     @GetMapping("/berechnungsarten")
     public ResponseEntity<ApiResponse<Object>> getBerechnungsarten() {
         var arten = new Object() {

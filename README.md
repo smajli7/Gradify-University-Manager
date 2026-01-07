@@ -14,6 +14,29 @@ Web-basiertes Notenmanagement-System für Hochschulen, entwickelt mit Spring Boo
 | Berechnungs-Service | 8085 | Gesamtnotenberechnung |
 | Frontend | 4200 | Angular SPA |
 
+## API-Dokumentation (Swagger UI)
+
+Jeder Service bietet eine interaktive API-Dokumentation via Swagger UI:
+
+| Service | Swagger UI URL |
+|---------|----------------|
+| Auth-Service | http://localhost:8081/swagger-ui.html |
+| User-Service | http://localhost:8082/swagger-ui.html |
+| Studiengang-Service | http://localhost:8083/swagger-ui.html |
+| Noten-Service | http://localhost:8084/swagger-ui.html |
+| Berechnungs-Service | http://localhost:8085/swagger-ui.html |
+
+OpenAPI JSON: `http://localhost:{port}/v3/api-docs`
+
+## Rollen und Berechtigungen
+
+| Rolle | Beschreibung | Berechtigungen |
+|-------|--------------|----------------|
+| ADMIN | Administrator | Voller Zugriff auf alle Funktionen |
+| DOZENT | Dozent/Prüfer | Noten erfassen, validieren |
+| PRUEFUNGSAMT | Prüfungsamt | Noten validieren, freigeben, Einschreibungen |
+| STUDENT | Student | Nur Lesezugriff auf eigene Daten |
+
 ## Voraussetzungen
 
 - **Java 17** (JDK)

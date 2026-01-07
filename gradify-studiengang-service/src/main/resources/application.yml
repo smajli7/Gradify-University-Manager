@@ -48,6 +48,14 @@ management:
     health:
       show-details: always
 
+# Swagger/OpenAPI
+springdoc:
+  api-docs:
+    path: /v3/api-docs
+  swagger-ui:
+    path: /swagger-ui.html
+    operationsSorter: method
+
 # Logging
 logging:
   level:

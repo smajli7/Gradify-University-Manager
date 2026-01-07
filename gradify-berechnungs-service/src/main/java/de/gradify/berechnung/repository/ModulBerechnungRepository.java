@@ -23,3 +23,4 @@ public interface ModulBerechnungRepository extends JpaRepository<ModulBerechnung
     void deleteByBerechnungsergebnisId(UUID berechnungsergebnisId);
 }
 
+

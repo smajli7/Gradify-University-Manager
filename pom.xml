@@ -47,6 +47,9 @@
         <!-- JWT -->
         <jjwt.version>0.12.3</jjwt.version>
 
+        <!-- OpenAPI / Swagger -->
+        <springdoc.version>2.3.0</springdoc.version>
+
         <!-- Utilities -->
         <lombok.version>1.18.30</lombok.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
@@ -140,6 +143,13 @@
                 <groupId>org.mapstruct</groupId>
                 <artifactId>mapstruct</artifactId>
                 <version>${mapstruct.version}</version>
+            </dependency>
+
+            <!-- SpringDoc OpenAPI (Swagger) -->
+            <dependency>
+                <groupId>org.springdoc</groupId>
+                <artifactId>springdoc-openapi-starter-webmvc-ui</artifactId>
+                <version>${springdoc.version}</version>
             </dependency>
 
             <!-- Gradify Shared -->

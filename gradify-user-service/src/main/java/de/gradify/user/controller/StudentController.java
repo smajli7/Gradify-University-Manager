@@ -5,6 +5,10 @@ import de.gradify.user.dto.CreateStudentRequest;
 import de.gradify.user.dto.StudentDto;
 import de.gradify.user.dto.UpdateStudentRequest;
 import de.gradify.user.service.StudentService;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.responses.ApiResponses;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.HttpStatus;
@@ -19,13 +23,12 @@ import java.util.UUID;
 @RequestMapping("/api/students")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Studenten", description = "API fuer Studentenverwaltung (CRUD-Operationen)")
 public class StudentController {
 
     private final StudentService studentService;
 
-    /**
-     * Alle Studenten abrufen.
-     */
+    @Operation(summary = "Alle Studenten abrufen", description = "Liefert alle Studenten, optional gefiltert nach Mandant")
     @GetMapping
     public ResponseEntity<ApiResponse<List<StudentDto>>> getAllStudents(
             @RequestParam(value = "mandantId", required = false) UUID mandantId) {
@@ -41,11 +44,10 @@ public class StudentController {
         return ResponseEntity.ok(ApiResponse.success(students));
     }
 
-    /**
-     * Student nach ID abrufen.
-     */
+    @Operation(summary = "Student nach ID abrufen", description = "Liefert einen einzelnen Studenten anhand seiner UUID")
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<StudentDto>> getStudentById(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<StudentDto>> getStudentById(
+            @Parameter(description = "UUID des Studenten") @PathVariable UUID id) {
         log.info("Getting student by id: {}", id);
         
         return studentService.getStudentById(id)
@@ -54,11 +56,10 @@ public class StudentController {
                         .body(ApiResponse.error("Student nicht gefunden")));
     }
 
-    /**
-     * Student nach Matrikelnummer abrufen.
-     */
+    @Operation(summary = "Student nach Matrikelnummer abrufen", description = "Liefert einen Studenten anhand seiner Matrikelnummer")
     @GetMapping("/matrikel/{matrikelnummer}")
-    public ResponseEntity<ApiResponse<StudentDto>> getStudentByMatrikel(@PathVariable String matrikelnummer) {
+    public ResponseEntity<ApiResponse<StudentDto>> getStudentByMatrikel(
+            @Parameter(description = "Matrikelnummer (z.B. THM2026001)") @PathVariable String matrikelnummer) {
         log.info("Getting student by matrikelnummer: {}", matrikelnummer);
         
         return studentService.getStudentByMatrikelnummer(matrikelnummer)
@@ -67,19 +68,15 @@ public class StudentController {
                         .body(ApiResponse.error("Student nicht gefunden")));
     }
 
-    /**
-     * Prüft ob ein Student existiert.
-     */
+    @Operation(summary = "Student-Existenz pruefen", description = "Prueft ob ein Student mit der angegebenen ID existiert")
     @GetMapping("/{id}/exists")
-    public ResponseEntity<ApiResponse<Boolean>> studentExists(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<Boolean>> studentExists(
+            @Parameter(description = "UUID des Studenten") @PathVariable UUID id) {
         boolean exists = studentService.existsById(id);
         return ResponseEntity.ok(ApiResponse.success(exists));
     }
 
-    /**
-     * Neuen Studenten erstellen.
-     * Erwartet mandantKuerzel als Query-Parameter für Matrikelnummer-Generierung.
-     */
+    @Operation(summary = "Neuen Studenten erstellen", description = "Erstellt einen neuen Studenten mit automatisch generierter Matrikelnummer")
     @PostMapping
     public ResponseEntity<ApiResponse<StudentDto>> createStudent(
             @Valid @RequestBody CreateStudentRequest request,
@@ -97,9 +94,7 @@ public class StudentController {
         }
     }
 
-    /**
-     * Studenten aktualisieren.
-     */
+    @Operation(summary = "Student aktualisieren", description = "Aktualisiert die Daten eines bestehenden Studenten")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<StudentDto>> updateStudent(
             @PathVariable UUID id,
@@ -118,11 +113,10 @@ public class StudentController {
         }
     }
 
-    /**
-     * Studenten löschen (deaktivieren).
-     */
+    @Operation(summary = "Student exmatrikulieren", description = "Exmatrikuliert einen Studenten (setzt Status auf EXMATRIKULIERT)")
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteStudent(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<Void>> deleteStudent(
+            @Parameter(description = "UUID des Studenten") @PathVariable UUID id) {
         log.info("Deleting student: {}", id);
         
         if (studentService.deleteStudent(id)) {

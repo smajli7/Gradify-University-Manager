@@ -21,3 +21,4 @@ public interface NotenHistorieRepository extends JpaRepository<NotenHistorie, UU
     List<NotenHistorie> findByGeaendertVonOrderByGeaendertAmDesc(@Param("benutzerId") UUID benutzerId);
 }
 
+

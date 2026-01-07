@@ -35,3 +35,4 @@ public interface EinschreibungRepository extends JpaRepository<Einschreibung, UU
     boolean existsByStudentIdAndStudiengangIdAndStatus(UUID studentId, UUID studiengangId, Einschreibung.EinschreibungStatus status);
 }
 
+

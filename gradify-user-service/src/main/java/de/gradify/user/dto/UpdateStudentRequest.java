@@ -26,3 +26,4 @@ public class UpdateStudentRequest {
     private String status; // AKTIV, BEURLAUBT, EXMATRIKULIERT
 }
 
+

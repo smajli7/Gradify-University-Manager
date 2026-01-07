@@ -25,3 +25,4 @@ public interface PruefungsordnungRepository extends JpaRepository<Pruefungsordnu
     List<Pruefungsordnung> findByStudiengangIdOrderByGueltigAbDesc(@Param("studiengangId") UUID studiengangId);
 }
 
+

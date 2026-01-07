@@ -15,3 +15,4 @@ public interface RolleRepository extends JpaRepository<Rolle, UUID> {
     boolean existsByName(String name);
 }
 
+

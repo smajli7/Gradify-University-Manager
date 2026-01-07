@@ -19,3 +19,4 @@ public class MandantDto {
     private boolean aktiv;
 }
 
+

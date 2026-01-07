@@ -18,3 +18,4 @@ public interface MandantRepository extends JpaRepository<Mandant, UUID> {
     List<Mandant> findByAktivTrue();
 }
 
+

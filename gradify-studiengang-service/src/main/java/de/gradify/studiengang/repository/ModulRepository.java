@@ -33,3 +33,4 @@ public interface ModulRepository extends JpaRepository<Modul, UUID> {
     Integer sumEctsByPoId(@Param("poId") UUID poId);
 }
 
+

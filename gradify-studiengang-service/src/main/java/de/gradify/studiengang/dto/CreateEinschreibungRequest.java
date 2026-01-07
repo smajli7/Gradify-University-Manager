@@ -29,3 +29,4 @@ public class CreateEinschreibungRequest {
     private LocalDate immatrikuliertAm; // Optional, Default: heute
 }
 
+

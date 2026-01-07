@@ -33,3 +33,4 @@ public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID
     long countByBenutzerIdAndWiderrufenFalseAndGueltigBisAfter(UUID benutzerId, LocalDateTime now);
 }
 
+

@@ -24,3 +24,4 @@ GRANT ALL PRIVILEGES ON DATABASE gradify_noten TO gradify;
 GRANT ALL PRIVILEGES ON DATABASE gradify_berechnung TO gradify;
 
 
+

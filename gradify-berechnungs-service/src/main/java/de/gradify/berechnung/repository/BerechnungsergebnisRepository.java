@@ -29,3 +29,4 @@ public interface BerechnungsergebnisRepository extends JpaRepository<Berechnungs
     java.math.BigDecimal calculateDurchschnittsnote();
 }
 
+

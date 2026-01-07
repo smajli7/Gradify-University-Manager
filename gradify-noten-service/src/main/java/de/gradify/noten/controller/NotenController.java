@@ -7,6 +7,9 @@ import de.gradify.noten.entity.Note;
 import de.gradify.noten.service.NotenService;
 import de.gradify.noten.validation.NoteValidator;
 import de.gradify.shared.dto.ApiResponse;
+import io.swagger.v3.oas.annotations.Operation;
+import io.swagger.v3.oas.annotations.Parameter;
+import io.swagger.v3.oas.annotations.tags.Tag;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -23,14 +26,13 @@ import java.util.UUID;
 @RequestMapping("/api/noten")
 @RequiredArgsConstructor
 @Slf4j
+@Tag(name = "Noten", description = "API fuer Notenverwaltung, Validierung und Freigabe")
 public class NotenController {
 
     private final NotenService notenService;
     private final NoteValidator noteValidator;
 
-    /**
-     * Alle Noten abrufen, optional gefiltert.
-     */
+    @Operation(summary = "Noten abrufen", description = "Liefert Noten, optional gefiltert nach Einschreibung, Modul oder Status")
     @GetMapping
     public ResponseEntity<ApiResponse<List<NoteDto>>> getNoten(
             @RequestParam(value = "einschreibungId", required = false) UUID einschreibungId,
@@ -89,9 +91,7 @@ public class NotenController {
         return ResponseEntity.ok(ApiResponse.success(noten));
     }
 
-    /**
-     * Neue Note erfassen.
-     */
+    @Operation(summary = "Note erfassen", description = "Erfasst eine neue Note. Benoetigt DOZENT oder ADMIN Rolle.")
     @PostMapping
     public ResponseEntity<ApiResponse<NoteDto>> createNote(
             @Valid @RequestBody CreateNoteRequest request,
@@ -134,9 +134,7 @@ public class NotenController {
         }
     }
 
-    /**
-     * Note validieren (Prüfungsamt).
-     */
+    @Operation(summary = "Note validieren", description = "Validiert eine erfasste Note. Benoetigt PRUEFUNGSAMT oder ADMIN Rolle.")
     @PostMapping("/{id}/validate")
     public ResponseEntity<ApiResponse<NoteDto>> validateNote(
             @PathVariable("id") UUID id,
@@ -158,11 +156,10 @@ public class NotenController {
         }
     }
 
-    /**
-     * Note freigeben (Studiengangleitung).
-     */
+    @Operation(summary = "Note freigeben", description = "Gibt eine validierte Note endgueltig frei. Benoetigt PRUEFUNGSAMT oder ADMIN Rolle.")
     @PostMapping("/{id}/release")
-    public ResponseEntity<ApiResponse<NoteDto>> releaseNote(@PathVariable("id") UUID id) {
+    public ResponseEntity<ApiResponse<NoteDto>> releaseNote(
+            @Parameter(description = "UUID der Note") @PathVariable("id") UUID id) {
         log.info("Releasing Note: {}", id);
         
         try {
@@ -198,9 +195,7 @@ public class NotenController {
         }
     }
 
-    /**
-     * Gültige Notenwerte abrufen.
-     */
+    @Operation(summary = "Gueltige Notenwerte", description = "Liefert alle gueltigen Notenwerte (1.0, 1.3, 1.7, ... 4.0, 5.0)")
     @GetMapping("/gueltige-noten")
     public ResponseEntity<ApiResponse<Set<BigDecimal>>> getGueltigeNoten() {
         return ResponseEntity.ok(ApiResponse.success(noteValidator.getGueltigeNoten()));

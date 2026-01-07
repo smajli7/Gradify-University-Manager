@@ -47,7 +47,12 @@ public class SecurityConfig {
             .csrf(AbstractHttpConfigurer::disable)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
+                // Swagger/OpenAPI immer erlauben
+                .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
+                // Rollen-basierte Zugriffskontrolle
+                .requestMatchers("/api/students/**").hasAnyRole("ADMIN", "DOZENT", "PRUEFUNGSAMT")
+                .requestMatchers("/api/benutzer/**").hasRole("ADMIN")
                 .requestMatchers("/api/**").authenticated()
                 .requestMatchers("/graphql/**").authenticated()
                 .anyRequest().authenticated()

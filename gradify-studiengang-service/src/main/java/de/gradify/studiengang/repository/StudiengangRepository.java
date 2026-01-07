@@ -29,3 +29,4 @@ public interface StudiengangRepository extends JpaRepository<Studiengang, UUID> 
     List<Studiengang> findByMandantIdAndAbschlussart(@Param("mandantId") UUID mandantId, @Param("abschlussart") Studiengang.Abschlussart abschlussart);
 }
 
+
