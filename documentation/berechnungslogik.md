@@ -213,7 +213,8 @@ Gesamtnote = (2 × 1.3 + 1 × 1.814) / 3
 
 ---
 
-*Zuletzt aktualisiert: 31.12.2025*
+*Zuletzt aktualisiert: 08.01.2026*
+
 
 
 

@@ -30,3 +30,4 @@ public interface StudiengangRepository extends JpaRepository<Studiengang, UUID> 
 }
 
 
+

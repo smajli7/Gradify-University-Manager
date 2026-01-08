@@ -25,3 +25,4 @@ GRANT ALL PRIVILEGES ON DATABASE gradify_berechnung TO gradify;
 
 
 
+

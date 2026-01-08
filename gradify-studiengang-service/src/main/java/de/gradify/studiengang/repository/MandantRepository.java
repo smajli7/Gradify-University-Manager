@@ -19,3 +19,4 @@ public interface MandantRepository extends JpaRepository<Mandant, UUID> {
 }
 
 
+

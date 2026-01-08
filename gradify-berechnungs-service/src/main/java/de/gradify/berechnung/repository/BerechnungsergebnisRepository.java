@@ -30,3 +30,4 @@ public interface BerechnungsergebnisRepository extends JpaRepository<Berechnungs
 }
 
 
+

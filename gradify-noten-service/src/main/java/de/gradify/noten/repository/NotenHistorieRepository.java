@@ -22,3 +22,4 @@ public interface NotenHistorieRepository extends JpaRepository<NotenHistorie, UU
 }
 
 
+

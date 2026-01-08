@@ -14,3 +14,4 @@ public interface PoRegelwerkRepository extends JpaRepository<PoRegelwerk, UUID> 
 }
 
 
+

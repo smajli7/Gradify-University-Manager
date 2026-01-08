@@ -180,7 +180,8 @@ Bei neuen Endpunkten diese Fragen stellen:
 
 ---
 
-*Zuletzt aktualisiert: 31.12.2025*
+*Zuletzt aktualisiert: 08.01.2026*
+
 
 
 
