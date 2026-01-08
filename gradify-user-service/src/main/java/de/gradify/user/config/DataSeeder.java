@@ -29,8 +29,12 @@ public class DataSeeder implements CommandLineRunner {
     private final StudentRepository studentRepository;
     private final PasswordEncoder passwordEncoder;
 
-    // Fester Mandant-ID für Entwicklung (THM)
+    // Feste IDs fuer Entwicklung - muessen mit anderen Services uebereinstimmen
     public static final UUID THM_MANDANT_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    public static final UUID DOZENT_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    public static final UUID STUDENT_1_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000001");
+    public static final UUID STUDENT_2_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000002");
+    public static final UUID STUDENT_3_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000003");
 
     @Override
     @Transactional
@@ -63,10 +67,10 @@ public class DataSeeder implements CommandLineRunner {
             Set.of(pruefungsamtRolle)
         );
 
-        // Dozenten
-        Benutzer dozent1 = createBenutzer(
+        // Dozenten (mit fester ID fuer Noten-Service)
+        Benutzer dozent1 = createBenutzerWithId(DOZENT_ID,
             "prof.mueller", "mueller@gradify.local", "dozent123",
-            "Prof. Dr. Max", "Müller",
+            "Prof. Dr. Max", "Mueller",
             Set.of(dozentenRolle)
         );
 
@@ -76,16 +80,16 @@ public class DataSeeder implements CommandLineRunner {
             Set.of(dozentenRolle, studiengangleitungRolle)
         );
 
-        // Studenten
-        createStudent("max.mustermann", "max.mustermann@student.gradify.local",
+        // Studenten (mit festen IDs fuer Studiengang-/Noten-Service)
+        createStudentWithId(STUDENT_1_ID, "max.mustermann", "max.mustermann@student.gradify.local",
             "student123", "Max", "Mustermann",
             "1234567", LocalDate.of(1998, 5, 15), studentRolle);
 
-        createStudent("erika.musterfrau", "erika.musterfrau@student.gradify.local",
+        createStudentWithId(STUDENT_2_ID, "erika.musterfrau", "erika.musterfrau@student.gradify.local",
             "student123", "Erika", "Musterfrau",
             "1234568", LocalDate.of(1999, 8, 22), studentRolle);
 
-        createStudent("jan.beispiel", "jan.beispiel@student.gradify.local",
+        createStudentWithId(STUDENT_3_ID, "jan.beispiel", "jan.beispiel@student.gradify.local",
             "student123", "Jan", "Beispiel",
             "1234569", LocalDate.of(2000, 3, 10), studentRolle);
 
@@ -120,12 +124,29 @@ public class DataSeeder implements CommandLineRunner {
         return benutzerRepository.save(benutzer);
     }
 
-    private void createStudent(String benutzername, String email, String passwort,
-                               String vorname, String nachname, String matrikelnummer,
-                               LocalDate geburtsdatum, Rolle studentRolle) {
+    private Benutzer createBenutzerWithId(UUID id, String benutzername, String email, String passwort,
+                                          String vorname, String nachname, Set<Rolle> rollen) {
+        Benutzer benutzer = Benutzer.builder()
+            .id(id)
+            .benutzername(benutzername)
+            .email(email)
+            .passwortHash(passwordEncoder.encode(passwort))
+            .vorname(vorname)
+            .nachname(nachname)
+            .mandantId(THM_MANDANT_ID)
+            .aktiv(true)
+            .rollen(rollen)
+            .build();
+        return benutzerRepository.save(benutzer);
+    }
+
+    private void createStudentWithId(UUID studentId, String benutzername, String email, String passwort,
+                                     String vorname, String nachname, String matrikelnummer,
+                                     LocalDate geburtsdatum, Rolle studentRolle) {
         Benutzer benutzer = createBenutzer(benutzername, email, passwort, vorname, nachname, Set.of(studentRolle));
 
         Student student = Student.builder()
+            .id(studentId)
             .benutzer(benutzer)
             .matrikelnummer(matrikelnummer)
             .geburtsdatum(geburtsdatum)

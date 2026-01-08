@@ -24,9 +24,32 @@ public class DataSeeder implements CommandLineRunner {
     private final PruefungsordnungRepository pruefungsordnungRepository;
     private final ModulRepository modulRepository;
     private final PoRegelwerkRepository poRegelwerkRepository;
+    private final EinschreibungRepository einschreibungRepository;
 
-    // Fester Mandant-ID für Entwicklung (THM)
+    // Feste IDs fuer Entwicklung - muessen mit anderen Services uebereinstimmen
     public static final UUID THM_MANDANT_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    
+    // Student-IDs (werden vom User-Service generiert)
+    public static final UUID STUDENT_1_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000001");
+    public static final UUID STUDENT_2_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000002");
+    public static final UUID STUDENT_3_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000003");
+    
+    // Einschreibungs-IDs (fuer Noten-Service)
+    public static final UUID EINSCHREIBUNG_1 = UUID.fromString("eeee1111-1111-1111-1111-111111111111");
+    public static final UUID EINSCHREIBUNG_2 = UUID.fromString("eeee2222-2222-2222-2222-222222222222");
+    public static final UUID EINSCHREIBUNG_3 = UUID.fromString("eeee3333-3333-3333-3333-333333333333");
+    
+    // Modul-IDs (fuer Noten-Service)
+    public static final UUID MODUL_M1 = UUID.fromString("aaaa1111-1111-1111-1111-111111111111");
+    public static final UUID MODUL_M2 = UUID.fromString("aaaa2222-2222-2222-2222-222222222222");
+    public static final UUID MODUL_CH1 = UUID.fromString("aaaa3333-3333-3333-3333-333333333333");
+    public static final UUID MODUL_BIO1 = UUID.fromString("aaaa4444-4444-4444-4444-444444444444");
+    public static final UUID MODUL_PHY1 = UUID.fromString("aaaa5555-5555-5555-5555-555555555555");
+    public static final UUID MODUL_TH = UUID.fromString("aaaa6666-6666-6666-6666-666666666666");
+    public static final UUID MODUL_FO1 = UUID.fromString("bbbb1111-1111-1111-1111-111111111111");
+    public static final UUID MODUL_FO2 = UUID.fromString("bbbb2222-2222-2222-2222-222222222222");
+    public static final UUID MODUL_SA1 = UUID.fromString("bbbb3333-3333-3333-3333-333333333333");
+    public static final UUID MODUL_MTH = UUID.fromString("bbbb4444-4444-4444-4444-444444444444");
 
     @Override
     @Transactional
@@ -55,13 +78,13 @@ public class DataSeeder implements CommandLineRunner {
         Pruefungsordnung poBiotech = createPruefungsordnung(biotech, "2023",
             LocalDate.of(2023, 10, 1), Pruefungsordnung.Berechnungsart.GEWICHTET);
 
-        // Module für Bioverfahrenstechnik (Beispiele)
-        createModul(poBiotech, "M1", "Mathematik 1", 5, "1", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
-        createModul(poBiotech, "M2", "Mathematik 2", 5, "2", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
-        createModul(poBiotech, "CH1", "Allgemeine Chemie", 5, "1", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
-        createModul(poBiotech, "BIO1", "Biologie Grundlagen", 5, "1", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
-        createModul(poBiotech, "PHY1", "Physik", 5, "2", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
-        createModul(poBiotech, "TH", "Thesis", 12, "7", Modul.Modultyp.PFLICHT, new BigDecimal("3.0"));
+        // Module fuer Bioverfahrenstechnik (mit festen IDs)
+        createModul(MODUL_M1, poBiotech, "M1", "Mathematik 1", 5, "1", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
+        createModul(MODUL_M2, poBiotech, "M2", "Mathematik 2", 5, "2", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
+        createModul(MODUL_CH1, poBiotech, "CH1", "Allgemeine Chemie", 5, "1", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
+        createModul(MODUL_BIO1, poBiotech, "BIO1", "Biologie Grundlagen", 5, "1", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
+        createModul(MODUL_PHY1, poBiotech, "PHY1", "Physik", 5, "2", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
+        createModul(MODUL_TH, poBiotech, "TH", "Thesis", 12, "7", Modul.Modultyp.PFLICHT, new BigDecimal("3.0"));
 
         // Regelwerk für Bioverfahrenstechnik
         createRegelwerk(poBiotech, "ECTS-gewichteter Durchschnitt",
@@ -75,15 +98,20 @@ public class DataSeeder implements CommandLineRunner {
         Pruefungsordnung poSozial = createPruefungsordnung(sozialarbeit, "2022",
             LocalDate.of(2022, 10, 1), Pruefungsordnung.Berechnungsart.ARITHMETISCH_GEMISCHT);
 
-        // Module für Soziale Arbeit (Beispiele)
-        createModul(poSozial, "FO1", "Forschungsmethoden I", 6, "1", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
-        createModul(poSozial, "FO2", "Forschungsmethoden II", 6, "2", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
-        createModul(poSozial, "SA1", "Soziale Arbeit Theorie", 6, "1", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
-        createModul(poSozial, "MTH", "Master-Thesis", 24, "3", Modul.Modultyp.PFLICHT, new BigDecimal("2.0"));
+        // Module fuer Soziale Arbeit (mit festen IDs)
+        createModul(MODUL_FO1, poSozial, "FO1", "Forschungsmethoden I", 6, "1", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
+        createModul(MODUL_FO2, poSozial, "FO2", "Forschungsmethoden II", 6, "2", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
+        createModul(MODUL_SA1, poSozial, "SA1", "Soziale Arbeit Theorie", 6, "1", Modul.Modultyp.PFLICHT, new BigDecimal("1.0"));
+        createModul(MODUL_MTH, poSozial, "MTH", "Master-Thesis", 24, "3", Modul.Modultyp.PFLICHT, new BigDecimal("2.0"));
 
-        // Regelwerk für Soziale Arbeit
+        // Regelwerk fuer Soziale Arbeit
         createRegelwerk(poSozial, "Arithmetischer Durchschnitt mit Thesis-Gewichtung",
-            "(AVG(module) + 2 * thesis) / 3", "Thesis zählt 2-fach");
+            "(AVG(module) + 2 * thesis) / 3", "Thesis zaehlt 2-fach");
+
+        // Einschreibungen erstellen (verknuepft Studenten mit Studiengaengen)
+        createEinschreibung(EINSCHREIBUNG_1, STUDENT_1_ID, biotech, poBiotech, 3); // Max - BVT, 3. Semester
+        createEinschreibung(EINSCHREIBUNG_2, STUDENT_2_ID, biotech, poBiotech, 3); // Erika - BVT, 3. Semester
+        createEinschreibung(EINSCHREIBUNG_3, STUDENT_3_ID, sozialarbeit, poSozial, 2); // Jan - FSA Master, 2. Semester
 
         log.info("Studiengang Seed-Daten erfolgreich erstellt!");
     }
@@ -119,9 +147,10 @@ public class DataSeeder implements CommandLineRunner {
         return saved;
     }
 
-    private void createModul(Pruefungsordnung po, String modulNr, String name, int ects,
+    private void createModul(UUID id, Pruefungsordnung po, String modulNr, String name, int ects,
                              String semester, Modul.Modultyp typ, BigDecimal gewichtung) {
         Modul modul = Modul.builder()
+            .id(id)
             .pruefungsordnung(po)
             .modulNr(modulNr)
             .name(name)
@@ -144,6 +173,20 @@ public class DataSeeder implements CommandLineRunner {
             .beschreibung(beschreibung)
             .build();
         poRegelwerkRepository.save(regelwerk);
+    }
+
+    private void createEinschreibung(UUID id, UUID studentId, Studiengang studiengang, 
+                                     Pruefungsordnung po, int semester) {
+        Einschreibung einschreibung = Einschreibung.builder()
+            .id(id)
+            .studentId(studentId)
+            .studiengang(studiengang)
+            .pruefungsordnung(po)
+            .aktuellesSemester(semester)
+            .immatrikuliertAm(LocalDate.of(2023, 10, 1))
+            .status(Einschreibung.EinschreibungStatus.AKTIV)
+            .build();
+        einschreibungRepository.save(einschreibung);
     }
 }
 

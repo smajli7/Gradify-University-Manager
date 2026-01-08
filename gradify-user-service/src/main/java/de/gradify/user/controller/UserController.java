@@ -3,6 +3,8 @@ package de.gradify.user.controller;
 import de.gradify.shared.dto.ApiResponse;
 import de.gradify.user.dto.BenutzerDto;
 import de.gradify.user.dto.CreateBenutzerRequest;
+import de.gradify.user.entity.Rolle;
+import de.gradify.user.service.BenutzerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -11,6 +13,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.util.List;
 import java.util.UUID;
+import java.util.stream.Collectors;
 
 @RestController
 @RequestMapping("/api/users")
@@ -18,60 +21,115 @@ import java.util.UUID;
 @Slf4j
 public class UserController {
 
-    // TODO: Inject UserService
+    private final BenutzerService benutzerService;
 
     @GetMapping
-    public ResponseEntity<ApiResponse<List<BenutzerDto>>> getAllUsers() {
-        log.info("Getting all users");
-        // TODO: Implement
-        return ResponseEntity.ok(ApiResponse.success(List.of()));
+    public ResponseEntity<ApiResponse<List<BenutzerDto>>> getAllUsers(
+            @RequestParam(value = "mandantId", required = false) UUID mandantId) {
+        log.info("Getting all users, mandantId={}", mandantId);
+        
+        List<BenutzerDto> users;
+        if (mandantId != null) {
+            users = benutzerService.findByMandantId(mandantId);
+        } else {
+            users = benutzerService.findAll();
+        }
+        
+        return ResponseEntity.ok(ApiResponse.success(users));
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<BenutzerDto>> getUserById(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<BenutzerDto>> getUserById(
+            @PathVariable(value = "id") UUID id) {
         log.info("Getting user by id: {}", id);
-        // TODO: Implement
-        return ResponseEntity.ok(ApiResponse.success(null));
+        
+        return benutzerService.findById(id)
+            .map(user -> ResponseEntity.ok(ApiResponse.success(user)))
+            .orElse(ResponseEntity.notFound().build());
+    }
+
+    @GetMapping("/username/{benutzername}")
+    public ResponseEntity<ApiResponse<BenutzerDto>> getUserByUsername(
+            @PathVariable(value = "benutzername") String benutzername) {
+        log.info("Getting user by username: {}", benutzername);
+        
+        return benutzerService.findByBenutzername(benutzername)
+            .map(user -> ResponseEntity.ok(ApiResponse.success(user)))
+            .orElse(ResponseEntity.notFound().build());
     }
 
     @PostMapping
-    public ResponseEntity<ApiResponse<BenutzerDto>> createUser(@Valid @RequestBody CreateBenutzerRequest request) {
+    public ResponseEntity<ApiResponse<BenutzerDto>> createUser(
+            @Valid @RequestBody CreateBenutzerRequest request) {
         log.info("Creating user: {}", request.getBenutzername());
-        // TODO: Implement
-        return ResponseEntity.ok(ApiResponse.success(null, "Benutzer erstellt"));
+        
+        try {
+            BenutzerDto created = benutzerService.create(request);
+            return ResponseEntity.ok(ApiResponse.success(created, "Benutzer erstellt"));
+        } catch (IllegalArgumentException e) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error(e.getMessage()));
+        }
     }
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<BenutzerDto>> updateUser(
-            @PathVariable UUID id,
+            @PathVariable(value = "id") UUID id,
             @Valid @RequestBody CreateBenutzerRequest request) {
         log.info("Updating user: {}", id);
-        // TODO: Implement
-        return ResponseEntity.ok(ApiResponse.success(null, "Benutzer aktualisiert"));
+        
+        return benutzerService.update(id, request)
+            .map(user -> ResponseEntity.ok(ApiResponse.success(user, "Benutzer aktualisiert")))
+            .orElse(ResponseEntity.notFound().build());
     }
 
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteUser(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<Void>> deleteUser(
+            @PathVariable(value = "id") UUID id) {
         log.info("Deleting user: {}", id);
-        // TODO: Implement
-        return ResponseEntity.ok(ApiResponse.success(null, "Benutzer gelöscht"));
+        
+        if (benutzerService.delete(id)) {
+            return ResponseEntity.ok(ApiResponse.success(null, "Benutzer geloescht"));
+        }
+        return ResponseEntity.notFound().build();
     }
 
     @PostMapping("/{id}/roles/{roleId}")
-    public ResponseEntity<ApiResponse<Void>> assignRole(@PathVariable UUID id, @PathVariable UUID roleId) {
+    public ResponseEntity<ApiResponse<Void>> assignRole(
+            @PathVariable(value = "id") UUID id, 
+            @PathVariable(value = "roleId") UUID roleId) {
         log.info("Assigning role {} to user {}", roleId, id);
-        // TODO: Implement
-        return ResponseEntity.ok(ApiResponse.success(null, "Rolle zugewiesen"));
+        
+        if (benutzerService.assignRole(id, roleId)) {
+            return ResponseEntity.ok(ApiResponse.success(null, "Rolle zugewiesen"));
+        }
+        return ResponseEntity.notFound().build();
     }
 
     @DeleteMapping("/{id}/roles/{roleId}")
-    public ResponseEntity<ApiResponse<Void>> removeRole(@PathVariable UUID id, @PathVariable UUID roleId) {
+    public ResponseEntity<ApiResponse<Void>> removeRole(
+            @PathVariable(value = "id") UUID id, 
+            @PathVariable(value = "roleId") UUID roleId) {
         log.info("Removing role {} from user {}", roleId, id);
-        // TODO: Implement
-        return ResponseEntity.ok(ApiResponse.success(null, "Rolle entfernt"));
+        
+        if (benutzerService.removeRole(id, roleId)) {
+            return ResponseEntity.ok(ApiResponse.success(null, "Rolle entfernt"));
+        }
+        return ResponseEntity.notFound().build();
+    }
+
+    @GetMapping("/roles")
+    public ResponseEntity<ApiResponse<List<Object>>> getAllRoles() {
+        log.info("Getting all roles");
+        
+        List<Object> roles = benutzerService.findAllRoles().stream()
+            .map(rolle -> new Object() {
+                public final UUID id = rolle.getId();
+                public final String name = rolle.getName();
+                public final String beschreibung = rolle.getBeschreibung();
+            })
+            .collect(Collectors.toList());
+        
+        return ResponseEntity.ok(ApiResponse.success(roles));
     }
 }
-
-
-
-
