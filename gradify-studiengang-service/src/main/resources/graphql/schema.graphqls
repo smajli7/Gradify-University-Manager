@@ -1,0 +1,112 @@
+type Query {
+    # Mandanten Queries
+    mandanten: [Mandant!]!
+    mandant(id: ID!): Mandant
+    
+    # Studiengaenge Queries
+    studiengaenge(mandantId: ID): [Studiengang!]!
+    studiengang(id: ID!): Studiengang
+    studiengangByKuerzel(kuerzel: String!): Studiengang
+    
+    # Module Queries
+    module(studiengangId: ID, poId: ID): [Modul!]!
+    modul(id: ID!): Modul
+    
+    # Einschreibungen Queries
+    einschreibungen(studentId: ID, studiengangId: ID): [Einschreibung!]!
+    einschreibung(id: ID!): Einschreibung
+}
+
+type Mandant {
+    id: ID!
+    name: String!
+    kuerzel: String!
+    aktiv: Boolean!
+    studiengaenge: [Studiengang!]!
+}
+
+type Studiengang {
+    id: ID!
+    name: String!
+    kuerzel: String!
+    abschlussart: Abschlussart!
+    regelstudienzeit: Int!
+    gesamtEcts: Int!
+    studienvariante: Studienvariante!
+    aktiv: Boolean!
+    mandant: Mandant!
+    module: [Modul!]!
+}
+
+type Modul {
+    id: ID!
+    modulNr: String!
+    name: String!
+    nameEn: String
+    ects: Int!
+    semester: String!
+    dauerSemester: Int!
+    pruefungsform: Pruefungsform!
+    pruefungsdauer: String
+    sprache: Sprache!
+    modultyp: Modultyp!
+    bewertungsart: Bewertungsart!
+    gewichtung: Float!
+    inGesamtnote: Boolean!
+    vorleistung: String
+    wahlpflichtGruppe: String
+}
+
+type Einschreibung {
+    id: ID!
+    studentId: ID!
+    studiengangId: ID!
+    poId: ID
+    semester: Int!
+    immatrikuliertAm: String!
+    exmatrikuliertAm: String
+    status: EinschreibungStatus!
+}
+
+enum Abschlussart {
+    BACHELOR
+    MASTER
+}
+
+enum Studienvariante {
+    ALLGEMEIN
+    DUAL
+}
+
+enum Pruefungsform {
+    KLAUSUR
+    HAUSARBEIT
+    MUENDLICH
+    PROJEKT
+    PORTFOLIO
+    PRAESENTATION
+    PRAXISBERICHT
+}
+
+enum Sprache {
+    DEUTSCH
+    ENGLISCH
+}
+
+enum Modultyp {
+    PFLICHT
+    WAHLPFLICHT
+    ZUSATZ
+}
+
+enum Bewertungsart {
+    NOTE
+    BESTANDEN_NICHT_BESTANDEN
+}
+
+enum EinschreibungStatus {
+    AKTIV
+    ABGESCHLOSSEN
+    ABGEBROCHEN
+}
+

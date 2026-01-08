@@ -1,0 +1,70 @@
+type Query {
+    # Noten Queries
+    noten(einschreibungId: ID, modulId: ID): [Note!]!
+    note(id: ID!): Note
+    notenByStudent(einschreibungId: ID!): [Note!]!
+    notenByModul(modulId: ID!): [Note!]!
+    
+    # Statistik Queries
+    durchschnittsnote(einschreibungId: ID!): Float
+    bestandeneModule(einschreibungId: ID!): Int
+}
+
+type Mutation {
+    # Note erstellen
+    createNote(input: CreateNoteInput!): Note!
+    
+    # Note aktualisieren
+    updateNote(id: ID!, input: UpdateNoteInput!): Note!
+    
+    # Note validieren (Pruefungsamt)
+    validateNote(id: ID!, validatorId: ID!): Note!
+    
+    # Note freigeben (fuer Student sichtbar)
+    releaseNote(id: ID!): Note!
+    
+    # Note loeschen
+    deleteNote(id: ID!): Boolean!
+}
+
+type Note {
+    id: ID!
+    einschreibungId: ID!
+    modulId: ID!
+    erfasstVon: ID!
+    noteWert: Float
+    bestanden: Boolean
+    versuch: Int!
+    pruefungsdatum: String!
+    status: NoteStatus!
+    kommentar: String
+    erfasstAm: String!
+    validiertAm: String
+    validiertVon: ID
+}
+
+enum NoteStatus {
+    ERFASST
+    VALIDIERT
+    FREIGEGEBEN
+}
+
+input CreateNoteInput {
+    einschreibungId: ID!
+    modulId: ID!
+    erfasstVon: ID!
+    noteWert: Float
+    bestanden: Boolean
+    versuch: Int!
+    pruefungsdatum: String!
+    kommentar: String
+}
+
+input UpdateNoteInput {
+    noteWert: Float
+    bestanden: Boolean
+    versuch: Int
+    pruefungsdatum: String
+    kommentar: String
+}
+

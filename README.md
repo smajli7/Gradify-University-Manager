@@ -14,7 +14,9 @@ Web-basiertes Notenmanagement-System für Hochschulen, entwickelt mit Spring Boo
 | Berechnungs-Service | 8085 | Gesamtnotenberechnung |
 | Frontend | 4200 | Angular SPA |
 
-## API-Dokumentation (Swagger UI)
+## API-Dokumentation
+
+### Swagger UI (REST)
 
 Jeder Service bietet eine interaktive API-Dokumentation via Swagger UI:
 
@@ -27,6 +29,53 @@ Jeder Service bietet eine interaktive API-Dokumentation via Swagger UI:
 | Berechnungs-Service | http://localhost:8085/swagger-ui.html |
 
 OpenAPI JSON: `http://localhost:{port}/v3/api-docs`
+
+### GraphiQL (GraphQL)
+
+Fuer flexible Datenabfragen bieten folgende Services GraphQL:
+
+| Service | GraphiQL URL | Beschreibung |
+|---------|--------------|--------------|
+| User-Service | http://localhost:8082/graphiql | Benutzer, Studenten, Rollen |
+| Studiengang-Service | http://localhost:8083/graphiql | Studiengaenge, Module, Einschreibungen |
+| Noten-Service | http://localhost:8084/graphiql | Noten, Durchschnitte |
+
+**Beispiel-Queries:**
+
+```graphql
+# Alle Studenten mit Matrikelnummer
+query {
+  students {
+    id
+    matrikelnummer
+    vorname
+    nachname
+  }
+}
+
+# Studiengang mit allen Modulen
+query {
+  studiengangByKuerzel(kuerzel: "BVT") {
+    name
+    abschlussart
+    module {
+      name
+      ects
+      gewichtung
+    }
+  }
+}
+
+# Noten eines Studenten mit Durchschnitt
+query {
+  notenByStudent(einschreibungId: "...") {
+    noteWert
+    bestanden
+    status
+  }
+  durchschnittsnote(einschreibungId: "...")
+}
+```
 
 ## Rollen und Berechtigungen
 
@@ -272,4 +321,4 @@ Dieses Projekt ist Teil einer Hochschul-Lehrveranstaltung.
 
 **23.02.2026 - 23:59**
 
-Aktualisiert: 02.01.2026
+Aktualisiert: 08.01.2026

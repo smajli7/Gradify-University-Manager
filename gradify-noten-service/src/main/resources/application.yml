@@ -62,6 +62,17 @@ logging:
     de.gradify: DEBUG
 
 ---
+# Profil für Entwicklung (lokale Datenbank mit Seed-Daten)
+spring:
+  config:
+    activate:
+      on-profile: dev
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: true
+
+---
 # Profil für Produktion (Supabase)
 spring:
   config:
