@@ -1,41 +1,20 @@
 import { Component } from '@angular/core';
 import { RouterOutlet } from '@angular/router';
-import { MatToolbarModule } from '@angular/material/toolbar';
-import { MatButtonModule } from '@angular/material/button';
-import { MatIconModule } from '@angular/material/icon';
 
 @Component({
   selector: 'app-root',
   standalone: true,
-  imports: [RouterOutlet, MatToolbarModule, MatButtonModule, MatIconModule],
+  imports: [RouterOutlet],
   template: `
-    <mat-toolbar color="primary">
-      <mat-icon>school</mat-icon>
-      <span class="ml-8">Gradify</span>
-      <span class="spacer"></span>
-      <button mat-button routerLink="/login">Login</button>
-    </mat-toolbar>
-    
-    <main class="container">
-      <router-outlet></router-outlet>
-    </main>
+    <router-outlet></router-outlet>
   `,
   styles: [`
-    .spacer {
-      flex: 1 1 auto;
-    }
-    .ml-8 {
-      margin-left: 8px;
-    }
-    main {
-      padding: 24px;
+    :host {
+      display: block;
+      min-height: 100vh;
     }
   `]
 })
 export class AppComponent {
   title = 'Gradify';
 }
-
-
-
-
