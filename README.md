@@ -304,6 +304,7 @@ Die vollständige Projektdokumentation befindet sich im Ordner `/documentation`:
 | [Service-Zuschnitt](documentation/service_zuschnitt.md) | Microservice-Architektur |
 | [Kommunikationskonzept](documentation/kommunikationskonzept.md) | REST/GraphQL/gRPC |
 | [Schnittstellenentwürfe](documentation/schnittstellenentwuerfe.md) | API-Spezifikationen |
+| [Frontend](documentation/frontend.md) | Design-System, Farben, Layout |
 
 ## Contributing
 
