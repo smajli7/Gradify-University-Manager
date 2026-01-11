@@ -19,13 +19,31 @@ import { RouterLink } from '@angular/router';
 
         <!-- Logo -->
         <a routerLink="/dashboard" class="logo">
-          <img 
-            *ngIf="logoSrc" 
-            [src]="logoSrc" 
-            alt="Gradify" 
-            class="logo-img">
-          <span *ngIf="!logoSrc" class="logo-emoji">🎓</span>
-          <span class="logo-text">Gradify</span>
+          <svg class="logo-svg" viewBox="0 0 180 50" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <!-- Rahmen -->
+            <rect x="2" y="4" width="90" height="32" rx="8" ry="8" 
+                  stroke="url(#headerLogoGradient)" stroke-width="1.5" fill="none"/>
+            
+            <!-- Text 1.0 | 1.3 -->
+            <text x="47" y="26" font-family="DM Sans, sans-serif" font-size="13" font-weight="600" 
+                  fill="#E6EDF3" text-anchor="middle">
+              <tspan>1.0</tspan>
+              <tspan fill="#8B949E" font-weight="300"> | </tspan>
+              <tspan>1.3</tspan>
+            </text>
+            
+            <!-- Gradify Text -->
+            <text x="138" y="28" font-family="DM Sans, sans-serif" font-size="18" font-weight="600" 
+                  fill="#E6EDF3" text-anchor="middle" letter-spacing="0.5">Gradify</text>
+            
+            <!-- Gradient Definition -->
+            <defs>
+              <linearGradient id="headerLogoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#00F2FF"/>
+                <stop offset="100%" stop-color="#7000FF"/>
+              </linearGradient>
+            </defs>
+          </svg>
         </a>
 
         <!-- Spacer -->
@@ -118,27 +136,12 @@ import { RouterLink } from '@angular/router';
     .logo {
       display: flex;
       align-items: center;
-      gap: var(--spacing-sm);
       text-decoration: none;
     }
 
-    .logo-img {
-      width: 32px;
-      height: 32px;
-      object-fit: contain;
-    }
-
-    .logo-emoji {
-      font-size: 28px;
-    }
-
-    .logo-text {
-      font-size: var(--font-size-lg);
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+    .logo-svg {
+      width: 160px;
+      height: 44px;
     }
 
     .spacer {

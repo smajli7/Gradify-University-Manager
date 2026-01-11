@@ -14,18 +14,76 @@ import { Router } from '@angular/router';
       <div class="bg-glow bg-glow--2"></div>
       
       <div class="login-container animate-slide-up">
-        <!-- Logo -->
-        <div class="logo">
-          <span class="logo-icon">🎓</span>
-          <h1 class="logo-text">Gradify</h1>
+        <!-- Splash Screen -->
+        <div class="splash" [class.splash--hidden]="showContent">
+          <!-- Ambient Glow Orbs -->
+          <div class="orb orb--1"></div>
+          <div class="orb orb--2"></div>
+          <div class="orb orb--3"></div>
+          
+          <!-- Light Beams -->
+          <div class="beam beam--1"></div>
+          <div class="beam beam--2"></div>
+          <div class="beam beam--3"></div>
+          <div class="beam beam--4"></div>
+          <div class="beam beam--5"></div>
+          <div class="beam beam--6"></div>
+          <div class="beam beam--7"></div>
+          <div class="beam beam--8"></div>
+          
+          <!-- Main Logo -->
+          <div class="splash-logo-container">
+            <!-- Frame + Content wrapper -->
+            <div class="splash-frame-wrapper">
+              <!-- Frame with draw animation -->
+              <svg class="splash-frame" viewBox="0 0 220 60" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <defs>
+                  <linearGradient id="frameGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                    <stop offset="0%" stop-color="#00F2FF"/>
+                    <stop offset="100%" stop-color="#7000FF"/>
+                  </linearGradient>
+                </defs>
+                <rect class="frame-rect" x="2" y="2" width="216" height="56" rx="12" ry="12" 
+                      stroke="url(#frameGradient)" stroke-width="2" fill="none"/>
+              </svg>
+              
+              <!-- Content that fades in -->
+              <div class="splash-content">
+                <span class="splash-text">1.0</span>
+                <span class="splash-divider">|</span>
+                <span class="splash-text">1.3</span>
+              </div>
+            </div>
+            
+            <!-- Title with shimmer -->
+            <div class="splash-title">Gradify</div>
+          </div>
+        </div>
+
+        <!-- Logo (small, after splash) -->
+        <div class="logo" [class.logo--visible]="showContent">
+          <svg class="logo-svg" viewBox="0 0 180 90" fill="none" xmlns="http://www.w3.org/2000/svg">
+            <defs>
+              <linearGradient id="logoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
+                <stop offset="0%" stop-color="#00F2FF"/>
+                <stop offset="100%" stop-color="#7000FF"/>
+              </linearGradient>
+            </defs>
+            <rect x="15" y="8" width="150" height="44" rx="10" ry="10" 
+                  stroke="url(#logoGradient)" stroke-width="2" fill="none"/>
+            <text x="90" y="38" font-family="DM Sans, sans-serif" font-size="20" font-weight="600" 
+                  fill="#E6EDF3" text-anchor="middle">
+              <tspan>1.0</tspan>
+              <tspan fill="#8B949E" font-weight="300"> | </tspan>
+              <tspan>1.3</tspan>
+            </text>
+            <text x="90" y="76" font-family="DM Sans, sans-serif" font-size="22" font-weight="500" 
+                  fill="#E6EDF3" text-anchor="middle" letter-spacing="1">Gradify</text>
+          </svg>
         </div>
         
-        <p class="subtitle">Notenmanagement System</p>
-        
         <!-- Login Card -->
-        <div class="login-card">
-          <h2>Anmelden</h2>
-          
+        <div class="login-card" [class.content--visible]="showContent">
           <form (ngSubmit)="onLogin()" class="login-form">
             <div class="form-group">
               <label for="username">Benutzername</label>
@@ -102,7 +160,7 @@ import { Router } from '@angular/router';
           </div>
         </div>
         
-        <p class="footer-text">© 2026 Gradify - Hochschule</p>
+        <p class="footer-text" [class.content--visible]="showContent">© 2026 Gradify - Hochschule</p>
       </div>
     </div>
   `,
@@ -155,28 +213,319 @@ import { Router } from '@angular/router';
       display: flex;
       align-items: center;
       justify-content: center;
-      gap: var(--spacing-md);
-      margin-bottom: var(--spacing-sm);
+      margin-bottom: var(--spacing-md);
     }
 
-    .logo-icon {
-      font-size: 48px;
-      filter: drop-shadow(0 0 20px rgba(var(--color-primary-rgb), 0.5));
+    /* Splash Screen */
+    .splash {
+      position: fixed;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: var(--bg-deep);
+      z-index: 1000;
+      transition: opacity 0.6s ease, visibility 0.6s ease;
+      overflow: hidden;
     }
 
-    .logo-text {
-      font-size: var(--font-size-3xl);
-      font-weight: 700;
-      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+    .splash--hidden {
+      opacity: 0;
+      visibility: hidden;
+    }
+
+    /* Ambient Glow Orbs */
+    .orb {
+      position: absolute;
+      border-radius: 50%;
+      filter: blur(80px);
+      opacity: 0.5;
+      animation: orbFloat 8s ease-in-out infinite;
+    }
+
+    .orb--1 {
+      width: 400px;
+      height: 400px;
+      background: radial-gradient(circle, rgba(0, 242, 255, 0.4) 0%, transparent 70%);
+      top: -15%;
+      right: -10%;
+      animation-delay: 0s;
+    }
+
+    .orb--2 {
+      width: 350px;
+      height: 350px;
+      background: radial-gradient(circle, rgba(112, 0, 255, 0.4) 0%, transparent 70%);
+      bottom: -10%;
+      left: -10%;
+      animation-delay: 2s;
+      animation-duration: 10s;
+    }
+
+    .orb--3 {
+      width: 250px;
+      height: 250px;
+      background: radial-gradient(circle, rgba(0, 242, 255, 0.3) 0%, rgba(112, 0, 255, 0.2) 50%, transparent 70%);
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      animation-delay: 1s;
+      animation-duration: 6s;
+    }
+
+    @keyframes orbFloat {
+      0%, 100% {
+        transform: translate(0, 0) scale(1);
+        opacity: 0.4;
+      }
+      33% {
+        transform: translate(30px, -20px) scale(1.1);
+        opacity: 0.6;
+      }
+      66% {
+        transform: translate(-20px, 15px) scale(0.95);
+        opacity: 0.5;
+      }
+    }
+
+    /* Light Beams */
+    .beam {
+      position: absolute;
+      width: 2px;
+      opacity: 0;
+      animation: beamShoot 2.5s ease-out infinite;
+    }
+
+    .beam--1 {
+      height: 120px;
+      background: linear-gradient(to bottom, transparent, #00F2FF, transparent);
+      top: 10%;
+      left: 15%;
+      transform: rotate(-25deg);
+      animation-delay: 0s;
+    }
+
+    .beam--2 {
+      height: 100px;
+      background: linear-gradient(to bottom, transparent, #7000FF, transparent);
+      top: 5%;
+      right: 20%;
+      transform: rotate(20deg);
+      animation-delay: 0.3s;
+    }
+
+    .beam--3 {
+      height: 140px;
+      background: linear-gradient(to bottom, transparent, #00F2FF, #7000FF, transparent);
+      top: 15%;
+      left: 40%;
+      transform: rotate(-15deg);
+      animation-delay: 0.6s;
+    }
+
+    .beam--4 {
+      height: 90px;
+      background: linear-gradient(to bottom, transparent, #7000FF, transparent);
+      top: 8%;
+      right: 35%;
+      transform: rotate(30deg);
+      animation-delay: 0.9s;
+    }
+
+    .beam--5 {
+      height: 110px;
+      background: linear-gradient(to bottom, transparent, #00F2FF, transparent);
+      top: 12%;
+      right: 10%;
+      transform: rotate(15deg);
+      animation-delay: 1.2s;
+    }
+
+    .beam--6 {
+      height: 130px;
+      background: linear-gradient(to bottom, transparent, #7000FF, #00F2FF, transparent);
+      top: 5%;
+      left: 55%;
+      transform: rotate(-35deg);
+      animation-delay: 1.5s;
+    }
+
+    .beam--7 {
+      height: 80px;
+      background: linear-gradient(to bottom, transparent, #00F2FF, transparent);
+      top: 18%;
+      left: 25%;
+      transform: rotate(-10deg);
+      animation-delay: 1.8s;
+    }
+
+    .beam--8 {
+      height: 100px;
+      background: linear-gradient(to bottom, transparent, #7000FF, transparent);
+      top: 10%;
+      right: 45%;
+      transform: rotate(25deg);
+      animation-delay: 2.1s;
+    }
+
+    @keyframes beamShoot {
+      0% {
+        opacity: 0;
+        transform: translateY(-20px);
+      }
+      15% {
+        opacity: 0.8;
+      }
+      100% {
+        opacity: 0;
+        transform: translateY(120px);
+      }
+    }
+
+    /* Logo Container */
+    .splash-logo-container {
+      position: relative;
+      z-index: 10;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+    }
+
+    /* Frame wrapper */
+    .splash-frame-wrapper {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 220px;
+      height: 60px;
+    }
+
+    /* Frame - draws itself */
+    .splash-frame {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+      filter: drop-shadow(0 0 15px rgba(0, 242, 255, 0.25));
+    }
+
+    .frame-rect {
+      stroke-dasharray: 560;
+      stroke-dashoffset: 560;
+      animation: drawFrame 1.2s ease-out 0.3s forwards;
+    }
+
+    @keyframes drawFrame {
+      to {
+        stroke-dashoffset: 0;
+      }
+    }
+
+    /* Content inside frame */
+    .splash-content {
+      position: relative;
+      z-index: 1;
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 24px;
+      font-weight: 600;
+      opacity: 0;
+      animation: fadeIn 0.6s ease-out 1s forwards;
+    }
+
+    .splash-text {
+      color: #E6EDF3;
+    }
+
+    .splash-divider {
+      color: #8B949E;
+      font-weight: 300;
+    }
+
+    /* Title with gradient shimmer effect on text */
+    .splash-title {
+      margin-top: 18px;
+      font-family: 'DM Sans', sans-serif;
+      font-size: 28px;
+      font-weight: 500;
+      letter-spacing: 3px;
+      opacity: 0;
+      background: linear-gradient(
+        90deg,
+        #E6EDF3 0%,
+        #E6EDF3 25%,
+        #00F2FF 40%,
+        #7000FF 50%,
+        #00F2FF 60%,
+        #E6EDF3 75%,
+        #E6EDF3 100%
+      );
+      background-size: 300% 100%;
+      background-position: 100% 0;
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
+      animation: 
+        fadeIn 0.6s ease-out 1.4s forwards,
+        textShimmer 2s ease-in-out 2s forwards;
     }
 
-    .subtitle {
-      color: var(--text-muted);
-      margin-bottom: var(--spacing-xl);
+    @keyframes textShimmer {
+      0% {
+        background-position: 100% 0;
+      }
+      100% {
+        background-position: -50% 0;
+      }
     }
+
+    @keyframes fadeIn {
+      to {
+        opacity: 1;
+      }
+    }
+
+    /* Logo after splash */
+    .logo {
+      opacity: 0;
+      transform: translateY(-10px);
+      transition: opacity 0.4s ease, transform 0.4s ease;
+    }
+
+    .logo--visible {
+      opacity: 1;
+      transform: translateY(0);
+    }
+
+    .logo-svg {
+      width: 200px;
+      height: 100px;
+    }
+
+    /* Content fade-in after splash */
+    .login-card,
+    .footer-text {
+      opacity: 0;
+      transform: translateY(20px);
+      transition: opacity 0.5s ease, transform 0.5s ease;
+    }
+
+    .login-card.content--visible {
+      opacity: 1;
+      transform: translateY(0);
+      transition-delay: 0.1s;
+    }
+
+    .footer-text.content--visible {
+      opacity: 1;
+      transform: translateY(0);
+      transition-delay: 0.3s;
+    }
+
 
     /* Card */
     .login-card {
@@ -185,11 +534,6 @@ import { Router } from '@angular/router';
       border-radius: var(--radius-xl);
       padding: var(--spacing-xl);
       box-shadow: var(--shadow-lg);
-    }
-
-    .login-card h2 {
-      margin-bottom: var(--spacing-lg);
-      font-size: var(--font-size-xl);
     }
 
     /* Form */
@@ -371,8 +715,14 @@ export class LoginComponent {
   hidePassword = true;
   isLoading = false;
   errorMessage = '';
+  showContent = false;
 
-  constructor(private router: Router) {}
+  constructor(private router: Router) {
+    // Splash screen for 3 seconds
+    setTimeout(() => {
+      this.showContent = true;
+    }, 3000);
+  }
 
   fillDemo(username: string, password: string): void {
     this.username = username;
