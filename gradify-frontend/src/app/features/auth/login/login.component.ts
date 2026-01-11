@@ -82,80 +82,92 @@ import { Router } from '@angular/router';
           </svg>
         </div>
         
-        <!-- Login Card -->
-        <div class="login-card" [class.content--visible]="showContent">
-          <form (ngSubmit)="onLogin()" class="login-form">
-            <div class="form-group">
-              <label for="username">Benutzername</label>
-              <div class="input-wrapper">
-                <span class="input-icon material-icons-outlined">person</span>
-                <input 
-                  type="text" 
-                  id="username"
-                  class="input" 
-                  [(ngModel)]="username" 
-                  name="username" 
-                  placeholder="max.mustermann"
-                  required
-                  autocomplete="username">
-              </div>
-            </div>
+        <!-- Login Card with gradient border -->
+        <div class="login-card-wrapper" [class.content--visible]="showContent">
+          <div class="login-card">
+            <h2 class="login-title">Willkommen zurück</h2>
+            <p class="login-subtitle">Melden Sie sich an, um fortzufahren</p>
             
-            <div class="form-group">
-              <label for="password">Passwort</label>
-              <div class="input-wrapper">
-                <span class="input-icon material-icons-outlined">lock</span>
-                <input 
-                  [type]="hidePassword ? 'password' : 'text'"
-                  id="password"
-                  class="input" 
-                  [(ngModel)]="password" 
-                  name="password" 
-                  placeholder="••••••••"
-                  required
-                  autocomplete="current-password">
-                <button 
-                  type="button" 
-                  class="toggle-password"
-                  (click)="hidePassword = !hidePassword">
-                  <span class="material-icons-outlined">
-                    {{ hidePassword ? 'visibility_off' : 'visibility' }}
-                  </span>
+            <form (ngSubmit)="onLogin()" class="login-form">
+              <div class="form-group">
+                <label for="username">Benutzername</label>
+                <div class="input-wrapper">
+                  <span class="input-icon material-icons-outlined">person</span>
+                  <input 
+                    type="text" 
+                    id="username"
+                    class="input" 
+                    [(ngModel)]="username" 
+                    name="username" 
+                    placeholder="max.mustermann"
+                    required
+                    autocomplete="username">
+                </div>
+              </div>
+              
+              <div class="form-group">
+                <label for="password">Passwort</label>
+                <div class="input-wrapper">
+                  <span class="input-icon material-icons-outlined">lock</span>
+                  <input 
+                    [type]="hidePassword ? 'password' : 'text'"
+                    id="password"
+                    class="input" 
+                    [(ngModel)]="password" 
+                    name="password" 
+                    placeholder="••••••••"
+                    required
+                    autocomplete="current-password">
+                  <button 
+                    type="button" 
+                    class="toggle-password"
+                    (click)="hidePassword = !hidePassword">
+                    <span class="material-icons-outlined">
+                      {{ hidePassword ? 'visibility_off' : 'visibility' }}
+                    </span>
+                  </button>
+                </div>
+              </div>
+              
+              @if (errorMessage) {
+                <div class="error-banner">
+                  <span class="material-icons-outlined">error</span>
+                  {{ errorMessage }}
+                </div>
+              }
+              
+              <button type="submit" class="submit-btn" [disabled]="isLoading">
+                @if (isLoading) {
+                  <span class="spinner"></span>
+                  Anmelden...
+                } @else {
+                  <span>Anmelden</span>
+                  <span class="material-icons-outlined">east</span>
+                }
+              </button>
+            </form>
+            
+            <!-- Demo Accounts Info -->
+            <div class="demo-info">
+              <div class="demo-divider">
+                <span class="divider-line"></span>
+                <span class="divider-text">Demo-Zugänge</span>
+                <span class="divider-line"></span>
+              </div>
+              <div class="demo-accounts">
+                <button class="demo-chip demo-chip--admin" (click)="fillDemo('admin', 'admin123')">
+                  <span class="material-icons-outlined">shield</span>
+                  Admin
+                </button>
+                <button class="demo-chip demo-chip--dozent" (click)="fillDemo('dozent', 'dozent123')">
+                  <span class="material-icons-outlined">school</span>
+                  Dozent
+                </button>
+                <button class="demo-chip demo-chip--student" (click)="fillDemo('student', 'student123')">
+                  <span class="material-icons-outlined">person</span>
+                  Student
                 </button>
               </div>
-            </div>
-            
-            @if (errorMessage) {
-              <div class="error-banner">
-                <span class="material-icons-outlined">error</span>
-                {{ errorMessage }}
-              </div>
-            }
-            
-            <button type="submit" class="btn btn--primary btn--lg submit-btn" [disabled]="isLoading">
-              @if (isLoading) {
-                <span class="spinner"></span>
-                Anmelden...
-              } @else {
-                Anmelden
-                <span class="material-icons-outlined">arrow_forward</span>
-              }
-            </button>
-          </form>
-          
-          <!-- Demo Accounts Info -->
-          <div class="demo-info">
-            <p class="demo-title">Demo-Zugänge:</p>
-            <div class="demo-accounts">
-              <button class="demo-account" (click)="fillDemo('admin', 'admin123')">
-                <span class="role-badge role-badge--admin">Admin</span>
-              </button>
-              <button class="demo-account" (click)="fillDemo('dozent', 'dozent123')">
-                <span class="role-badge role-badge--dozent">Dozent</span>
-              </button>
-              <button class="demo-account" (click)="fillDemo('student', 'student123')">
-                <span class="role-badge role-badge--student">Student</span>
-              </button>
             </div>
           </div>
         </div>
@@ -175,29 +187,42 @@ import { Router } from '@angular/router';
       overflow: hidden;
     }
 
-    /* Background Glow Effects */
+    /* Background Glow Effects - matching splash screen */
     .bg-glow {
       position: absolute;
       border-radius: 50%;
-      filter: blur(100px);
-      opacity: 0.3;
+      filter: blur(120px);
       pointer-events: none;
+      animation: bgFloat 10s ease-in-out infinite;
     }
 
     .bg-glow--1 {
-      width: 600px;
-      height: 600px;
-      background: var(--color-primary);
-      top: -200px;
-      right: -200px;
+      width: 500px;
+      height: 500px;
+      background: radial-gradient(circle, rgba(0, 242, 255, 0.35) 0%, transparent 70%);
+      top: -150px;
+      right: -100px;
+      animation-delay: 0s;
     }
 
     .bg-glow--2 {
-      width: 500px;
-      height: 500px;
-      background: var(--color-secondary);
-      bottom: -150px;
-      left: -150px;
+      width: 450px;
+      height: 450px;
+      background: radial-gradient(circle, rgba(112, 0, 255, 0.35) 0%, transparent 70%);
+      bottom: -100px;
+      left: -100px;
+      animation-delay: 3s;
+    }
+
+    @keyframes bgFloat {
+      0%, 100% {
+        transform: translate(0, 0) scale(1);
+        opacity: 0.8;
+      }
+      50% {
+        transform: translate(20px, -15px) scale(1.05);
+        opacity: 1;
+      }
     }
 
     .login-container {
@@ -507,14 +532,14 @@ import { Router } from '@angular/router';
     }
 
     /* Content fade-in after splash */
-    .login-card,
+    .login-card-wrapper,
     .footer-text {
       opacity: 0;
       transform: translateY(20px);
       transition: opacity 0.5s ease, transform 0.5s ease;
     }
 
-    .login-card.content--visible {
+    .login-card-wrapper.content--visible {
       opacity: 1;
       transform: translateY(0);
       transition-delay: 0.1s;
@@ -526,14 +551,42 @@ import { Router } from '@angular/router';
       transition-delay: 0.3s;
     }
 
+    /* Card with gradient border */
+    .login-card-wrapper {
+      position: relative;
+      padding: 2px;
+      border-radius: 20px;
+      background: linear-gradient(135deg, #00F2FF 0%, #7000FF 50%, #00F2FF 100%);
+      background-size: 200% 200%;
+      animation: gradientShift 8s ease-in-out infinite;
+    }
 
-    /* Card */
+    @keyframes gradientShift {
+      0%, 100% {
+        background-position: 0% 50%;
+      }
+      50% {
+        background-position: 100% 50%;
+      }
+    }
+
     .login-card {
       background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-xl);
+      border-radius: 18px;
       padding: var(--spacing-xl);
-      box-shadow: var(--shadow-lg);
+    }
+
+    .login-title {
+      font-size: 1.5rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0 0 var(--spacing-xs) 0;
+    }
+
+    .login-subtitle {
+      font-size: var(--font-size-sm);
+      color: var(--text-muted);
+      margin: 0 0 var(--spacing-lg) 0;
     }
 
     /* Form */
@@ -564,11 +617,34 @@ import { Router } from '@angular/router';
       left: var(--spacing-md);
       color: var(--text-muted);
       font-size: 20px;
+      transition: color 0.3s ease;
+      z-index: 1;
+    }
+
+    .input-wrapper:focus-within .input-icon {
+      color: #00F2FF;
     }
 
     .input-wrapper .input {
-      padding-left: 48px;
-      padding-right: 48px;
+      width: 100%;
+      padding: 14px 48px;
+      background: rgba(11, 14, 20, 0.6);
+      border: 1px solid var(--border-color);
+      border-radius: 12px;
+      color: var(--text-primary);
+      font-size: 1rem;
+      transition: all 0.3s ease;
+    }
+
+    .input-wrapper .input::placeholder {
+      color: var(--text-muted);
+    }
+
+    .input-wrapper .input:focus {
+      outline: none;
+      border-color: #00F2FF;
+      box-shadow: 0 0 0 3px rgba(0, 242, 255, 0.15),
+                  0 0 20px rgba(0, 242, 255, 0.1);
     }
 
     .toggle-password {
@@ -582,11 +658,12 @@ import { Router } from '@angular/router';
       display: flex;
       align-items: center;
       justify-content: center;
-      transition: color var(--transition-fast);
+      transition: color 0.3s ease;
+      z-index: 1;
     }
 
     .toggle-password:hover {
-      color: var(--text-primary);
+      color: #00F2FF;
     }
 
     .error-banner {
@@ -594,17 +671,63 @@ import { Router } from '@angular/router';
       align-items: center;
       gap: var(--spacing-sm);
       padding: var(--spacing-sm) var(--spacing-md);
-      background: rgba(var(--color-danger-rgb), 0.1);
-      border: 1px solid rgba(var(--color-danger-rgb), 0.3);
-      border-radius: var(--radius-md);
-      color: var(--color-danger);
+      background: rgba(255, 0, 85, 0.1);
+      border: 1px solid rgba(255, 0, 85, 0.3);
+      border-radius: 12px;
+      color: #FF0055;
       font-size: var(--font-size-sm);
       margin-bottom: var(--spacing-md);
     }
 
     .submit-btn {
       width: 100%;
-      margin-top: var(--spacing-sm);
+      margin-top: var(--spacing-md);
+      padding: 14px 24px;
+      background: linear-gradient(135deg, #00F2FF 0%, #7000FF 100%);
+      border: none;
+      border-radius: 12px;
+      color: white;
+      font-size: 1rem;
+      font-weight: 600;
+      cursor: pointer;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-sm);
+      transition: all 0.3s ease;
+      position: relative;
+      overflow: hidden;
+    }
+
+    .submit-btn::before {
+      content: '';
+      position: absolute;
+      top: 0;
+      left: -100%;
+      width: 100%;
+      height: 100%;
+      background: linear-gradient(90deg, transparent, rgba(255,255,255,0.2), transparent);
+      transition: left 0.5s ease;
+    }
+
+    .submit-btn:hover::before {
+      left: 100%;
+    }
+
+    .submit-btn:hover {
+      transform: translateY(-2px);
+      box-shadow: 0 8px 25px rgba(0, 242, 255, 0.3),
+                  0 8px 25px rgba(112, 0, 255, 0.2);
+    }
+
+    .submit-btn:active {
+      transform: translateY(0);
+    }
+
+    .submit-btn:disabled {
+      opacity: 0.7;
+      cursor: not-allowed;
+      transform: none;
     }
 
     .spinner {
@@ -622,15 +745,27 @@ import { Router } from '@angular/router';
 
     /* Demo Info */
     .demo-info {
-      margin-top: var(--spacing-lg);
-      padding-top: var(--spacing-lg);
-      border-top: 1px solid var(--border-color);
+      margin-top: var(--spacing-xl);
     }
 
-    .demo-title {
-      font-size: var(--font-size-sm);
+    .demo-divider {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .divider-line {
+      flex: 1;
+      height: 1px;
+      background: linear-gradient(90deg, transparent, var(--border-color), transparent);
+    }
+
+    .divider-text {
+      font-size: var(--font-size-xs);
       color: var(--text-muted);
-      margin-bottom: var(--spacing-sm);
+      text-transform: uppercase;
+      letter-spacing: 1px;
     }
 
     .demo-accounts {
@@ -640,50 +775,52 @@ import { Router } from '@angular/router';
       flex-wrap: wrap;
     }
 
-    .demo-account {
-      background: none;
-      border: none;
-      cursor: pointer;
-      padding: 0;
-    }
-
-    .role-badge {
-      display: inline-block;
-      padding: var(--spacing-xs) var(--spacing-md);
-      border-radius: var(--radius-full);
-      font-size: var(--font-size-xs);
+    .demo-chip {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 8px 16px;
+      background: transparent;
+      border: 1px solid;
+      border-radius: 20px;
+      font-size: var(--font-size-sm);
       font-weight: 500;
-      transition: all var(--transition-fast);
+      cursor: pointer;
+      transition: all 0.3s ease;
     }
 
-    .role-badge--admin {
-      background: rgba(var(--color-danger-rgb), 0.15);
-      color: var(--color-danger);
-      border: 1px solid rgba(var(--color-danger-rgb), 0.3);
+    .demo-chip .material-icons-outlined {
+      font-size: 16px;
     }
 
-    .role-badge--admin:hover {
-      background: rgba(var(--color-danger-rgb), 0.25);
+    .demo-chip--admin {
+      border-color: rgba(255, 0, 85, 0.4);
+      color: #FF0055;
     }
 
-    .role-badge--dozent {
-      background: rgba(var(--color-secondary-rgb), 0.15);
+    .demo-chip--admin:hover {
+      background: rgba(255, 0, 85, 0.1);
+      box-shadow: 0 0 15px rgba(255, 0, 85, 0.2);
+    }
+
+    .demo-chip--dozent {
+      border-color: rgba(112, 0, 255, 0.4);
       color: #a855f7;
-      border: 1px solid rgba(var(--color-secondary-rgb), 0.3);
     }
 
-    .role-badge--dozent:hover {
-      background: rgba(var(--color-secondary-rgb), 0.25);
+    .demo-chip--dozent:hover {
+      background: rgba(112, 0, 255, 0.1);
+      box-shadow: 0 0 15px rgba(112, 0, 255, 0.2);
     }
 
-    .role-badge--student {
-      background: rgba(var(--color-primary-rgb), 0.15);
-      color: var(--color-primary);
-      border: 1px solid rgba(var(--color-primary-rgb), 0.3);
+    .demo-chip--student {
+      border-color: rgba(0, 242, 255, 0.4);
+      color: #00F2FF;
     }
 
-    .role-badge--student:hover {
-      background: rgba(var(--color-primary-rgb), 0.25);
+    .demo-chip--student:hover {
+      background: rgba(0, 242, 255, 0.1);
+      box-shadow: 0 0 15px rgba(0, 242, 255, 0.2);
     }
 
     /* Footer */
