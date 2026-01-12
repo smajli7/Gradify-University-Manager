@@ -35,7 +35,7 @@ public class NotenGraphQLController {
      * GraphQL: query { noten(einschreibungId: "...", modulId: "...") { id, noteWert, ... } }
      */
     @QueryMapping
-    public List<Note> noten(@Argument String einschreibungId, @Argument String modulId) {
+    public List<Note> noten(@Argument("einschreibungId") String einschreibungId, @Argument("modulId") String modulId) {
         log.info("GraphQL: Fetching noten - einschreibungId: {}, modulId: {}", einschreibungId, modulId);
         
         if (einschreibungId != null && modulId != null) {
@@ -54,7 +54,7 @@ public class NotenGraphQLController {
      * GraphQL: query { note(id: "...") { id, noteWert, ... } }
      */
     @QueryMapping
-    public Note note(@Argument String id) {
+    public Note note(@Argument("id") String id) {
         log.info("GraphQL: Fetching note by id: {}", id);
         return noteRepository.findById(UUID.fromString(id)).orElse(null);
     }
@@ -64,7 +64,7 @@ public class NotenGraphQLController {
      * GraphQL: query { notenByStudent(einschreibungId: "...") { ... } }
      */
     @QueryMapping
-    public List<Note> notenByStudent(@Argument String einschreibungId) {
+    public List<Note> notenByStudent(@Argument("einschreibungId") String einschreibungId) {
         log.info("GraphQL: Fetching noten for einschreibung: {}", einschreibungId);
         return noteRepository.findByEinschreibungId(UUID.fromString(einschreibungId));
     }
@@ -74,7 +74,7 @@ public class NotenGraphQLController {
      * GraphQL: query { notenByModul(modulId: "...") { ... } }
      */
     @QueryMapping
-    public List<Note> notenByModul(@Argument String modulId) {
+    public List<Note> notenByModul(@Argument("modulId") String modulId) {
         log.info("GraphQL: Fetching noten for modul: {}", modulId);
         return noteRepository.findByModulId(UUID.fromString(modulId));
     }
@@ -84,7 +84,7 @@ public class NotenGraphQLController {
      * GraphQL: query { durchschnittsnote(einschreibungId: "...") }
      */
     @QueryMapping
-    public Double durchschnittsnote(@Argument String einschreibungId) {
+    public Double durchschnittsnote(@Argument("einschreibungId") String einschreibungId) {
         log.info("GraphQL: Calculating durchschnittsnote for: {}", einschreibungId);
         List<Note> noten = noteRepository.findByEinschreibungId(UUID.fromString(einschreibungId));
         
@@ -114,7 +114,7 @@ public class NotenGraphQLController {
      * GraphQL: query { bestandeneModule(einschreibungId: "...") }
      */
     @QueryMapping
-    public Integer bestandeneModule(@Argument String einschreibungId) {
+    public Integer bestandeneModule(@Argument("einschreibungId") String einschreibungId) {
         log.info("GraphQL: Counting bestandene Module for: {}", einschreibungId);
         List<Note> noten = noteRepository.findByEinschreibungId(UUID.fromString(einschreibungId));
         
@@ -167,7 +167,7 @@ public class NotenGraphQLController {
      * GraphQL: mutation { updateNote(id: "...", input: {...}) { id, ... } }
      */
     @MutationMapping
-    public Note updateNote(@Argument String id, @Argument("input") Map<String, Object> input) {
+    public Note updateNote(@Argument("id") String id, @Argument("input") Map<String, Object> input) {
         log.info("GraphQL: Updating note: {}", id);
         
         return noteRepository.findById(UUID.fromString(id)).map(note -> {
@@ -200,7 +200,7 @@ public class NotenGraphQLController {
      * GraphQL: mutation { validateNote(id: "...", validatorId: "...") { id, status } }
      */
     @MutationMapping
-    public Note validateNote(@Argument String id, @Argument String validatorId) {
+    public Note validateNote(@Argument("id") String id, @Argument("validatorId") String validatorId) {
         log.info("GraphQL: Validating note: {} by: {}", id, validatorId);
         
         return noteRepository.findById(UUID.fromString(id)).map(note -> {
@@ -221,7 +221,7 @@ public class NotenGraphQLController {
      * GraphQL: mutation { releaseNote(id: "...") { id, status } }
      */
     @MutationMapping
-    public Note releaseNote(@Argument String id) {
+    public Note releaseNote(@Argument("id") String id) {
         log.info("GraphQL: Releasing note: {}", id);
         
         return noteRepository.findById(UUID.fromString(id)).map(note -> {
@@ -239,7 +239,7 @@ public class NotenGraphQLController {
      * GraphQL: mutation { deleteNote(id: "...") }
      */
     @MutationMapping
-    public Boolean deleteNote(@Argument String id) {
+    public Boolean deleteNote(@Argument("id") String id) {
         log.info("GraphQL: Deleting note: {}", id);
         
         return noteRepository.findById(UUID.fromString(id)).map(note -> {

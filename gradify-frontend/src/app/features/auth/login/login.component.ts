@@ -197,15 +197,15 @@ import { Router } from '@angular/router';
                 <span class="divider-line"></span>
               </div>
               <div class="demo-accounts">
-                <button class="demo-chip" (click)="fillDemo('admin', 'admin123')">
+                <button class="demo-chip" (click)="fillDemo('admin', 'web00100113!')">
                   <span class="material-icons-outlined">shield</span>
                   Admin
                 </button>
-                <button class="demo-chip" (click)="fillDemo('dozent', 'dozent123')">
+                <button class="demo-chip" (click)="fillDemo('prof.mueller', 'web00100113!')">
                   <span class="material-icons-outlined">school</span>
                   Dozent
                 </button>
-                <button class="demo-chip" (click)="fillDemo('student', 'student123')">
+                <button class="demo-chip" (click)="fillDemo('max.mustermann', 'web00100113!')">
                   <span class="material-icons-outlined">person</span>
                   Student
                 </button>

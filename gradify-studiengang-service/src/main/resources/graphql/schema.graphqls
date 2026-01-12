@@ -62,10 +62,25 @@ type Einschreibung {
     studentId: ID!
     studiengangId: ID!
     poId: ID
-    semester: Int!
+    aktuellesSemester: Int!
     immatrikuliertAm: String!
     exmatrikuliertAm: String
     status: EinschreibungStatus!
+    studiengang: Studiengang
+    pruefungsordnung: Pruefungsordnung
+}
+
+type Pruefungsordnung {
+    id: ID!
+    version: String!
+    gueltigAb: String!
+    berechnungsart: Berechnungsart!
+    module: [Modul!]!
+}
+
+enum Berechnungsart {
+    GEWICHTET
+    ARITHMETISCH_GEMISCHT
 }
 
 enum Abschlussart {

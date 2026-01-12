@@ -46,7 +46,7 @@ public class Modul {
     @Column(nullable = false)
     private Pruefungsform pruefungsform;
 
-    @Column(length = 50)
+    @Column(length = 200)
     private String pruefungsdauer;
 
     @Enumerated(EnumType.STRING)

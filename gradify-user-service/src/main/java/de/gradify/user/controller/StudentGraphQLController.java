@@ -54,7 +54,7 @@ public class StudentGraphQLController {
      * GraphQL: query { user(id: "...") { id, benutzername, ... } }
      */
     @QueryMapping
-    public Benutzer user(@Argument String id) {
+    public Benutzer user(@Argument("id") String id) {
         log.info("GraphQL: Fetching user by id: {}", id);
         return benutzerRepository.findById(UUID.fromString(id)).orElse(null);
     }
@@ -74,7 +74,7 @@ public class StudentGraphQLController {
      * GraphQL: query { student(id: "...") { id, matrikelnummer, ... } }
      */
     @QueryMapping
-    public Student student(@Argument String id) {
+    public Student student(@Argument("id") String id) {
         log.info("GraphQL: Fetching student by id: {}", id);
         return studentRepository.findById(UUID.fromString(id)).orElse(null);
     }
@@ -84,7 +84,7 @@ public class StudentGraphQLController {
      * GraphQL: query { studentByMatrikel(matrikelnummer: "THM-2026-0001") { ... } }
      */
     @QueryMapping
-    public Student studentByMatrikel(@Argument String matrikelnummer) {
+    public Student studentByMatrikel(@Argument("matrikelnummer") String matrikelnummer) {
         log.info("GraphQL: Fetching student by matrikelnummer: {}", matrikelnummer);
         return studentRepository.findByMatrikelnummer(matrikelnummer).orElse(null);
     }
@@ -127,7 +127,7 @@ public class StudentGraphQLController {
      * GraphQL: mutation { updateUser(id: "...", input: {...}) { id, ... } }
      */
     @MutationMapping
-    public Benutzer updateUser(@Argument String id, @Argument("input") Map<String, Object> input) {
+    public Benutzer updateUser(@Argument("id") String id, @Argument("input") Map<String, Object> input) {
         log.info("GraphQL: Updating user: {}", id);
         
         return benutzerRepository.findById(UUID.fromString(id)).map(benutzer -> {
@@ -152,7 +152,7 @@ public class StudentGraphQLController {
      * GraphQL: mutation { deleteUser(id: "...") }
      */
     @MutationMapping
-    public Boolean deleteUser(@Argument String id) {
+    public Boolean deleteUser(@Argument("id") String id) {
         log.info("GraphQL: Deleting user: {}", id);
         
         return benutzerRepository.findById(UUID.fromString(id)).map(benutzer -> {
@@ -167,7 +167,7 @@ public class StudentGraphQLController {
      * GraphQL: mutation { assignRole(userId: "...", roleId: "...") { id, rollen {...} } }
      */
     @MutationMapping
-    public Benutzer assignRole(@Argument String userId, @Argument String roleId) {
+    public Benutzer assignRole(@Argument("userId") String userId, @Argument("roleId") String roleId) {
         log.info("GraphQL: Assigning role {} to user {}", roleId, userId);
         
         Benutzer benutzer = benutzerRepository.findById(UUID.fromString(userId))
@@ -185,7 +185,7 @@ public class StudentGraphQLController {
      * GraphQL: mutation { removeRole(userId: "...", roleId: "...") { id, rollen {...} } }
      */
     @MutationMapping
-    public Benutzer removeRole(@Argument String userId, @Argument String roleId) {
+    public Benutzer removeRole(@Argument("userId") String userId, @Argument("roleId") String roleId) {
         log.info("GraphQL: Removing role {} from user {}", roleId, userId);
         
         Benutzer benutzer = benutzerRepository.findById(UUID.fromString(userId))
@@ -225,7 +225,7 @@ public class StudentGraphQLController {
      * GraphQL: mutation { updateStudent(id: "...", input: {...}) { id, ... } }
      */
     @MutationMapping
-    public Student updateStudent(@Argument String id, @Argument("input") Map<String, Object> input) {
+    public Student updateStudent(@Argument("id") String id, @Argument("input") Map<String, Object> input) {
         log.info("GraphQL: Updating student: {}", id);
         
         return studentRepository.findById(UUID.fromString(id)).map(student -> {

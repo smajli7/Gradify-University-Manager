@@ -138,6 +138,13 @@ export class ShellComponent {
       roles: ['STUDENT']
     },
     {
+      id: 'study-plan',
+      label: 'Studienplan',
+      route: '/study-plan',
+      icon: 'assets/icons/progress.svg',
+      roles: ['ADMIN', 'DOZENT', 'PRUEFUNGSAMT', 'STUDENT']
+    },
+    {
       id: 'admin',
       label: 'Admin',
       route: '/admin',

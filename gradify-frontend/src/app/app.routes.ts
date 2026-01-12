@@ -55,6 +55,11 @@ export const routes: Routes = [
           .then(m => m.ProgressComponent)
       },
       {
+        path: 'study-plan',
+        loadComponent: () => import('./features/study-plan/study-plan.component')
+          .then(m => m.StudyPlanComponent)
+      },
+      {
         path: 'admin',
         loadComponent: () => import('./features/admin/admin.component')
           .then(m => m.AdminComponent)

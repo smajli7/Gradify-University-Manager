@@ -47,6 +47,7 @@ export class GradeService {
     return this.apollo.watchQuery<{ notenByStudent: Note[], durchschnittsnote: number }>({
       query: GET_NOTEN_BY_STUDENT,
       variables: { einschreibungId },
+      context: { clientName: 'noten' },
       fetchPolicy: 'cache-and-network'
     }).valueChanges.pipe(
       map(result => ({
@@ -77,6 +78,7 @@ export class GradeService {
     return this.apollo.watchQuery<{ notenByModul: Note[] }>({
       query: GET_NOTEN_BY_MODUL,
       variables: { modulId },
+      context: { clientName: 'noten' },
       fetchPolicy: 'cache-and-network'
     }).valueChanges.pipe(
       map(result => result.data.notenByModul),
@@ -99,7 +101,8 @@ export class GradeService {
   getNote(id: string): Observable<Note | null> {
     return this.apollo.query<{ note: Note }>({
       query: GET_NOTE,
-      variables: { id }
+      variables: { id },
+      context: { clientName: 'noten' }
     }).pipe(
       map(result => result.data.note),
       catchError(error => {
@@ -115,7 +118,8 @@ export class GradeService {
   loadStats(einschreibungId: string): Observable<{ durchschnitt: number | null, bestanden: number }> {
     return this.apollo.query<{ durchschnittsnote: number, bestandeneModule: number }>({
       query: GET_STUDENT_STATS,
-      variables: { einschreibungId }
+      variables: { einschreibungId },
+      context: { clientName: 'noten' }
     }).pipe(
       map(result => ({
         durchschnitt: result.data.durchschnittsnote,

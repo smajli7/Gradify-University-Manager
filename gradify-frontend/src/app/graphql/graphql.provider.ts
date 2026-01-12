@@ -12,8 +12,6 @@ import { setContext } from '@apollo/client/link/context';
  * - Cached Responses für Performance
  */
 
-const uri = '/graphql'; // Proxy leitet an Gateway weiter
-
 export function apolloOptionsFactory(httpLink: HttpLink): ApolloClientOptions<unknown> {
   // Auth-Link: Fügt JWT-Token zu jedem Request hinzu
   const authLink = setContext((_, { headers }) => {
@@ -26,11 +24,20 @@ export function apolloOptionsFactory(httpLink: HttpLink): ApolloClientOptions<un
     };
   });
 
-  // HTTP-Link zum GraphQL-Endpoint
-  const http = httpLink.create({ uri });
+  // HTTP-Links zu den Service-spezifischen GraphQL-Endpunkten am Gateway
+  const studiengangHttp = httpLink.create({ uri: '/graphql/studiengang' });
+  const notenHttp = httpLink.create({ uri: '/graphql/noten' });
+
+  // Split-Link: route nach clientName im Kontext (z.B. { clientName: 'noten' })
+  const routedHttp = ApolloLink.split(
+    operation => operation.getContext()['clientName'] === 'noten',
+    notenHttp,
+    studiengangHttp
+  );
 
   return {
-    link: ApolloLink.from([authLink, http]),
+    // Auth zuerst, dann Routing
+    link: ApolloLink.from([authLink, routedHttp]),
     cache: new InMemoryCache({
       typePolicies: {
         // Caching-Strategien für verschiedene Typen

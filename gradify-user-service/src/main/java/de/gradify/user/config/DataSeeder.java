@@ -55,50 +55,50 @@ public class DataSeeder implements CommandLineRunner {
 
         // Admin-Benutzer
         Benutzer admin = createBenutzer(
-            "admin", "admin@gradify.local", "admin123",
+            "admin", "admin@gradify.local", "web00100113!",
             "System", "Administrator",
             Set.of(adminRolle)
         );
 
         // Prüfungsamt-Benutzer
         Benutzer pruefungsamt = createBenutzer(
-            "pruefungsamt", "pruefungsamt@gradify.local", "pruefung123",
+            "pruefungsamt", "pruefungsamt@gradify.local", "web00100113!",
             "Paula", "Prüfung",
             Set.of(pruefungsamtRolle)
         );
 
         // Dozenten (mit fester ID fuer Noten-Service)
         Benutzer dozent1 = createBenutzerWithId(DOZENT_ID,
-            "prof.mueller", "mueller@gradify.local", "dozent123",
+            "prof.mueller", "mueller@gradify.local", "web00100113!",
             "Prof. Dr. Max", "Mueller",
             Set.of(dozentenRolle)
         );
 
         Benutzer dozent2 = createBenutzer(
-            "prof.schmidt", "schmidt@gradify.local", "dozent123",
+            "prof.schmidt", "schmidt@gradify.local", "web00100113!",
             "Prof. Dr. Anna", "Schmidt",
             Set.of(dozentenRolle, studiengangleitungRolle)
         );
 
         // Studenten (mit festen IDs fuer Studiengang-/Noten-Service)
         createStudentWithId(STUDENT_1_ID, "max.mustermann", "max.mustermann@student.gradify.local",
-            "student123", "Max", "Mustermann",
+            "web00100113!", "Max", "Mustermann",
             "1234567", LocalDate.of(1998, 5, 15), studentRolle);
 
         createStudentWithId(STUDENT_2_ID, "erika.musterfrau", "erika.musterfrau@student.gradify.local",
-            "student123", "Erika", "Musterfrau",
+            "web00100113!", "Erika", "Musterfrau",
             "1234568", LocalDate.of(1999, 8, 22), studentRolle);
 
         createStudentWithId(STUDENT_3_ID, "jan.beispiel", "jan.beispiel@student.gradify.local",
-            "student123", "Jan", "Beispiel",
+            "web00100113!", "Jan", "Beispiel",
             "1234569", LocalDate.of(2000, 3, 10), studentRolle);
 
         log.info("Seed-Daten erfolgreich erstellt!");
         log.info("=== Test-Zugangsdaten ===");
-        log.info("Admin: admin / admin123");
-        log.info("Prüfungsamt: pruefungsamt / pruefung123");
-        log.info("Dozent: prof.mueller / dozent123");
-        log.info("Student: max.mustermann / student123");
+        log.info("Admin: admin / web00100113!");
+        log.info("Prüfungsamt: pruefungsamt / web00100113!");
+        log.info("Dozent: prof.mueller / web00100113!");
+        log.info("Student: max.mustermann / web00100113!");
     }
 
     private Rolle createRolle(String name, String beschreibung) {

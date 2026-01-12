@@ -70,25 +70,25 @@ spring:
         - id: graphql-user
           uri: http://localhost:8082
           predicates:
-            - Path=/graphql/user/**
+            - Path=/graphql/user, /graphql/user/**
           filters:
-            - StripPrefix=1
+            - RewritePath=/graphql/user(?<segment>/?.*), /graphql${segment}
 
         # GraphQL - Studiengang Service
         - id: graphql-studiengang
           uri: http://localhost:8083
           predicates:
-            - Path=/graphql/studiengang/**
+            - Path=/graphql/studiengang, /graphql/studiengang/**
           filters:
-            - StripPrefix=1
+            - RewritePath=/graphql/studiengang(?<segment>/?.*), /graphql${segment}
 
         # GraphQL - Noten Service
         - id: graphql-noten
           uri: http://localhost:8084
           predicates:
-            - Path=/graphql/noten/**
+            - Path=/graphql/noten, /graphql/noten/**
           filters:
-            - StripPrefix=1
+            - RewritePath=/graphql/noten(?<segment>/?.*), /graphql${segment}
 
 # Actuator Endpoints
 management:

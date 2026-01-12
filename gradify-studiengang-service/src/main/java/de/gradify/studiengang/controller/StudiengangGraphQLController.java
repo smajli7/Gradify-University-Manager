@@ -46,7 +46,7 @@ public class StudiengangGraphQLController {
      * GraphQL: query { mandant(id: "...") { id, name, studiengaenge {...} } }
      */
     @QueryMapping
-    public Mandant mandant(@Argument String id) {
+    public Mandant mandant(@Argument("id") String id) {
         log.info("GraphQL: Fetching mandant by id: {}", id);
         return mandantRepository.findById(UUID.fromString(id)).orElse(null);
     }
@@ -58,7 +58,7 @@ public class StudiengangGraphQLController {
      * GraphQL: query { studiengaenge(mandantId: "...") { id, name, ... } }
      */
     @QueryMapping
-    public List<Studiengang> studiengaenge(@Argument String mandantId) {
+    public List<Studiengang> studiengaenge(@Argument("mandantId") String mandantId) {
         log.info("GraphQL: Fetching studiengaenge - mandantId: {}", mandantId);
         
         if (mandantId != null) {
@@ -72,7 +72,7 @@ public class StudiengangGraphQLController {
      * GraphQL: query { studiengang(id: "...") { id, name, module {...} } }
      */
     @QueryMapping
-    public Studiengang studiengang(@Argument String id) {
+    public Studiengang studiengang(@Argument("id") String id) {
         log.info("GraphQL: Fetching studiengang by id: {}", id);
         return studiengangRepository.findById(UUID.fromString(id)).orElse(null);
     }
@@ -82,7 +82,7 @@ public class StudiengangGraphQLController {
      * GraphQL: query { studiengangByKuerzel(kuerzel: "BVT") { id, name, ... } }
      */
     @QueryMapping
-    public Studiengang studiengangByKuerzel(@Argument String kuerzel) {
+    public Studiengang studiengangByKuerzel(@Argument("kuerzel") String kuerzel) {
         log.info("GraphQL: Fetching studiengang by kuerzel: {}", kuerzel);
         return studiengangRepository.findByKuerzel(kuerzel).orElse(null);
     }
@@ -94,7 +94,7 @@ public class StudiengangGraphQLController {
      * GraphQL: query { module(studiengangId: "...", poId: "...") { id, name, ects } }
      */
     @QueryMapping
-    public List<Modul> module(@Argument String studiengangId, @Argument String poId) {
+    public List<Modul> module(@Argument("studiengangId") String studiengangId, @Argument("poId") String poId) {
         log.info("GraphQL: Fetching module - studiengangId: {}, poId: {}", studiengangId, poId);
         
         if (poId != null) {
@@ -119,7 +119,7 @@ public class StudiengangGraphQLController {
      * GraphQL: query { modul(id: "...") { id, name, ects, gewichtung } }
      */
     @QueryMapping
-    public Modul modul(@Argument String id) {
+    public Modul modul(@Argument("id") String id) {
         log.info("GraphQL: Fetching modul by id: {}", id);
         return modulRepository.findById(UUID.fromString(id)).orElse(null);
     }
@@ -131,7 +131,7 @@ public class StudiengangGraphQLController {
      * GraphQL: query { einschreibungen(studentId: "...", studiengangId: "...") {...} }
      */
     @QueryMapping
-    public List<Einschreibung> einschreibungen(@Argument String studentId, @Argument String studiengangId) {
+    public List<Einschreibung> einschreibungen(@Argument("studentId") String studentId, @Argument("studiengangId") String studiengangId) {
         log.info("GraphQL: Fetching einschreibungen - studentId: {}, studiengangId: {}", studentId, studiengangId);
         
         if (studentId != null) {
@@ -148,7 +148,7 @@ public class StudiengangGraphQLController {
      * GraphQL: query { einschreibung(id: "...") { id, studentId, ... } }
      */
     @QueryMapping
-    public Einschreibung einschreibung(@Argument String id) {
+    public Einschreibung einschreibung(@Argument("id") String id) {
         log.info("GraphQL: Fetching einschreibung by id: {}", id);
         return einschreibungRepository.findById(UUID.fromString(id)).orElse(null);
     }
@@ -183,6 +183,59 @@ public class StudiengangGraphQLController {
             return modulRepository.findByPruefungsordnungId(studiengang.getAktuellePo().getId());
         }
         return List.of();
+    }
+
+    // ==================== EINSCHREIBUNG SCHEMA MAPPINGS ====================
+
+    /**
+     * Laedt den Studiengang fuer eine Einschreibung.
+     * GraphQL: einschreibung { studiengang { id, name, ... } }
+     */
+    @SchemaMapping(typeName = "Einschreibung", field = "studiengang")
+    public Studiengang getStudiengangForEinschreibung(Einschreibung einschreibung) {
+        return einschreibung.getStudiengang();
+    }
+
+    /**
+     * Gibt die studiengangId als String zurueck.
+     * GraphQL: einschreibung { studiengangId }
+     */
+    @SchemaMapping(typeName = "Einschreibung", field = "studiengangId")
+    public String getStudiengangIdForEinschreibung(Einschreibung einschreibung) {
+        return einschreibung.getStudiengang() != null 
+            ? einschreibung.getStudiengang().getId().toString() 
+            : null;
+    }
+
+    /**
+     * Gibt die poId als String zurueck.
+     * GraphQL: einschreibung { poId }
+     */
+    @SchemaMapping(typeName = "Einschreibung", field = "poId")
+    public String getPoIdForEinschreibung(Einschreibung einschreibung) {
+        return einschreibung.getPruefungsordnung() != null 
+            ? einschreibung.getPruefungsordnung().getId().toString() 
+            : null;
+    }
+
+    /**
+     * Laedt die Pruefungsordnung fuer eine Einschreibung.
+     * GraphQL: einschreibung { pruefungsordnung { id, version, module {...} } }
+     */
+    @SchemaMapping(typeName = "Einschreibung", field = "pruefungsordnung")
+    public Pruefungsordnung getPruefungsordnungForEinschreibung(Einschreibung einschreibung) {
+        return einschreibung.getPruefungsordnung();
+    }
+
+    // ==================== PRUEFUNGSORDNUNG SCHEMA MAPPINGS ====================
+
+    /**
+     * Laedt die Module fuer eine Pruefungsordnung.
+     * GraphQL: pruefungsordnung { module { id, name, ects, ... } }
+     */
+    @SchemaMapping(typeName = "Pruefungsordnung", field = "module")
+    public List<Modul> getModuleForPruefungsordnung(Pruefungsordnung po) {
+        return modulRepository.findByPruefungsordnungId(po.getId());
     }
 }
 

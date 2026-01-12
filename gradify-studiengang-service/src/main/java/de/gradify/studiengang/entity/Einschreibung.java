@@ -18,8 +18,14 @@ import java.util.UUID;
 public class Einschreibung {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+    
+    @PrePersist
+    public void prePersist() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 
     @Column(nullable = false)
     private UUID studentId;
