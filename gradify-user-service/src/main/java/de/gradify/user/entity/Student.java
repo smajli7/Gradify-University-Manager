@@ -18,8 +18,14 @@ import java.util.UUID;
 public class Student {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @PrePersist
+    public void prePersist() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 
     @OneToOne(fetch = FetchType.EAGER)
     @JoinColumn(name = "benutzer_id", nullable = false)

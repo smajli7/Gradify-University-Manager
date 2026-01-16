@@ -33,8 +33,8 @@ public class DataSeeder implements CommandLineRunner {
     public static final UUID THM_MANDANT_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
     public static final UUID DOZENT_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     public static final UUID STUDENT_1_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000001");
-    public static final UUID STUDENT_2_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000002");
-    public static final UUID STUDENT_3_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000003");
+    public static final UUID STUDENT_2_ID = UUID.fromString("aaaa2222-0000-0000-0000-000000000002");
+    public static final UUID STUDENT_3_ID = UUID.fromString("aaaa3333-0000-0000-0000-000000000003");
 
     @Override
     @Transactional
@@ -85,12 +85,12 @@ public class DataSeeder implements CommandLineRunner {
             "web00100113!", "Max", "Mustermann",
             "1234567", LocalDate.of(1998, 5, 15), studentRolle);
 
-        createStudentWithId(STUDENT_2_ID, "erika.musterfrau", "erika.musterfrau@student.gradify.local",
-            "web00100113!", "Erika", "Musterfrau",
+        createStudentWithId(STUDENT_2_ID, "anna.schmidt", "anna.schmidt@student.gradify.local",
+            "web00100113!", "Anna", "Schmidt",
             "1234568", LocalDate.of(1999, 8, 22), studentRolle);
 
-        createStudentWithId(STUDENT_3_ID, "jan.beispiel", "jan.beispiel@student.gradify.local",
-            "web00100113!", "Jan", "Beispiel",
+        createStudentWithId(STUDENT_3_ID, "leon.weber", "leon.weber@student.gradify.local",
+            "web00100113!", "Leon", "Weber",
             "1234569", LocalDate.of(2000, 3, 10), studentRolle);
 
         log.info("Seed-Daten erfolgreich erstellt!");

@@ -1,8 +1,9 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Apollo, gql } from 'apollo-angular';
 import { Modul, Note, NoteStatus } from '../../types';
+import { AuthService } from '../../core/services/auth.service';
 
 interface ModulMitNote extends Modul {
   note?: Note;
@@ -17,6 +18,32 @@ interface SemesterRow {
   sumEcts: number;
   bestandenEcts: number;
 }
+
+// Query für alle Studenten (User-Service)
+const GET_STUDENTS_QUERY = gql`
+  query GetAllStudents {
+    students {
+      id
+      vorname
+      nachname
+      matrikelnummer
+    }
+  }
+`;
+
+// Query für Einschreibungen eines Studenten (Studiengang-Service)
+const GET_EINSCHREIBUNGEN_QUERY = gql`
+  query GetEinschreibungen($studentId: ID!) {
+    einschreibungen(studentId: $studentId) {
+      id
+      aktuellesSemester
+      studiengang {
+        name
+        kuerzel
+      }
+    }
+  }
+`;
 
 // Query für Einschreibung/Studiengang (studiengang-service)
 const EINSCHREIBUNG_QUERY = gql`
@@ -107,34 +134,69 @@ const NOTEN_QUERY = gql`
         }
       </div>
 
-      <!-- Demo Controls -->
-      <div class="demo-controls">
-        <div class="control-group">
-          <label>Einschreibungs-ID:</label>
-          <div class="input-group">
-            <select class="demo-input" [(ngModel)]="selectedEinschreibung" (change)="loadStudyPlan()">
-              <option value="">-- Auswählen --</option>
-              <option value="eeee1111-1111-1111-1111-111111111111">Max Mustermann (BVT)</option>
-              <option value="eeee2222-2222-2222-2222-222222222222">Erika Musterfrau (BVT)</option>
-              <option value="eeee3333-3333-3333-3333-333333333333">Jan Beispiel (FSA)</option>
-            </select>
-            <button class="btn btn--primary" (click)="loadStudyPlan()" [disabled]="loading()">
-              @if (loading()) {
-                <span class="spinner-sm"></span>
-              } @else {
-                <span>🔄</span>
+      <!-- Auswahl (nur für Nicht-Studenten) -->
+      @if (canSelectStudent()) {
+        <div class="selection-controls">
+          <div class="control-group">
+            <label>Student:</label>
+            <select 
+              class="select-input" 
+              [(ngModel)]="selectedStudent" 
+              (change)="onStudentChange()"
+              [disabled]="loadingStudents()">
+              <option value="">-- Student wählen --</option>
+              @for (student of students(); track student.id) {
+                <option [value]="student.id">{{ student.name }} ({{ student.matrikelnummer }})</option>
               }
-              Laden
-            </button>
+            </select>
+          </div>
+
+          <div class="control-group">
+            <label>Einschreibung:</label>
+            <select 
+              class="select-input" 
+              [(ngModel)]="selectedEinschreibung" 
+              (change)="loadStudyPlan()"
+              [disabled]="!selectedStudent || einschreibungen().length === 0">
+              <option value="">-- Einschreibung wählen --</option>
+              @for (e of einschreibungen(); track e.id) {
+                <option [value]="e.id">{{ e.studiengang }} ({{ e.kuerzel }}) - {{ e.semester }}. Sem</option>
+              }
+            </select>
+          </div>
+
+          <button class="btn btn--primary" (click)="loadStudyPlan()" [disabled]="!selectedEinschreibung || loading()">
+            @if (loading()) {
+              <span class="spinner-sm"></span>
+            } @else {
+              <span>Laden</span>
+            }
+          </button>
+          
+          @if (isPruefungsamt()) {
+            <div class="role-badge role-badge--admin">
+              Prüfungsamt-Modus
+            </div>
+          }
+        </div>
+      }
+
+      <!-- Einschreibungs-Auswahl für Studenten -->
+      @if (isStudent() && einschreibungen().length > 1) {
+        <div class="selection-controls">
+          <div class="control-group">
+            <label>Einschreibung:</label>
+            <select 
+              class="select-input" 
+              [(ngModel)]="selectedEinschreibung" 
+              (change)="loadStudyPlan()">
+              @for (e of einschreibungen(); track e.id) {
+                <option [value]="e.id">{{ e.studiengang }} ({{ e.kuerzel }}) - {{ e.semester }}. Sem</option>
+              }
+            </select>
           </div>
         </div>
-        
-        @if (isPruefungsamt()) {
-          <div class="role-badge role-badge--admin">
-            <span>🔐</span> Prüfungsamt-Modus
-          </div>
-        }
-      </div>
+      }
 
       <!-- Loading State -->
       @if (loading()) {
@@ -427,11 +489,11 @@ const NOTEN_QUERY = gql`
     }
 
     /* Demo Controls */
-    .demo-controls {
+    .selection-controls {
       display: flex;
-      justify-content: space-between;
-      align-items: center;
+      flex-wrap: wrap;
       gap: var(--spacing-md);
+      align-items: flex-end;
       margin-bottom: var(--spacing-lg);
       padding: var(--spacing-md);
       background: var(--bg-surface);
@@ -439,11 +501,31 @@ const NOTEN_QUERY = gql`
       border-radius: var(--radius-lg);
     }
 
+    .control-group {
+      flex: 1;
+      min-width: 200px;
+    }
+
     .control-group label {
       display: block;
       font-size: var(--font-size-sm);
       color: var(--text-muted);
       margin-bottom: var(--spacing-xs);
+    }
+
+    .select-input {
+      width: 100%;
+      padding: 10px 14px;
+      background: var(--bg-deep);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 0.95rem;
+    }
+
+    .select-input:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
     }
 
     .input-group {
@@ -1038,9 +1120,12 @@ const NOTEN_QUERY = gql`
         flex-wrap: wrap;
       }
 
-      .demo-controls {
+      .selection-controls {
         flex-direction: column;
-        align-items: flex-start;
+      }
+
+      .control-group {
+        width: 100%;
       }
 
       .semester-row {
@@ -1073,13 +1158,23 @@ const NOTEN_QUERY = gql`
   `]
 })
 export class StudyPlanComponent implements OnInit {
+  private readonly authService = inject(AuthService);
+  
   // State
+  loadingStudents = signal(false);
   loading = signal(false);
   error = signal<string | null>(null);
+  selectedStudent = '';
   selectedEinschreibung = '';
   currentSemester = signal(1);
-  
+
+  // Role-based visibility
+  isStudent = computed(() => this.authService.isStudent());
+  canSelectStudent = computed(() => !this.isStudent());
+
   // Data
+  students = signal<{id: string; name: string; matrikelnummer: string}[]>([]);
+  einschreibungen = signal<{id: string; studiengang: string; kuerzel: string; semester: number}[]>([]);
   module = signal<ModulMitNote[]>([]);
   noten = signal<Note[]>([]);
   einschreibung = signal<any>(null);
@@ -1174,12 +1269,111 @@ export class StudyPlanComponent implements OnInit {
     return e?.studiengang?.name ? `${e.studiengang.name} (${e.studiengang.kuerzel})` : null;
   });
 
-  constructor(private apollo: Apollo) {}
+  constructor(private readonly apollo: Apollo) {}
 
   ngOnInit(): void {
-    // Auto-load first student
-    this.selectedEinschreibung = 'eeee1111-1111-1111-1111-111111111111';
-    this.loadStudyPlan();
+    if (this.isStudent()) {
+      this.loadOwnData();
+    } else {
+      this.loadStudents();
+    }
+  }
+
+  loadOwnData(): void {
+    const studentId = this.authService.getStudentId();
+    if (!studentId) {
+      this.error.set('Keine Student-ID gefunden. Bitte erneut einloggen.');
+      return;
+    }
+
+    this.selectedStudent = studentId;
+    this.loadingStudents.set(true);
+
+    this.apollo.query<{ einschreibungen: any[] }>({
+      query: GET_EINSCHREIBUNGEN_QUERY,
+      variables: { studentId },
+      fetchPolicy: 'network-only'
+    }).subscribe({
+      next: (result) => {
+        const list = result.data?.einschreibungen || [];
+        this.einschreibungen.set(list.map(e => ({
+          id: e.id,
+          studiengang: e.studiengang?.name || 'Unbekannt',
+          kuerzel: e.studiengang?.kuerzel || '?',
+          semester: e.aktuellesSemester
+        })));
+        this.loadingStudents.set(false);
+
+        if (list.length > 0) {
+          this.selectedEinschreibung = list[0].id;
+          this.loadStudyPlan();
+        }
+      },
+      error: (err) => {
+        console.error('Error loading einschreibungen:', err);
+        this.error.set('Fehler beim Laden der Einschreibungen');
+        this.loadingStudents.set(false);
+      }
+    });
+  }
+
+  loadStudents(): void {
+    this.loadingStudents.set(true);
+    this.error.set(null);
+
+    this.apollo.query<{ students: any[] }>({
+      query: GET_STUDENTS_QUERY,
+      context: { clientName: 'user' },
+      fetchPolicy: 'network-only'
+    }).subscribe({
+      next: (result) => {
+        const list = result.data?.students || [];
+        this.students.set(list.map(s => ({
+          id: s.id,
+          name: `${s.vorname} ${s.nachname}`,
+          matrikelnummer: s.matrikelnummer
+        })));
+        this.loadingStudents.set(false);
+      },
+      error: (err) => {
+        console.error('Error loading students:', err);
+        this.error.set('Fehler beim Laden der Studenten. Ist der User-Service gestartet?');
+        this.loadingStudents.set(false);
+      }
+    });
+  }
+
+  onStudentChange(): void {
+    this.selectedEinschreibung = '';
+    this.einschreibungen.set([]);
+    this.module.set([]);
+
+    if (!this.selectedStudent) return;
+
+    this.apollo.query<{ einschreibungen: any[] }>({
+      query: GET_EINSCHREIBUNGEN_QUERY,
+      variables: { studentId: this.selectedStudent },
+      fetchPolicy: 'network-only'
+    }).subscribe({
+      next: (result) => {
+        const list = result.data?.einschreibungen || [];
+        this.einschreibungen.set(list.map(e => ({
+          id: e.id,
+          studiengang: e.studiengang?.name || 'Unbekannt',
+          kuerzel: e.studiengang?.kuerzel || '?',
+          semester: e.aktuellesSemester
+        })));
+
+        if (list.length > 0) {
+          this.selectedEinschreibung = list[0].id;
+          this.loadStudyPlan();
+        }
+      },
+      error: (err) => {
+        console.error('Error loading einschreibungen:', err);
+        this.error.set('Fehler beim Laden der Einschreibungen');
+      }
+    });
   }
 
   isPruefungsamt(): boolean {

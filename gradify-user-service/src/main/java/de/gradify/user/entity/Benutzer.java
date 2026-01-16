@@ -20,8 +20,14 @@ import java.util.UUID;
 public class Benutzer {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
     private UUID id;
+
+    @PrePersist
+    public void prePersist() {
+        if (id == null) {
+            id = UUID.randomUUID();
+        }
+    }
 
     @Column(nullable = false, unique = true, length = 50)
     private String benutzername;

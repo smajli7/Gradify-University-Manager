@@ -269,5 +269,32 @@ public class StudentGraphQLController {
     public Benutzer getBenutzerForStudent(Student student) {
         return student.getBenutzer();
     }
+
+    /**
+     * Gibt den Vornamen des Studenten zurueck (vom verknuepften Benutzer).
+     * GraphQL: student { vorname }
+     */
+    @SchemaMapping(typeName = "Student", field = "vorname")
+    public String getVornameForStudent(Student student) {
+        return student.getBenutzer() != null ? student.getBenutzer().getVorname() : null;
+    }
+
+    /**
+     * Gibt den Nachnamen des Studenten zurueck (vom verknuepften Benutzer).
+     * GraphQL: student { nachname }
+     */
+    @SchemaMapping(typeName = "Student", field = "nachname")
+    public String getNachnameForStudent(Student student) {
+        return student.getBenutzer() != null ? student.getBenutzer().getNachname() : null;
+    }
+
+    /**
+     * Gibt die E-Mail des Studenten zurueck (vom verknuepften Benutzer).
+     * GraphQL: student { email }
+     */
+    @SchemaMapping(typeName = "Student", field = "email")
+    public String getEmailForStudent(Student student) {
+        return student.getBenutzer() != null ? student.getBenutzer().getEmail() : null;
+    }
 }
 

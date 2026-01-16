@@ -1,9 +1,34 @@
-import { Component, OnInit, signal, computed } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Apollo, gql } from 'apollo-angular';
+import { firstValueFrom } from 'rxjs';
 import { GradeService } from '../../core/services/grade.service';
 import { ModuleService } from '../../core/services/module.service';
+import { AuthService } from '../../core/services/auth.service';
 import { Note, NoteStatus, Modul } from '../../types';
+
+// Query für Einschreibungen eines Studenten
+const GET_EINSCHREIBUNGEN_QUERY = gql`
+  query GetEinschreibungen($studentId: ID!) {
+    einschreibungen(studentId: $studentId) {
+      id
+      aktuellesSemester
+      studiengang {
+        id
+        name
+        kuerzel
+      }
+    }
+  }
+`;
+
+interface EinschreibungOption {
+  id: string;
+  studiengang: string;
+  kuerzel: string;
+  semester: number;
+}
 
 @Component({
   selector: 'app-grades',
@@ -45,36 +70,24 @@ import { Note, NoteStatus, Modul } from '../../types';
         }
       </div>
 
-      <!-- Info Banner (Demo-Modus) -->
-      <div class="info-banner">
-        <span class="material-icons-outlined">info</span>
-        <p>
-          <strong>Demo-Modus:</strong> Wählen Sie eine Einschreibung, um Noten zu laden.
-          Im Produktivbetrieb werden Ihre Noten automatisch angezeigt.
-        </p>
-      </div>
-
-      <!-- Demo Controls -->
-      <div class="demo-controls">
-        <div class="control-group">
-          <label>Einschreibungs-ID (Demo):</label>
-          <div class="input-group">
-            <input 
-              type="text" 
-              class="demo-input"
-              [(ngModel)]="demoEinschreibungId"
-              placeholder="z.B. 1">
-            <button class="btn btn--primary" (click)="loadDemoData()" [disabled]="gradeService.loading()">
-              @if (gradeService.loading()) {
-                <span class="spinner-sm"></span>
-              } @else {
-                <span class="material-icons-outlined">download</span>
+      <!-- Einschreibungs-Auswahl für Studenten (falls mehrere vorhanden) -->
+      @if (isStudent() && einschreibungen().length > 1) {
+        <div class="selection-controls animate-slide-up">
+          <div class="control-group">
+            <label>Einschreibung:</label>
+            <select 
+              class="select-input" 
+              [(ngModel)]="selectedEinschreibung" 
+              (change)="loadNoten()">
+              @for (einschreibung of einschreibungen(); track einschreibung.id) {
+                <option [value]="einschreibung.id">
+                  {{ einschreibung.studiengang }} ({{ einschreibung.kuerzel }}) - {{ einschreibung.semester }}. Sem
+                </option>
               }
-              Laden
-            </button>
+            </select>
           </div>
         </div>
-      </div>
+      }
 
       <!-- Loading State -->
       @if (gradeService.loading()) {
@@ -89,7 +102,9 @@ import { Note, NoteStatus, Modul } from '../../types';
         <div class="error-state">
           <span class="material-icons-outlined">error</span>
           <p>{{ gradeService.error() }}</p>
-          <button class="btn btn--primary" (click)="loadDemoData()">Erneut versuchen</button>
+          @if (isStudent()) {
+            <button class="btn btn--primary" (click)="loadOwnData()">Erneut versuchen</button>
+          }
         </div>
       }
 
@@ -149,13 +164,13 @@ import { Note, NoteStatus, Modul } from '../../types';
       }
 
       <!-- Empty State (no data loaded) -->
-      @if (!gradeService.loading() && !gradeService.error() && gradeService.noten().length === 0) {
+      @if (!gradeService.loading() && !gradeService.error() && gradeService.noten().length === 0 && !loadingEinschreibungen()) {
         <div class="empty-initial-state">
           <div class="empty-icon">
             <span class="material-icons-outlined">grade</span>
           </div>
-          <h3>Keine Noten geladen</h3>
-          <p>Geben Sie eine Einschreibungs-ID ein und klicken Sie auf "Laden", um Noten anzuzeigen.</p>
+          <h3>Keine Noten vorhanden</h3>
+          <p>Für die ausgewählte Einschreibung sind noch keine Noten erfasst.</p>
         </div>
       }
 
@@ -312,40 +327,22 @@ import { Note, NoteStatus, Modul } from '../../types';
       color: var(--text-muted);
     }
 
-    /* Info Banner */
-    .info-banner {
+    /* Selection Controls */
+    .selection-controls {
       display: flex;
-      align-items: flex-start;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-md);
-      background: rgba(0, 242, 255, 0.05);
-      border: 1px solid rgba(0, 242, 255, 0.2);
-      border-radius: var(--radius-lg);
-      margin-bottom: var(--spacing-lg);
-    }
-
-    .info-banner .material-icons-outlined {
-      color: var(--color-primary);
-      font-size: 20px;
-      flex-shrink: 0;
-      margin-top: 2px;
-    }
-
-    .info-banner p {
-      margin: 0;
-      font-size: var(--font-size-sm);
-      color: var(--text-secondary);
-    }
-
-    /* Demo Controls */
-    .demo-controls {
-      display: flex;
+      flex-wrap: wrap;
       gap: var(--spacing-md);
+      align-items: flex-end;
       margin-bottom: var(--spacing-lg);
       padding: var(--spacing-md);
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-lg);
+    }
+
+    .control-group {
+      flex: 1;
+      min-width: 200px;
     }
 
     .control-group label {
@@ -355,22 +352,17 @@ import { Note, NoteStatus, Modul } from '../../types';
       margin-bottom: var(--spacing-xs);
     }
 
-    .input-group {
-      display: flex;
-      gap: var(--spacing-sm);
-    }
-
-    .demo-input {
+    .select-input {
+      width: 100%;
       padding: 10px 14px;
       background: var(--bg-deep);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
       color: var(--text-primary);
       font-size: 0.95rem;
-      width: 200px;
     }
 
-    .demo-input:focus {
+    .select-input:focus {
       outline: none;
       border-color: var(--color-primary);
     }
@@ -754,8 +746,18 @@ import { Note, NoteStatus, Modul } from '../../types';
   `]
 })
 export class GradesComponent implements OnInit {
-  demoEinschreibungId = '';
+  private readonly authService = inject(AuthService);
+  private readonly apollo = inject(Apollo);
+  
   selectedNote = signal<Note | null>(null);
+  selectedEinschreibung = '';
+  loadingEinschreibungen = signal(false);
+  
+  // Role-based visibility
+  isStudent = computed(() => this.authService.isStudent());
+  
+  // Data
+  einschreibungen = signal<EinschreibungOption[]>([]);
 
   filteredNoten = computed(() => {
     return this.gradeService.noten();
@@ -767,13 +769,71 @@ export class GradesComponent implements OnInit {
   ) {}
 
   ngOnInit(): void {
-    // Optional: Load modules for name resolution
+    if (this.isStudent()) {
+      // Studenten sehen nur ihre eigenen Noten
+      this.loadOwnData();
+    } else {
+      // Für Nicht-Studenten: Hier könnte später eine Auswahl implementiert werden
+      this.gradeService.setError('Diese Ansicht ist nur für Studenten verfügbar.');
+    }
+    
+    // Load modules for name resolution
     this.moduleService.loadModule().subscribe();
   }
 
-  loadDemoData(): void {
-    if (!this.demoEinschreibungId.trim()) return;
-    this.gradeService.loadNotenByStudent(this.demoEinschreibungId).subscribe();
+  loadOwnData(): void {
+    const studentId = this.authService.getStudentId();
+    if (!studentId) {
+      this.gradeService.setError('Keine Student-ID gefunden. Bitte erneut einloggen.');
+      return;
+    }
+
+    this.loadingEinschreibungen.set(true);
+    this.gradeService.setError(null);
+
+    // Lade Einschreibungen für den eingeloggten Studenten
+    this.apollo.query<{ einschreibungen: any[] }>({
+      query: GET_EINSCHREIBUNGEN_QUERY,
+      variables: { studentId },
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all'
+    }).subscribe({
+      next: (result) => {
+        if (result.errors && result.errors.length > 0) {
+          console.error('GraphQL Errors:', result.errors);
+          this.gradeService.setError(`Fehler beim Laden der Einschreibungen: ${result.errors[0].message}`);
+          this.loadingEinschreibungen.set(false);
+          return;
+        }
+
+        const einschreibungList = result.data?.einschreibungen || [];
+        this.einschreibungen.set(einschreibungList.map(e => ({
+          id: e.id,
+          studiengang: e.studiengang?.name || 'Unbekannt',
+          kuerzel: e.studiengang?.kuerzel || '?',
+          semester: e.aktuellesSemester
+        })));
+        this.loadingEinschreibungen.set(false);
+
+        // Automatisch erste Einschreibung auswählen und Noten laden
+        if (einschreibungList.length > 0) {
+          this.selectedEinschreibung = einschreibungList[0].id;
+          this.loadNoten();
+        } else {
+          this.gradeService.setError('Keine Einschreibungen gefunden');
+        }
+      },
+      error: (err) => {
+        console.error('Error loading einschreibungen:', err);
+        this.gradeService.setError(`Fehler beim Laden der Einschreibungen: ${err.message || 'Unbekannter Fehler'}`);
+        this.loadingEinschreibungen.set(false);
+      }
+    });
+  }
+
+  loadNoten(): void {
+    if (!this.selectedEinschreibung) return;
+    this.gradeService.loadNotenByStudent(this.selectedEinschreibung).subscribe();
   }
 
   formatDate(dateString: string): string {

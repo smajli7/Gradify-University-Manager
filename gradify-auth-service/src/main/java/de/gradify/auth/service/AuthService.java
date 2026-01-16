@@ -27,20 +27,33 @@ public class AuthService {
     // Simulierte Benutzerdatenbank fuer Demo (wird spaeter durch gRPC-Aufruf ersetzt)
     private static final Map<String, UserCredentials> DEMO_USERS = new ConcurrentHashMap<>();
     
+    // Student IDs aus User-Service DataSeeder (muessen uebereinstimmen!)
+    private static final String STUDENT_1_ID = "aaaa1111-0000-0000-0000-000000000001";
+    private static final String STUDENT_2_ID = "aaaa2222-0000-0000-0000-000000000002";
+    private static final String STUDENT_3_ID = "aaaa3333-0000-0000-0000-000000000003";
+    private static final String DOZENT_ID = "22222222-2222-2222-2222-222222222222";
+    
     static {
-        // Demo-Benutzer (Passwoerter: hash mit bcrypt - hier simuliert)
+        // Demo-Benutzer mit einheitlichem Passwort: web00100113!
         DEMO_USERS.put("admin", new UserCredentials(
-            "00000000-0000-0000-0000-000000000001", "admin", "admin123",
-            "System", "Administrator", new String[]{"ROLE_ADMIN"}));
+            "00000000-0000-0000-0000-000000000001", "admin", "web00100113!",
+            "System", "Administrator", new String[]{"ROLE_ADMIN"}, null));
         DEMO_USERS.put("pruefungsamt", new UserCredentials(
-            "00000000-0000-0000-0000-000000000002", "pruefungsamt", "pruefung123",
-            "Paula", "Pruefung", new String[]{"ROLE_PRUEFUNGSAMT"}));
+            "00000000-0000-0000-0000-000000000002", "pruefungsamt", "web00100113!",
+            "Paula", "Pruefung", new String[]{"ROLE_PRUEFUNGSAMT"}, null));
         DEMO_USERS.put("prof.mueller", new UserCredentials(
-            "22222222-2222-2222-2222-222222222222", "prof.mueller", "dozent123",
-            "Prof. Dr. Max", "Mueller", new String[]{"ROLE_LEHRENDER"}));
+            DOZENT_ID, "prof.mueller", "web00100113!",
+            "Prof. Dr. Max", "Mueller", new String[]{"ROLE_LEHRENDER"}, null));
+        // Studenten mit studentId (entspricht der Student-Entity ID im User-Service)
         DEMO_USERS.put("max.mustermann", new UserCredentials(
-            "aaaa1111-0000-0000-0000-000000000001", "max.mustermann", "student123",
-            "Max", "Mustermann", new String[]{"ROLE_STUDENT"}));
+            STUDENT_1_ID, "max.mustermann", "web00100113!",
+            "Max", "Mustermann", new String[]{"ROLE_STUDENT"}, STUDENT_1_ID));
+        DEMO_USERS.put("anna.schmidt", new UserCredentials(
+            STUDENT_2_ID, "anna.schmidt", "web00100113!",
+            "Anna", "Schmidt", new String[]{"ROLE_STUDENT"}, STUDENT_2_ID));
+        DEMO_USERS.put("leon.weber", new UserCredentials(
+            STUDENT_3_ID, "leon.weber", "web00100113!",
+            "Leon", "Weber", new String[]{"ROLE_STUDENT"}, STUDENT_3_ID));
     }
 
     public Optional<LoginResponse> login(LoginRequest request) {
@@ -69,6 +82,7 @@ public class AuthService {
                 .vorname(user.vorname)
                 .nachname(user.nachname)
                 .roles(user.roles)
+                .studentId(user.studentId)
                 .build())
             .build();
         
@@ -176,6 +190,7 @@ public class AuthService {
 
     private static record UserCredentials(
         String id, String username, String password,
-        String vorname, String nachname, String[] roles
+        String vorname, String nachname, String[] roles,
+        String studentId  // null fuer Nicht-Studenten
     ) {}
 }

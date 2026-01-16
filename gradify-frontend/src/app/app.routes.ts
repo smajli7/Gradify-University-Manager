@@ -1,9 +1,12 @@
 import { Routes } from '@angular/router';
+import { authGuard, authGuardChild, authGuardMatch } from './core/guards/auth.guard';
+import { guestGuard } from './core/guards/guest.guard';
 
 export const routes: Routes = [
   // Public Routes (ohne Shell)
   {
     path: 'login',
+    canMatch: [guestGuard],
     loadComponent: () => import('./features/auth/login/login.component')
       .then(m => m.LoginComponent)
   },
@@ -11,6 +14,9 @@ export const routes: Routes = [
   // Protected Routes (mit Shell)
   {
     path: '',
+    canMatch: [authGuardMatch],
+    canActivate: [authGuard],
+    canActivateChild: [authGuardChild],
     loadComponent: () => import('./shared/components/shell/shell.component')
       .then(m => m.ShellComponent),
     children: [

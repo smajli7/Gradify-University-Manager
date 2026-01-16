@@ -27,12 +27,18 @@ export function apolloOptionsFactory(httpLink: HttpLink): ApolloClientOptions<un
   // HTTP-Links zu den Service-spezifischen GraphQL-Endpunkten am Gateway
   const studiengangHttp = httpLink.create({ uri: '/graphql/studiengang' });
   const notenHttp = httpLink.create({ uri: '/graphql/noten' });
+  const userHttp = httpLink.create({ uri: '/graphql/user' });
 
-  // Split-Link: route nach clientName im Kontext (z.B. { clientName: 'noten' })
+  // Split-Link: route nach clientName im Kontext
+  // Priorität: 'noten' -> Noten-Service, 'user' -> User-Service, default -> Studiengang-Service
   const routedHttp = ApolloLink.split(
     operation => operation.getContext()['clientName'] === 'noten',
     notenHttp,
-    studiengangHttp
+    ApolloLink.split(
+      operation => operation.getContext()['clientName'] === 'user',
+      userHttp,
+      studiengangHttp
+    )
   );
 
   return {

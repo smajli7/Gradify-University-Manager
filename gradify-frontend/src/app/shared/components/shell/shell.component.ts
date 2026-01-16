@@ -1,9 +1,10 @@
-import { Component, HostListener, inject } from '@angular/core';
+import { Component, HostListener, inject, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, Router } from '@angular/router';
 import { HeaderComponent } from '../header/header.component';
 import { DockComponent, DockItem } from '../dock/dock.component';
 import { MobileMenuComponent } from '../mobile-menu/mobile-menu.component';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-shell',
@@ -19,8 +20,8 @@ import { MobileMenuComponent } from '../mobile-menu/mobile-menu.component';
     <div class="shell">
       <!-- Header -->
       <app-header
-        [userName]="userName"
-        [userRole]="userRole"
+        [userName]="userName()"
+        [userRole]="userRole()"
         [showUserMenu]="showUserMenu"
         (menuToggle)="toggleMobileMenu()"
         (userMenuToggle)="toggleUserMenu()"
@@ -35,13 +36,13 @@ import { MobileMenuComponent } from '../mobile-menu/mobile-menu.component';
       <!-- Floating Dock (Desktop) -->
       <app-dock
         [items]="dockItems"
-        [userRole]="userRole">
+        [userRole]="userRole()">
       </app-dock>
 
       <!-- Mobile Menu -->
       <app-mobile-menu
         [items]="dockItems"
-        [userRole]="userRole"
+        [userRole]="userRole()"
         [isOpen]="mobileMenuOpen"
         (close)="closeMobileMenu()"
         (logout)="onLogout()">
@@ -73,11 +74,12 @@ import { MobileMenuComponent } from '../mobile-menu/mobile-menu.component';
   `]
 })
 export class ShellComponent {
-  private router = inject(Router);
+  private readonly router = inject(Router);
+  private readonly authService = inject(AuthService);
 
-  // User State (TODO: aus AuthService laden)
-  userName = 'Max Mustermann';
-  userRole = 'STUDENT'; // ADMIN, DOZENT, PRUEFUNGSAMT, STUDENT
+  // User State from AuthService
+  userName = computed(() => this.authService.userFullName());
+  userRole = computed(() => this.authService.userRole());
 
   // UI State
   showUserMenu = false;
@@ -190,8 +192,6 @@ export class ShellComponent {
   }
 
   onLogout(): void {
-    // TODO: AuthService.logout()
-    console.log('Logout');
-    this.router.navigate(['/login']);
+    this.authService.logout();
   }
 }

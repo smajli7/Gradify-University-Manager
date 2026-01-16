@@ -26,6 +26,7 @@ public class LoginResponse {
         private String vorname;
         private String nachname;
         private String[] roles;
+        private String studentId;  // null fuer Nicht-Studenten
     }
 }
 

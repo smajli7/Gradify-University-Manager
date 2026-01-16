@@ -1,7 +1,8 @@
-import { Component } from '@angular/core';
+import { Component, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
+import { AuthService } from '../../../core/services/auth.service';
 
 @Component({
   selector: 'app-login',
@@ -990,6 +991,9 @@ import { Router } from '@angular/router';
   `]
 })
 export class LoginComponent {
+  private authService = inject(AuthService);
+  private router = inject(Router);
+
   username = '';
   password = '';
   hidePassword = true;
@@ -998,7 +1002,7 @@ export class LoginComponent {
   showContent = false;
   isTransitioning = false;
 
-  constructor(private router: Router) {
+  constructor() {
     // Animation sequence timing:
     // 0.5s: Frame draws around 1.0 | 1.3
     // 0.7s: Chars appear (1, ., 0 and 1, ., 3)
@@ -1028,12 +1032,20 @@ export class LoginComponent {
     this.isLoading = true;
     this.errorMessage = '';
 
-    // Simulate API call
-    setTimeout(() => {
-      // TODO: Implement actual login via AuthService
-      console.log('Login attempt:', this.username);
-      this.isLoading = false;
-      this.router.navigate(['/dashboard']);
-    }, 1000);
+    this.authService.login({ username: this.username, password: this.password }).subscribe({
+      next: () => {
+        this.isLoading = false;
+        this.router.navigate(['/dashboard']);
+      },
+      error: (err) => {
+        this.isLoading = false;
+        if (err.status === 401) {
+          this.errorMessage = 'Benutzername oder Passwort falsch';
+        } else {
+          this.errorMessage = 'Login fehlgeschlagen. Bitte versuchen Sie es erneut.';
+        }
+        console.error('Login error:', err);
+      }
+    });
   }
 }

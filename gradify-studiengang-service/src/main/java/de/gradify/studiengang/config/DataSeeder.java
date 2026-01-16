@@ -38,8 +38,8 @@ public class DataSeeder implements CommandLineRunner {
     
     // Student-IDs (werden vom User-Service generiert)
     public static final UUID STUDENT_1_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000001");
-    public static final UUID STUDENT_2_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000002");
-    public static final UUID STUDENT_3_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000003");
+    public static final UUID STUDENT_2_ID = UUID.fromString("aaaa2222-0000-0000-0000-000000000002");
+    public static final UUID STUDENT_3_ID = UUID.fromString("aaaa3333-0000-0000-0000-000000000003");
     
     // Einschreibungs-IDs (fuer Noten-Service)
     public static final UUID EINSCHREIBUNG_1 = UUID.fromString("eeee1111-1111-1111-1111-111111111111");

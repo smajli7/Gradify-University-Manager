@@ -184,4 +184,11 @@ export class GradeService {
     this.durchschnittSignal.set(null);
     this.errorSignal.set(null);
   }
+
+  /**
+   * Setzt einen Fehler (für externe Komponenten)
+   */
+  setError(message: string | null): void {
+    this.errorSignal.set(message);
+  }
 }
