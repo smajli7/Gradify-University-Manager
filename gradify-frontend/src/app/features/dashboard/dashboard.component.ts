@@ -5,6 +5,7 @@ import { FormsModule } from '@angular/forms';
 import { Apollo, gql } from 'apollo-angular';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { CalculationService, BerechnungDto, FortschrittDto } from '../../core/services/calculation.service';
 
 // Query für alle Studenten (User-Service)
 const GET_STUDENTS_QUERY = gql`
@@ -212,8 +213,24 @@ interface EinschreibungOption {
               </svg>
             </div>
             <div class="stat-content">
-              <span class="stat-value">{{ durchschnitt() | number:'1.2-2' }}</span>
-              <span class="stat-label">Durchschnitt</span>
+              <div class="stat-value-wrapper">
+                <span class="stat-value">
+                  @if (gesamtnote() !== null) {
+                    {{ gesamtnote() | number:'1.1-1' }}
+                  } @else {
+                    -
+                  }
+                </span>
+                <span class="stat-verified-icon" 
+                      title="Berechnet durch Berechnungs-Service nach Prüfungsordnung"
+                      aria-label="Berechnet durch Berechnungs-Service">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                    <polyline points="22 4 12 14.01 9 11.01"/>
+                  </svg>
+                </span>
+              </div>
+              <span class="stat-label">Gesamtnote</span>
             </div>
           </div>
 
@@ -565,6 +582,25 @@ interface EinschreibungOption {
       margin-top: var(--spacing-xs);
     }
 
+    .stat-value-wrapper {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+    }
+
+    .stat-verified-icon {
+      display: inline-flex;
+      align-items: center;
+      color: var(--color-success);
+      opacity: 0.7;
+      cursor: help;
+      transition: opacity 0.2s ease;
+    }
+
+    .stat-verified-icon:hover {
+      opacity: 1;
+    }
+
     /* Progress Section */
     .progress-section {
       padding: var(--spacing-md);
@@ -816,7 +852,8 @@ export class DashboardComponent implements OnInit {
   einschreibung = signal<any>(null);
   noten = signal<any[]>([]);
   module = signal<any[]>([]);
-  durchschnittValue = signal<number | null>(null);
+  berechnung = signal<BerechnungDto | null>(null);
+  fortschritt = signal<FortschrittDto | null>(null);
   
   // Computed
   studiengangName = computed(() => {
@@ -827,11 +864,20 @@ export class DashboardComponent implements OnInit {
   currentSemester = computed(() => this.einschreibung()?.aktuellesSemester || 1);
   totalEcts = computed(() => this.einschreibung()?.studiengang?.gesamtEcts || 0);
   
-  bestandenCount = computed(() => 
-    this.noten().filter(n => n.bestanden === true).length
-  );
+  // Berechnungsdaten vom Service
+  gesamtnote = computed(() => this.berechnung()?.gesamtnote ?? null);
+  
+  bestandenCount = computed(() => {
+    const f = this.fortschritt();
+    if (f) return f.moduleBestanden;
+    // Fallback: aus Noten berechnen
+    return this.noten().filter(n => n.bestanden === true).length;
+  });
   
   ectsErreicht = computed(() => {
+    const f = this.fortschritt();
+    if (f) return f.ectsErreicht;
+    // Fallback: aus Noten berechnen
     const bestandeneModulIds = new Set(
       this.noten().filter(n => n.bestanden === true).map(n => n.modulId)
     );
@@ -841,6 +887,9 @@ export class DashboardComponent implements OnInit {
   });
   
   offeneModule = computed(() => {
+    const f = this.fortschritt();
+    if (f) return f.moduleOffen;
+    // Fallback: aus Noten berechnen
     const bestandeneModulIds = new Set(
       this.noten().filter(n => n.bestanden === true).map(n => n.modulId)
     );
@@ -848,18 +897,21 @@ export class DashboardComponent implements OnInit {
   });
   
   progressPercent = computed(() => {
+    const f = this.fortschritt();
+    if (f) return f.fortschrittProzent;
+    // Fallback: aus ECTS berechnen
     const total = this.totalEcts();
     if (total === 0) return 0;
     return (this.ectsErreicht() / total) * 100;
   });
-  
-  durchschnitt = computed(() => this.durchschnittValue() || 0);
   
   recentNoten = computed(() => {
     return [...this.noten()]
       .sort((a, b) => new Date(b.pruefungsdatum).getTime() - new Date(a.pruefungsdatum).getTime())
       .slice(0, 5);
   });
+
+  private readonly calculationService = inject(CalculationService);
 
   constructor(private readonly apollo: Apollo) {}
 
@@ -1020,8 +1072,17 @@ export class DashboardComponent implements OnInit {
       firstValueFrom(notenQuery).catch(err => {
         console.error('Noten Query Error:', err);
         return { data: { notenByStudent: [], durchschnittsnote: null }, errors: [] };
+      }),
+      // Lade Berechnungsdaten vom Berechnungs-Service
+      firstValueFrom(this.calculationService.getGesamtnote(this.selectedEinschreibung)).catch(err => {
+        console.warn('Berechnung Service Error:', err);
+        return { success: false, data: null, message: err.message || 'Berechnung nicht verfügbar' };
+      }),
+      firstValueFrom(this.calculationService.getFortschritt(this.selectedEinschreibung)).catch(err => {
+        console.warn('Fortschritt Service Error:', err);
+        return { success: false, data: null, message: err.message || 'Fortschritt nicht verfügbar' };
       })
-    ]).then(([einschreibungResult, notenResult]) => {
+    ]).then(([einschreibungResult, notenResult, berechnungResult, fortschrittResult]) => {
       console.log('Einschreibung Result:', einschreibungResult);
       console.log('Noten Result:', notenResult);
       
@@ -1058,7 +1119,34 @@ export class DashboardComponent implements OnInit {
       const notenList = notenResult?.data?.notenByStudent || [];
       console.log('Loaded noten:', notenList.length);
       this.noten.set(notenList);
-      this.durchschnittValue.set(notenResult?.data?.durchschnittsnote || null);
+      
+      // Berechnungsdaten vom Berechnungs-Service
+      if (berechnungResult?.success && berechnungResult.data) {
+        console.log('Loaded berechnung:', berechnungResult.data);
+        this.berechnung.set(berechnungResult.data);
+      } else {
+        console.warn('Berechnung nicht verfügbar, versuche Neuberechnung...');
+        // Versuche Neuberechnung zu triggern, wenn poId vorhanden
+        const poId = einschreibungData.poId;
+        const ectsGesamt = einschreibungData.studiengang?.gesamtEcts || 180;
+        if (poId) {
+          this.calculationService.berechneGesamtnote(this.selectedEinschreibung, poId, ectsGesamt)
+            .subscribe({
+              next: (result) => {
+                if (result.success && result.data) {
+                  this.berechnung.set(result.data);
+                }
+              },
+              error: (err) => console.warn('Neuberechnung fehlgeschlagen:', err)
+            });
+        }
+      }
+      
+      // Fortschrittsdaten vom Berechnungs-Service
+      if (fortschrittResult?.success && fortschrittResult.data) {
+        console.log('Loaded fortschritt:', fortschrittResult.data);
+        this.fortschritt.set(fortschrittResult.data);
+      }
       
       console.log('Loaded modules:', this.module().length);
       console.log('Loaded noten:', this.noten().length);

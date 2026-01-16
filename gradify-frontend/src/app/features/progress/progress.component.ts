@@ -2,6 +2,7 @@ import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Apollo, gql } from 'apollo-angular';
+import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 
 // Query für alle Studenten (User-Service)
@@ -23,6 +24,7 @@ const GET_EINSCHREIBUNGEN_QUERY = gql`
       id
       aktuellesSemester
       studiengang {
+        id
         name
         kuerzel
       }
@@ -38,12 +40,15 @@ const PROGRESS_EINSCHREIBUNG_QUERY = gql`
       aktuellesSemester
       immatrikuliertAm
       studiengang {
+        id
         name
         kuerzel
         gesamtEcts
         regelstudienzeit
       }
+      poId
       pruefungsordnung {
+        id
         version
         module {
           id
@@ -179,6 +184,11 @@ interface SemesterProgress {
         <div class="error-state">
           <span class="error-icon">!</span>
           <p>{{ error() }}</p>
+          @if (isStudent()) {
+            <button class="btn btn--primary" (click)="loadOwnData()">Erneut versuchen</button>
+          } @else {
+            <button class="btn btn--primary" (click)="loadStudents()">Erneut versuchen</button>
+          }
         </div>
       }
 
@@ -394,8 +404,8 @@ interface SemesterProgress {
         </div>
       }
 
-      <!-- Empty State -->
-      @if (!loading() && !loadingStudents() && !error() && !dataLoaded() && students().length > 0) {
+      <!-- Empty State (nur für Nicht-Studenten) -->
+      @if (!loading() && !loadingStudents() && !error() && !dataLoaded() && canSelectStudent() && students().length > 0) {
         <div class="empty-state">
           <div class="empty-icon">
             <svg width="64" height="64" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
@@ -991,14 +1001,48 @@ export class ProgressComponent implements OnInit {
 
     this.selectedStudent = studentId;
     this.loadingStudents.set(true);
+    this.error.set(null);
 
     this.apollo.query<{ einschreibungen: any[] }>({
       query: GET_EINSCHREIBUNGEN_QUERY,
       variables: { studentId },
-      fetchPolicy: 'network-only'
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all'
     }).subscribe({
       next: (result) => {
+        console.log('Einschreibungen Query Result:', result);
+        
+        // Prüfe zuerst, ob Daten vorhanden sind (auch bei Fehlern)
         const list = result.data?.einschreibungen || [];
+        
+        if (result.errors && result.errors.length > 0) {
+          console.error('GraphQL Errors:', result.errors);
+          const errorMsg = result.errors[0].message;
+          
+          // Wenn Daten vorhanden sind, trotzdem verwenden (könnte nur Warnung sein)
+          if (list.length > 0) {
+            console.warn('GraphQL Errors vorhanden, aber Daten gefunden. Verwende Daten trotzdem.');
+            this.einschreibungen.set(list.map(e => ({
+              id: e.id,
+              studiengang: e.studiengang?.name || 'Unbekannt',
+              kuerzel: e.studiengang?.kuerzel || '?',
+              semester: e.aktuellesSemester
+            })));
+            this.loadingStudents.set(false);
+            this.selectedEinschreibung = list[0].id;
+            console.log('Auto-selecting einschreibung:', this.selectedEinschreibung);
+            this.loadData();
+            return;
+          }
+          
+          // Keine Daten vorhanden - zeige Fehler
+          this.error.set(`Fehler beim Laden der Einschreibungen: ${errorMsg}`);
+          this.loadingStudents.set(false);
+          return;
+        }
+
+        // list wurde bereits oben deklariert
+        console.log('Loaded einschreibungen:', list.length);
         this.einschreibungen.set(list.map(e => ({
           id: e.id,
           studiengang: e.studiengang?.name || 'Unbekannt',
@@ -1009,12 +1053,15 @@ export class ProgressComponent implements OnInit {
 
         if (list.length > 0) {
           this.selectedEinschreibung = list[0].id;
+          console.log('Auto-selecting einschreibung:', this.selectedEinschreibung);
           this.loadData();
+        } else {
+          this.error.set('Keine Einschreibungen gefunden');
         }
       },
       error: (err) => {
         console.error('Error loading einschreibungen:', err);
-        this.error.set('Fehler beim Laden der Einschreibungen');
+        this.error.set(`Fehler beim Laden der Einschreibungen: ${err.message || 'Unbekannter Fehler'}`);
         this.loadingStudents.set(false);
       }
     });
@@ -1089,20 +1136,44 @@ export class ProgressComponent implements OnInit {
     const einschreibungQuery = this.apollo.query<any>({
       query: PROGRESS_EINSCHREIBUNG_QUERY,
       variables: { einschreibungId: this.selectedEinschreibung },
-      fetchPolicy: 'network-only'
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all'
     });
 
     const notenQuery = this.apollo.query<any>({
       query: PROGRESS_NOTEN_QUERY,
       variables: { einschreibungId: this.selectedEinschreibung },
       context: { clientName: 'noten' },
-      fetchPolicy: 'network-only'
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all'
     });
 
     Promise.all([
-      einschreibungQuery.toPromise(),
-      notenQuery.toPromise()
+      firstValueFrom(einschreibungQuery).catch(err => {
+        console.error('Einschreibung Query Error:', err);
+        return { data: null, errors: [{ message: err.message || 'Unbekannter Fehler' }] };
+      }),
+      firstValueFrom(notenQuery).catch(err => {
+        console.error('Noten Query Error:', err);
+        return { data: { notenByStudent: [] }, errors: [] };
+      })
     ]).then(([einschreibungResult, notenResult]) => {
+      console.log('Progress Einschreibung Result:', einschreibungResult);
+      console.log('Progress Noten Result:', notenResult);
+      
+      // Prüfe auf GraphQL-Fehler
+      if (einschreibungResult.errors && einschreibungResult.errors.length > 0) {
+        console.error('GraphQL Errors (Einschreibung):', einschreibungResult.errors);
+        this.error.set(`Fehler beim Laden der Einschreibung: ${einschreibungResult.errors[0].message}`);
+        this.loading.set(false);
+        return;
+      }
+
+      if (notenResult.errors && notenResult.errors.length > 0) {
+        console.warn('GraphQL Errors (Noten):', notenResult.errors);
+        // Noten-Fehler sind nicht kritisch
+      }
+
       const data = einschreibungResult?.data?.einschreibung;
       
       if (!data) {
@@ -1112,14 +1183,22 @@ export class ProgressComponent implements OnInit {
       }
 
       this.einschreibung.set(data);
-      this.module.set(data.pruefungsordnung?.module || []);
-      this.noten.set(notenResult?.data?.notenByStudent || []);
+      
+      // Module aus Prüfungsordnung laden (kann null sein)
+      const moduleList = data.pruefungsordnung?.module || [];
+      console.log('Loaded modules from PO:', moduleList.length);
+      this.module.set(moduleList);
+      
+      // Noten laden
+      const notenList = notenResult?.data?.notenByStudent || [];
+      console.log('Loaded noten:', notenList.length);
+      this.noten.set(notenList);
       
       this.dataLoaded.set(true);
       this.loading.set(false);
     }).catch((err) => {
       console.error('Error loading progress data:', err);
-      this.error.set('Fehler beim Laden der Daten');
+      this.error.set(`Fehler beim Laden der Daten: ${err.message || 'Unbekannter Fehler'}`);
       this.loading.set(false);
     });
   }

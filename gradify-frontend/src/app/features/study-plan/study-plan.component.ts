@@ -2,7 +2,8 @@ import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Apollo, gql } from 'apollo-angular';
-import { Modul, Note, NoteStatus } from '../../types';
+import { firstValueFrom } from 'rxjs';
+import { Modul, Note } from '../../types';
 import { AuthService } from '../../core/services/auth.service';
 
 interface ModulMitNote extends Modul {
@@ -38,6 +39,7 @@ const GET_EINSCHREIBUNGEN_QUERY = gql`
       id
       aktuellesSemester
       studiengang {
+        id
         name
         kuerzel
       }
@@ -1218,8 +1220,8 @@ export class StudyPlanComponent implements OnInit {
 
       rows.push({
         semester,
-        module: moduleInSem.sort((a, b) => 
-          parseInt(a.modulNr) - parseInt(b.modulNr) || a.modulNr.localeCompare(b.modulNr)
+        module: [...moduleInSem].sort((a, b) => 
+          Number.parseInt(a.modulNr, 10) - Number.parseInt(b.modulNr, 10) || a.modulNr.localeCompare(b.modulNr)
         ),
         bestandenCount,
         totalCount: moduleInSem.length,
@@ -1288,14 +1290,47 @@ export class StudyPlanComponent implements OnInit {
 
     this.selectedStudent = studentId;
     this.loadingStudents.set(true);
+    this.error.set(null);
 
     this.apollo.query<{ einschreibungen: any[] }>({
       query: GET_EINSCHREIBUNGEN_QUERY,
       variables: { studentId },
-      fetchPolicy: 'network-only'
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all'
     }).subscribe({
       next: (result) => {
+        console.log('Einschreibungen Query Result:', result);
+        
+        // Prüfe zuerst, ob Daten vorhanden sind (auch bei Fehlern)
         const list = result.data?.einschreibungen || [];
+        
+        if (result.errors && result.errors.length > 0) {
+          console.error('GraphQL Errors:', result.errors);
+          const errorMsg = result.errors[0].message;
+          
+          // Wenn Daten vorhanden sind, trotzdem verwenden (könnte nur Warnung sein)
+          if (list.length > 0) {
+            console.warn('GraphQL Errors vorhanden, aber Daten gefunden. Verwende Daten trotzdem.');
+            this.einschreibungen.set(list.map(e => ({
+              id: e.id,
+              studiengang: e.studiengang?.name || 'Unbekannt',
+              kuerzel: e.studiengang?.kuerzel || '?',
+              semester: e.aktuellesSemester
+            })));
+            this.loadingStudents.set(false);
+            this.selectedEinschreibung = list[0].id;
+            console.log('Auto-selecting einschreibung:', this.selectedEinschreibung);
+            this.loadStudyPlan();
+            return;
+          }
+          
+          // Keine Daten vorhanden - zeige Fehler
+          this.error.set(`Fehler beim Laden der Einschreibungen: ${errorMsg}`);
+          this.loadingStudents.set(false);
+          return;
+        }
+
+        console.log('Loaded einschreibungen:', list.length);
         this.einschreibungen.set(list.map(e => ({
           id: e.id,
           studiengang: e.studiengang?.name || 'Unbekannt',
@@ -1306,12 +1341,15 @@ export class StudyPlanComponent implements OnInit {
 
         if (list.length > 0) {
           this.selectedEinschreibung = list[0].id;
+          console.log('Auto-selecting einschreibung:', this.selectedEinschreibung);
           this.loadStudyPlan();
+        } else {
+          this.error.set('Keine Einschreibungen gefunden');
         }
       },
       error: (err) => {
         console.error('Error loading einschreibungen:', err);
-        this.error.set('Fehler beim Laden der Einschreibungen');
+        this.error.set(`Fehler beim Laden der Einschreibungen: ${err.message || 'Unbekannter Fehler'}`);
         this.loadingStudents.set(false);
       }
     });
@@ -1347,16 +1385,44 @@ export class StudyPlanComponent implements OnInit {
     this.selectedEinschreibung = '';
     this.einschreibungen.set([]);
     this.module.set([]);
+    this.error.set(null);
 
     if (!this.selectedStudent) return;
 
     this.apollo.query<{ einschreibungen: any[] }>({
       query: GET_EINSCHREIBUNGEN_QUERY,
       variables: { studentId: this.selectedStudent },
-      fetchPolicy: 'network-only'
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all'
     }).subscribe({
       next: (result) => {
+        console.log('Einschreibungen Query Result (onStudentChange):', result);
+        
+        // Prüfe zuerst, ob Daten vorhanden sind (auch bei Fehlern)
         const list = result.data?.einschreibungen || [];
+        
+        if (result.errors && result.errors.length > 0) {
+          console.error('GraphQL Errors:', result.errors);
+          const errorMsg = result.errors[0].message;
+          
+          // Wenn Daten vorhanden sind, trotzdem verwenden
+          if (list.length > 0) {
+            console.warn('GraphQL Errors vorhanden, aber Daten gefunden. Verwende Daten trotzdem.');
+            this.einschreibungen.set(list.map(e => ({
+              id: e.id,
+              studiengang: e.studiengang?.name || 'Unbekannt',
+              kuerzel: e.studiengang?.kuerzel || '?',
+              semester: e.aktuellesSemester
+            })));
+            this.selectedEinschreibung = list[0].id;
+            this.loadStudyPlan();
+            return;
+          }
+          
+          this.error.set(`Fehler beim Laden der Einschreibungen: ${errorMsg}`);
+          return;
+        }
+
         this.einschreibungen.set(list.map(e => ({
           id: e.id,
           studiengang: e.studiengang?.name || 'Unbekannt',
@@ -1367,11 +1433,13 @@ export class StudyPlanComponent implements OnInit {
         if (list.length > 0) {
           this.selectedEinschreibung = list[0].id;
           this.loadStudyPlan();
+        } else {
+          this.error.set('Keine Einschreibungen gefunden');
         }
       },
       error: (err) => {
         console.error('Error loading einschreibungen:', err);
-        this.error.set('Fehler beim Laden der Einschreibungen');
+        this.error.set(`Fehler beim Laden der Einschreibungen: ${err.message || 'Unbekannter Fehler'}`);
       }
     });
   }
@@ -1386,11 +1454,14 @@ export class StudyPlanComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
+    console.log('Loading study plan for einschreibung:', this.selectedEinschreibung);
+
     // Zwei parallele Anfragen an verschiedene Services
     const einschreibungQuery = this.apollo.query<any>({
       query: EINSCHREIBUNG_QUERY,
       variables: { einschreibungId: this.selectedEinschreibung },
-      fetchPolicy: 'network-only'
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all'
       // Default: geht an studiengang-service
     });
 
@@ -1398,16 +1469,38 @@ export class StudyPlanComponent implements OnInit {
       query: NOTEN_QUERY,
       variables: { einschreibungId: this.selectedEinschreibung },
       context: { clientName: 'noten' }, // Wichtig: an noten-service routen
-      fetchPolicy: 'network-only'
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all'
     });
 
-    // Beide Queries parallel ausführen
+    // Beide Queries parallel ausführen mit verbesserter Fehlerbehandlung
     Promise.all([
-      einschreibungQuery.toPromise(),
-      notenQuery.toPromise()
+      firstValueFrom(einschreibungQuery).catch(err => {
+        console.error('Einschreibung Query Error:', err);
+        return { data: null, errors: [{ message: err.message || 'Unbekannter Fehler' }] };
+      }),
+      firstValueFrom(notenQuery).catch(err => {
+        console.error('Noten Query Error:', err);
+        return { data: null, errors: [{ message: err.message || 'Unbekannter Fehler' }] };
+      })
     ]).then(([einschreibungResult, notenResult]) => {
+      console.log('Einschreibung Result:', einschreibungResult);
+      console.log('Noten Result:', notenResult);
+
       const einschreibungData = einschreibungResult?.data;
       const notenData = notenResult?.data;
+
+      // Prüfe auf kritische Fehler
+      if (einschreibungResult.errors && einschreibungResult.errors.length > 0) {
+        const errorMsg = einschreibungResult.errors[0].message;
+        if (!einschreibungData?.einschreibung) {
+          this.error.set(`Fehler beim Laden der Einschreibung: ${errorMsg}`);
+          this.loading.set(false);
+          return;
+        }
+        // Wenn Daten vorhanden sind, trotzdem verwenden
+        console.warn('Einschreibung Query Errors vorhanden, aber Daten gefunden.');
+      }
 
       if (!einschreibungData?.einschreibung) {
         this.error.set('Einschreibung nicht gefunden');
@@ -1420,9 +1513,11 @@ export class StudyPlanComponent implements OnInit {
 
       const noten: Note[] = notenData?.notenByStudent || [];
       this.noten.set(noten);
+      console.log('Loaded noten:', noten.length);
 
       // Map modules with notes
       const moduleList = einschreibungData.einschreibung.pruefungsordnung?.module || [];
+      console.log('Loaded module:', moduleList.length);
       const notenMap = new Map<string, Note>();
 
       for (const note of noten) {
@@ -1454,7 +1549,7 @@ export class StudyPlanComponent implements OnInit {
       this.loading.set(false);
     }).catch((err) => {
       console.error('Error loading study plan:', err);
-      this.error.set('Fehler beim Laden des Studienverlaufsplans');
+      this.error.set(`Fehler beim Laden des Studienverlaufsplans: ${err.message || 'Unbekannter Fehler'}`);
       this.loading.set(false);
     });
   }
@@ -1468,11 +1563,11 @@ export class StudyPlanComponent implements OnInit {
   }
 
   parseSemester(sem: string): number {
-    return parseInt(sem) || 0;
+    return Number.parseInt(sem, 10) || 0;
   }
 
   isCurrentSemester(semester: string): boolean {
-    return parseInt(semester) === this.currentSemester();
+    return Number.parseInt(semester, 10) === this.currentSemester();
   }
 
   formatNote(note: number | null | undefined): string {

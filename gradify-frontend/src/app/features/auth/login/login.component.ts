@@ -206,6 +206,10 @@ import { AuthService } from '../../../core/services/auth.service';
                   <span class="material-icons-outlined">school</span>
                   Dozent
                 </button>
+                <button class="demo-chip" (click)="fillDemo('pruefungsamt', 'web00100113!')">
+                  <span class="material-icons-outlined">description</span>
+                  Prüfungsamt
+                </button>
                 <button class="demo-chip" (click)="fillDemo('max.mustermann', 'web00100113!')">
                   <span class="material-icons-outlined">person</span>
                   Student
