@@ -80,6 +80,21 @@ const DASHBOARD_NOTEN_QUERY = gql`
   }
 `;
 
+const GET_DOZENTEN_MODULE = gql`
+  query GetDozentenModule($dozentId: ID!) {
+    dozentenModule(dozentId: $dozentId) {
+      id
+      modulNr
+      name
+      ects
+      semester
+      pruefungsform
+      pruefungsdauer
+      vorleistung
+    }
+  }
+`;
+
 interface StudentOption {
   id: string;
   name: string;
@@ -152,6 +167,63 @@ interface EinschreibungOption {
               <span>Laden</span>
             }
           </button>
+        </div>
+      }
+
+      <!-- Dozenten Dashboard -->
+      @if (isDozent()) {
+        <div class="dozent-dashboard animate-slide-up">
+          <div class="welcome-header">
+            <h1>{{ authService.userFullName() }}</h1>
+            <p class="subtitle">Ihre Module im Überblick</p>
+          </div>
+
+          @if (loadingDozentenModule()) {
+            <div class="loading-state card">
+              <div class="spinner-lg"></div>
+              <p>Lade Module...</p>
+            </div>
+          }
+
+          @if (!loadingDozentenModule() && dozentenModule().length > 0) {
+            <div class="module-list">
+              @for (modul of dozentenModule(); track modul.id) {
+                <div class="modul-item card">
+                  <div class="modul-main">
+                    <div class="modul-title">
+                      <span class="modul-nr-badge">{{ modul.modulNr }}</span>
+                      <h2>{{ modul.name }}</h2>
+                    </div>
+                    <div class="modul-details">
+                      <div class="detail-row">
+                        <span class="detail-label">Prüfungsform:</span>
+                        <span class="detail-value">{{ modul.pruefungsform }}</span>
+                        @if (modul.pruefungsdauer) {
+                          <span class="detail-value-muted">({{ modul.pruefungsdauer }})</span>
+                        }
+                      </div>
+                      @if (modul.vorleistung) {
+                        <div class="detail-row">
+                          <span class="detail-label">Vorleistung:</span>
+                          <span class="detail-value">{{ modul.vorleistung }}</span>
+                        </div>
+                      }
+                      <div class="detail-row">
+                        <span class="detail-label">Umfang:</span>
+                        <span class="detail-value">{{ modul.ects }} ECTS · Semester {{ modul.semester }}</span>
+                      </div>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          @if (!loadingDozentenModule() && dozentenModule().length === 0) {
+            <div class="empty-state card">
+              <p>Ihnen sind aktuell keine Module zugewiesen.</p>
+            </div>
+          }
         </div>
       }
 
@@ -351,40 +423,6 @@ interface EinschreibungOption {
           </div>
         </section>
 
-        <!-- Quick Links -->
-        <section class="quick-links animate-slide-up" style="animation-delay: 600ms">
-          <a routerLink="/study-plan" class="quick-link">
-            <span class="quick-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
-                <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
-              </svg>
-            </span>
-            <span class="quick-text">Studienverlaufsplan</span>
-          </a>
-          <a routerLink="/progress" class="quick-link">
-            <span class="quick-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="12" y1="20" x2="12" y2="10"/>
-                <line x1="18" y1="20" x2="18" y2="4"/>
-                <line x1="6" y1="20" x2="6" y2="16"/>
-              </svg>
-            </span>
-            <span class="quick-text">Mein Fortschritt</span>
-          </a>
-          <a routerLink="/calculation" class="quick-link">
-            <span class="quick-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="4" y="2" width="16" height="20" rx="2"/>
-                <line x1="8" y1="6" x2="16" y2="6"/>
-                <line x1="8" y1="10" x2="16" y2="10"/>
-                <line x1="8" y1="14" x2="12" y2="14"/>
-                <line x1="8" y1="18" x2="12" y2="18"/>
-              </svg>
-            </span>
-            <span class="quick-text">Berechnung</span>
-          </a>
-        </section>
       }
 
       <!-- Empty State (nur für Nicht-Studenten) -->
@@ -426,6 +464,96 @@ interface EinschreibungOption {
     }
 
     /* Selection Controls */
+    .dozent-dashboard {
+      max-width: 900px;
+      margin: 0 auto;
+    }
+
+    .welcome-header {
+      margin-bottom: var(--spacing-xl);
+    }
+
+    .welcome-header h1 {
+      font-size: 2rem;
+      margin: 0 0 var(--spacing-xs) 0;
+      color: var(--text-primary);
+    }
+
+    .module-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-lg);
+    }
+
+    .modul-item {
+      padding: var(--spacing-xl);
+    }
+
+    .modul-main {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-md);
+    }
+
+    .modul-title {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    .modul-nr-badge {
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      min-width: 60px;
+      padding: 8px 12px;
+      background: var(--color-primary);
+      color: white;
+      border-radius: var(--radius-md);
+      font-size: 0.875rem;
+      font-weight: 700;
+      letter-spacing: 0.05em;
+    }
+
+    .modul-title h2 {
+      font-size: 1.25rem;
+      margin: 0;
+      color: var(--text-primary);
+      font-weight: 600;
+    }
+
+    .modul-details {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-sm);
+      padding-left: 72px;
+    }
+
+    .detail-row {
+      display: flex;
+      gap: var(--spacing-sm);
+      font-size: 0.9375rem;
+    }
+
+    .detail-label {
+      color: var(--text-muted);
+      min-width: 120px;
+    }
+
+    .detail-value {
+      color: var(--text-primary);
+    }
+
+    .detail-value-muted {
+      color: var(--text-muted);
+    }
+
+    .empty-state {
+      text-align: center;
+      padding: var(--spacing-2xl);
+      color: var(--text-muted);
+    }
+
     .selection-controls {
       display: flex;
       flex-wrap: wrap;
@@ -914,7 +1042,8 @@ export class DashboardComponent implements OnInit {
   
   // Role-based visibility
   isStudent = computed(() => this.authService.isStudent());
-  canSelectStudent = computed(() => !this.isStudent());
+  isDozent = computed(() => this.authService.isDozent());
+  canSelectStudent = computed(() => !this.isStudent() && !this.isDozent());
   
   // Data
   students = signal<StudentOption[]>([]);
@@ -924,6 +1053,10 @@ export class DashboardComponent implements OnInit {
   module = signal<any[]>([]);
   berechnung = signal<BerechnungDto | null>(null);
   fortschritt = signal<FortschrittDto | null>(null);
+  
+  // Dozenten Data
+  dozentenModule = signal<any[]>([]);
+  loadingDozentenModule = signal(false);
   
   // Computed
   studiengangName = computed(() => {
@@ -1040,9 +1173,34 @@ export class DashboardComponent implements OnInit {
     if (this.isStudent()) {
       // Studenten sehen nur ihre eigenen Daten
       this.loadOwnData();
+    } else if (this.isDozent()) {
+      // Dozenten sehen ihre Module
+      this.loadDozentenModuleData();
     } else {
-      // Admins/Dozenten/Prüfungsamt können Studenten auswählen
+      // Admins/Prüfungsamt können Studenten auswählen
       this.loadStudents();
+    }
+  }
+
+  async loadDozentenModuleData(): Promise<void> {
+    this.loadingDozentenModule.set(true);
+    
+    try {
+      const dozentId = this.authService.currentUser()?.id;
+      if (!dozentId) return;
+
+      const result = await firstValueFrom(this.apollo.query<{ dozentenModule: any[] }>({
+        query: GET_DOZENTEN_MODULE,
+        variables: { dozentId },
+        fetchPolicy: 'network-only'
+      }));
+
+      this.dozentenModule.set(result.data?.dozentenModule || []);
+
+    } catch (error) {
+      console.error('Error loading dozenten module:', error);
+    } finally {
+      this.loadingDozentenModule.set(false);
     }
   }
 

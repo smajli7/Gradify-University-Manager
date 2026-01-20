@@ -106,8 +106,10 @@ body {
   color: var(--text-primary);
   background-color: var(--bg-deep);
   min-height: 100vh;
+  min-height: 100dvh;
   -webkit-font-smoothing: antialiased;
   -moz-osx-font-smoothing: grayscale;
+  overflow-x: hidden;
 }
 
 /* ============================================

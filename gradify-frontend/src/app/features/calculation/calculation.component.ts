@@ -22,6 +22,7 @@ const GET_EINSCHREIBUNGEN_QUERY = gql`
       id
       aktuellesSemester
       studiengang {
+        id
         name
         kuerzel
       }
@@ -35,11 +36,13 @@ const CALCULATION_EINSCHREIBUNG_QUERY = gql`
     einschreibung(id: $einschreibungId) {
       id
       studiengang {
+        id
         name
         kuerzel
         gesamtEcts
       }
       pruefungsordnung {
+        id
         version
         berechnungsart
         module {
@@ -759,7 +762,8 @@ export class CalculationComponent implements OnInit {
       },
       error: (err) => {
         console.error('Error loading einschreibungen:', err);
-        this.error.set('Fehler beim Laden der Einschreibungen');
+        const message = err.graphQLErrors?.[0]?.message || err.message || 'Unbekannter Fehler';
+        this.error.set('Fehler beim Laden der Einschreibungen: ' + message);
       }
     });
   }

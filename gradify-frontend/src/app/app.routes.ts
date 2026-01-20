@@ -46,6 +46,11 @@ export const routes: Routes = [
           .then(m => m.ValidationComponent)
       },
       {
+        path: 'grades/entry',
+        loadComponent: () => import('./features/grades/entry/grade-entry.component')
+          .then(m => m.GradeEntryComponent)
+      },
+      {
         path: 'calculation',
         loadComponent: () => import('./features/calculation/calculation.component')
           .then(m => m.CalculationComponent)

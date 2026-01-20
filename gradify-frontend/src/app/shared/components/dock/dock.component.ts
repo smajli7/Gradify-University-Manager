@@ -52,11 +52,12 @@ export interface DockItem {
   styles: [`
     .dock {
       position: fixed;
-      bottom: var(--spacing-lg);
+      bottom: 32px;
       left: 50%;
       transform: translateX(-50%);
-      z-index: var(--z-dock);
+      z-index: 9999;
       transition: all var(--transition-normal);
+      pointer-events: auto;
     }
 
     .dock--hidden {
@@ -227,8 +228,13 @@ export class DockComponent {
   private router = inject(Router);
 
   get visibleItems(): (DockItem & { iconError?: boolean })[] {
+    // Wenn keine Rolle, zeige nichts
+    if (!this.userRole || this.userRole === '') {
+      return [];
+    }
+    
     return this.items
-      .filter(item => !item.roles || item.roles.includes(this.userRole))
+      .filter(item => !item.roles || item.roles.length === 0 || item.roles.includes(this.userRole))
       .map(item => ({ ...item, iconError: false }));
   }
 

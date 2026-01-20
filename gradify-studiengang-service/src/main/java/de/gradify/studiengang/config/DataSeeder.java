@@ -32,6 +32,7 @@ public class DataSeeder implements CommandLineRunner {
     private final ModulRepository modulRepository;
     private final PoRegelwerkRepository poRegelwerkRepository;
     private final EinschreibungRepository einschreibungRepository;
+    private final ModulZuweisungRepository modulZuweisungRepository;
 
     // Feste IDs fuer Entwicklung - muessen mit anderen Services uebereinstimmen
     public static final UUID THM_MANDANT_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
@@ -40,6 +41,9 @@ public class DataSeeder implements CommandLineRunner {
     public static final UUID STUDENT_1_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000001");
     public static final UUID STUDENT_2_ID = UUID.fromString("aaaa2222-0000-0000-0000-000000000002");
     public static final UUID STUDENT_3_ID = UUID.fromString("aaaa3333-0000-0000-0000-000000000003");
+    
+    // Dozenten-ID (Prof. Dr. Max Mueller aus User-Service)
+    public static final UUID DOZENT_1_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     
     // Einschreibungs-IDs (fuer Noten-Service)
     public static final UUID EINSCHREIBUNG_1 = UUID.fromString("eeee1111-1111-1111-1111-111111111111");
@@ -127,6 +131,19 @@ public class DataSeeder implements CommandLineRunner {
         createEinschreibung(EINSCHREIBUNG_2, STUDENT_2_ID, biotech, poBiotech, 3);
         createEinschreibung(EINSCHREIBUNG_3, STUDENT_3_ID, sozialarbeit, poSozial, 2);
 
+        // ============================================================
+        // Dozenten-Modul-Zuweisungen (Max. 3 Module pro Dozent)
+        // ============================================================
+        // Prof. Dr. Max Mueller unterrichtet:
+        // - Mathematik 1 (BVT_MODUL_04)
+        // - Technische Mechanik (BVT_MODUL_02)
+        // - Physik (BVT_MODUL_05)
+        createModulZuweisung(DOZENT_1_ID, BVT_MODUL_04, "Verantwortlich für Mathematik 1");
+        createModulZuweisung(DOZENT_1_ID, BVT_MODUL_02, "Verantwortlich für Technische Mechanik");
+        createModulZuweisung(DOZENT_1_ID, BVT_MODUL_05, "Verantwortlich für Physik");
+        
+        log.info("Modul-Zuweisungen erstellt: 3 Module für Prof. Mueller");
+
         log.info("Studiengang Seed-Daten erfolgreich erstellt!");
         log.info("- Bioverfahrenstechnik: {} Module", modulRepository.findByPruefungsordnungId(poBiotech.getId()).size());
         log.info("- Forschung in der Sozialen Arbeit: {} Module", modulRepository.findByPruefungsordnungId(poSozial.getId()).size());
@@ -196,7 +213,7 @@ public class DataSeeder implements CommandLineRunner {
             BigDecimal.ONE, true, "Laborversuche mit schriftlicher Ausarbeitung (2 Wochen)", null);
 
         // ===== SEMESTER 3 =====
-        createModul(po, "12", "Technische Thermodynamik", null,
+        createModulWithId(BVT_MODUL_12, po, "12", "Technische Thermodynamik", null,
             5, "3", 1, Modul.Pruefungsform.KLAUSUR, "120 Min.",
             Modul.Sprache.DEUTSCH, Modul.Modultyp.PFLICHT, Modul.Bewertungsart.NOTE,
             BigDecimal.ONE, true, null, null);
@@ -498,5 +515,14 @@ public class DataSeeder implements CommandLineRunner {
             .status(Einschreibung.EinschreibungStatus.AKTIV)
             .build();
         einschreibungRepository.save(einschreibung);
+    }
+
+    private void createModulZuweisung(UUID dozentId, UUID modulId, String bemerkung) {
+        ModulZuweisung zuweisung = ModulZuweisung.builder()
+            .dozentId(dozentId)
+            .modulId(modulId)
+            .bemerkung(bemerkung)
+            .build();
+        modulZuweisungRepository.save(zuweisung);
     }
 }

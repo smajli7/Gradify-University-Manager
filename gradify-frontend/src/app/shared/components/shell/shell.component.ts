@@ -52,8 +52,10 @@ import { AuthService } from '../../../core/services/auth.service';
   styles: [`
     .shell {
       min-height: 100vh;
+      min-height: 100dvh; /* Dynamic viewport height for mobile */
       display: flex;
       flex-direction: column;
+      position: relative;
     }
 
     .main-content {
@@ -95,21 +97,28 @@ export class ShellComponent {
       label: 'Dashboard',
       route: '/dashboard',
       icon: 'assets/icons/dashboard.svg',
-      roles: ['ADMIN', 'DOZENT', 'PRUEFUNGSAMT', 'STUDENT']
+      roles: ['ADMIN', 'LEHRENDER', 'PRUEFUNGSAMT', 'STUDENT']
     },
     {
       id: 'students',
       label: 'Studenten',
       route: '/students',
       icon: 'assets/icons/students.svg',
-      roles: ['ADMIN', 'DOZENT', 'PRUEFUNGSAMT']
+      roles: ['ADMIN', 'PRUEFUNGSAMT']
     },
     {
       id: 'grades',
       label: 'Noten',
       route: '/grades',
       icon: 'assets/icons/grades.svg',
-      roles: ['ADMIN', 'DOZENT', 'PRUEFUNGSAMT', 'STUDENT']
+      roles: ['STUDENT']
+    },
+    {
+      id: 'grade-entry',
+      label: 'Notenerfassung',
+      route: '/grades/entry',
+      icon: 'assets/icons/grades.svg',
+      roles: ['LEHRENDER']
     },
     {
       id: 'validation',
@@ -130,7 +139,7 @@ export class ShellComponent {
       label: 'Statistik',
       route: '/stats',
       icon: 'assets/icons/stats.svg',
-      roles: ['ADMIN', 'DOZENT', 'PRUEFUNGSAMT']
+      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT']
     },
     {
       id: 'progress',
@@ -144,7 +153,7 @@ export class ShellComponent {
       label: 'Studienplan',
       route: '/study-plan',
       icon: 'assets/icons/progress.svg',
-      roles: ['ADMIN', 'DOZENT', 'PRUEFUNGSAMT', 'STUDENT']
+      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT', 'STUDENT']
     },
     {
       id: 'admin',
@@ -158,7 +167,7 @@ export class ShellComponent {
       label: 'Profil',
       route: '/profile',
       icon: 'assets/icons/profile.svg',
-      roles: ['ADMIN', 'DOZENT', 'PRUEFUNGSAMT', 'STUDENT']
+      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT', 'STUDENT']
     }
   ];
 

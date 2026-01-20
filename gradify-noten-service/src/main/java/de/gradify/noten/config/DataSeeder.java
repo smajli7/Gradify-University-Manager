@@ -18,10 +18,10 @@ import java.util.UUID;
  * 
  * Die Modul-IDs entsprechen den festen IDs aus dem Studiengang-Service DataSeeder.
  * 
- * Studenten:
+ * Studenten (konsistent mit User-Service):
  * - Max Mustermann (Einschreibung 1): Bioverfahrenstechnik BA, 3. Semester
- * - Erika Musterfrau (Einschreibung 2): Bioverfahrenstechnik BA, 3. Semester
- * - Jan Beispiel (Einschreibung 3): Forschung Soziale Arbeit MA, 2. Semester
+ * - Anna Schmidt (Einschreibung 2): Bioverfahrenstechnik BA, 3. Semester
+ * - Leon Weber (Einschreibung 3): Forschung Soziale Arbeit MA, 2. Semester
  */
 @Component
 @Profile("dev")
@@ -35,9 +35,9 @@ public class DataSeeder implements CommandLineRunner {
     public static final UUID DOZENT_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
     
     // Einschreibungs-IDs (vom Studiengang-Service)
-    public static final UUID EINSCHREIBUNG_1 = UUID.fromString("eeee1111-1111-1111-1111-111111111111"); // Max
-    public static final UUID EINSCHREIBUNG_2 = UUID.fromString("eeee2222-2222-2222-2222-222222222222"); // Erika
-    public static final UUID EINSCHREIBUNG_3 = UUID.fromString("eeee3333-3333-3333-3333-333333333333"); // Jan
+    public static final UUID EINSCHREIBUNG_1 = UUID.fromString("eeee1111-1111-1111-1111-111111111111"); // Max Mustermann
+    public static final UUID EINSCHREIBUNG_2 = UUID.fromString("eeee2222-2222-2222-2222-222222222222"); // Anna Schmidt
+    public static final UUID EINSCHREIBUNG_3 = UUID.fromString("eeee3333-3333-3333-3333-333333333333"); // Leon Weber
     
     // ========================================
     // Bioverfahrenstechnik Module (BVT) - vom Studiengang-Service
@@ -106,7 +106,7 @@ public class DataSeeder implements CommandLineRunner {
             LocalDate.of(2024, 7, 20), Note.NoteStatus.FREIGEGEBEN, "Good presentation skills");
 
         // ============================================================
-        // Erika Musterfrau - Bioverfahrenstechnik BA, 3. Semester
+        // Anna Schmidt - Bioverfahrenstechnik BA, 3. Semester
         // Hat Semester 1+2 abgeschlossen, mit einer Wiederholung
         // ============================================================
         
@@ -143,7 +143,7 @@ public class DataSeeder implements CommandLineRunner {
             LocalDate.of(2025, 1, 8), Note.NoteStatus.VALIDIERT, "Warte auf finale Freigabe");
 
         // ============================================================
-        // Jan Beispiel - Forschung Soziale Arbeit MA, 2. Semester
+        // Leon Weber - Forschung Soziale Arbeit MA, 2. Semester
         // Hat Semester 1 abgeschlossen
         // ============================================================
         
@@ -163,8 +163,8 @@ public class DataSeeder implements CommandLineRunner {
 
         log.info("Noten Seed-Daten erfolgreich erstellt! {} Noten angelegt.", noteRepository.count());
         log.info("- Max Mustermann: 11 Noten (Sem. 1+2 komplett)");
-        log.info("- Erika Musterfrau: 14 Noten (inkl. Wiederholung, Sem. 3 beginnt)");
-        log.info("- Jan Beispiel: 5 Noten (Sem. 1 komplett, Sem. 2 laufend)");
+        log.info("- Anna Schmidt: 14 Noten (inkl. Wiederholung, Sem. 3 beginnt)");
+        log.info("- Leon Weber: 5 Noten (Sem. 1 komplett, Sem. 2 laufend)");
     }
 
     private void createNote(UUID einschreibungId, UUID modulId, BigDecimal noteWert, 

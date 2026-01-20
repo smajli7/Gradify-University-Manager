@@ -53,7 +53,8 @@ export class AuthService {
     const user = this.currentUser();
     if (!user || !user.roles.length) return '';
     // Return primary role without ROLE_ prefix
-    return user.roles[0].replace('ROLE_', '');
+    const role = user.roles[0].replace('ROLE_', '');
+    return role; // Gibt LEHRENDER, ADMIN, STUDENT, PRUEFUNGSAMT zurück
   });
 
   isStudent = computed(() => {

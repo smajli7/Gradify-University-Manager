@@ -12,6 +12,9 @@ type Query {
     module(studiengangId: ID, poId: ID): [Modul!]!
     modul(id: ID!): Modul
     
+    # Dozenten-Modul-Zuweisungen
+    dozentenModule(dozentId: ID!): [Modul!]!
+    
     # Einschreibungen Queries
     einschreibungen(studentId: ID, studiengangId: ID): [Einschreibung!]!
     einschreibung(id: ID!): Einschreibung

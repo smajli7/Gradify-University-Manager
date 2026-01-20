@@ -1,6 +1,7 @@
 import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { Router } from '@angular/router';
 import { StudentService } from '../../core/services/student.service';
 import { Student, StudentStatus } from '../../types';
 
@@ -690,7 +691,10 @@ export class StudentsComponent implements OnInit {
     return students;
   });
 
-  constructor(public studentService: StudentService) {}
+  constructor(
+    public studentService: StudentService,
+    private readonly router: Router
+  ) {}
 
   ngOnInit(): void {
     this.loadStudents();
@@ -725,8 +729,13 @@ export class StudentsComponent implements OnInit {
   }
 
   viewGrades(student: Student): void {
-    // TODO: Navigate to grades with student filter
-    console.log('View grades for:', student);
     this.closeDetail();
+    // Navigate to validation page with student filter (for Prüfungsamt)
+    this.router.navigate(['/grades/validation'], {
+      queryParams: { 
+        student: `${student.vorname} ${student.nachname}`,
+        matrikel: student.matrikelnummer
+      }
+    });
   }
 }

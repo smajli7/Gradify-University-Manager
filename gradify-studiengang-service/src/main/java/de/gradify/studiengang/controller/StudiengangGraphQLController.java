@@ -28,6 +28,7 @@ public class StudiengangGraphQLController {
     private final ModulRepository modulRepository;
     private final EinschreibungRepository einschreibungRepository;
     private final PruefungsordnungRepository pruefungsordnungRepository;
+    private final ModulZuweisungRepository modulZuweisungRepository;
 
     // ==================== MANDANT QUERIES ====================
 
@@ -225,6 +226,24 @@ public class StudiengangGraphQLController {
     @SchemaMapping(typeName = "Einschreibung", field = "pruefungsordnung")
     public Pruefungsordnung getPruefungsordnungForEinschreibung(Einschreibung einschreibung) {
         return einschreibung.getPruefungsordnung();
+    }
+
+    // ==================== DOZENTEN-MODUL-ZUWEISUNGEN ====================
+
+    /**
+     * Holt alle Module, die einem Dozenten zugewiesen sind.
+     * GraphQL: query { dozentenModule(dozentId: "...") { id, modulNr, name, ects } }
+     */
+    @QueryMapping
+    public List<Modul> dozentenModule(@Argument("dozentId") String dozentId) {
+        log.info("GraphQL: Fetching modules for dozent: {}", dozentId);
+        
+        List<ModulZuweisung> zuweisungen = modulZuweisungRepository.findByDozentId(UUID.fromString(dozentId));
+        List<UUID> modulIds = zuweisungen.stream()
+            .map(ModulZuweisung::getModulId)
+            .toList();
+        
+        return modulRepository.findAllById(modulIds);
     }
 
     // ==================== PRUEFUNGSORDNUNG SCHEMA MAPPINGS ====================

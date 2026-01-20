@@ -39,7 +39,8 @@ export class StudentService {
 
     return this.apollo.watchQuery<{ students: Student[] }>({
       query: GET_STUDENTS,
-      fetchPolicy: 'cache-and-network'
+      fetchPolicy: 'cache-and-network',
+      context: { clientName: 'user' }
     }).valueChanges.pipe(
       map(result => result.data.students),
       tap(students => {
@@ -61,7 +62,8 @@ export class StudentService {
   getStudent(id: string): Observable<Student | null> {
     return this.apollo.watchQuery<{ student: Student }>({
       query: GET_STUDENT,
-      variables: { id }
+      variables: { id },
+      context: { clientName: 'user' }
     }).valueChanges.pipe(
       map(result => result.data.student),
       catchError(error => {
@@ -77,7 +79,8 @@ export class StudentService {
   searchByMatrikel(matrikelnummer: string): Observable<Student | null> {
     return this.apollo.query<{ studentByMatrikel: Student }>({
       query: GET_STUDENT_BY_MATRIKEL,
-      variables: { matrikelnummer }
+      variables: { matrikelnummer },
+      context: { clientName: 'user' }
     }).pipe(
       map(result => result.data.studentByMatrikel),
       catchError(error => {
