@@ -4,7 +4,6 @@ import de.gradify.shared.grpc.berechnung.*;
 import io.grpc.StatusRuntimeException;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.client.inject.GrpcClient;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import java.util.Collections;
@@ -17,7 +16,6 @@ import java.util.stream.Collectors;
  */
 @Service
 @Slf4j
-@Lazy
 public class NotenGrpcClient {
 
     @GrpcClient("noten-service")

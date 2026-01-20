@@ -221,14 +221,32 @@ interface EinschreibungOption {
                     -
                   }
                 </span>
-                <span class="stat-verified-icon" 
-                      title="Berechnet durch Berechnungs-Service nach Prüfungsordnung"
-                      aria-label="Berechnet durch Berechnungs-Service">
-                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                    <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                    <polyline points="22 4 12 14.01 9 11.01"/>
-                  </svg>
-                </span>
+                @if (gesamtnote() !== null && gesamtnoteVomService()) {
+                  <span class="stat-verified-icon stat-verified-icon--service tooltip-container">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
+                      <polyline points="22 4 12 14.01 9 11.01"/>
+                    </svg>
+                    <span class="tooltip-text">Berechnet durch Berechnungs-Service nach Prüfungsordnung</span>
+                  </span>
+                } @else if (gesamtnote() !== null && berechnungServiceErreichbar()) {
+                  <span class="stat-verified-icon stat-verified-icon--pending tooltip-container">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <polyline points="12 6 12 12 16 14"/>
+                    </svg>
+                    <span class="tooltip-text">Durchschnitt - Service erreichbar, Berechnung ausstehend (gRPC-Verbindung prüfen)</span>
+                  </span>
+                } @else if (gesamtnote() !== null) {
+                  <span class="stat-verified-icon stat-verified-icon--fallback tooltip-container">
+                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <circle cx="12" cy="12" r="10"/>
+                      <line x1="12" y1="8" x2="12" y2="12"/>
+                      <line x1="12" y1="16" x2="12.01" y2="16"/>
+                    </svg>
+                    <span class="tooltip-text">Durchschnitt (vorläufig) - Berechnungs-Service nicht verfügbar</span>
+                  </span>
+                }
               </div>
               <span class="stat-label">Gesamtnote</span>
             </div>
@@ -591,13 +609,65 @@ interface EinschreibungOption {
     .stat-verified-icon {
       display: inline-flex;
       align-items: center;
-      color: var(--color-success);
       opacity: 0.7;
       cursor: help;
       transition: opacity 0.2s ease;
     }
 
     .stat-verified-icon:hover {
+      opacity: 1;
+    }
+
+    .stat-verified-icon--service {
+      color: var(--color-success);
+    }
+
+    .stat-verified-icon--fallback {
+      color: var(--color-warning);
+    }
+
+    .stat-verified-icon--pending {
+      color: var(--color-primary);
+    }
+
+    /* Tooltip */
+    .tooltip-container {
+      position: relative;
+    }
+
+    .tooltip-text {
+      visibility: hidden;
+      opacity: 0;
+      position: absolute;
+      bottom: 130%;
+      left: 50%;
+      transform: translateX(-50%);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      padding: 8px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      font-size: var(--font-size-xs);
+      font-weight: 400;
+      white-space: nowrap;
+      z-index: 100;
+      transition: opacity 0.2s ease, visibility 0.2s ease;
+      box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3);
+    }
+
+    .tooltip-text::after {
+      content: '';
+      position: absolute;
+      top: 100%;
+      left: 50%;
+      transform: translateX(-50%);
+      border-width: 6px;
+      border-style: solid;
+      border-color: var(--border-color) transparent transparent transparent;
+    }
+
+    .tooltip-container:hover .tooltip-text {
+      visibility: visible;
       opacity: 1;
     }
 
@@ -864,45 +934,96 @@ export class DashboardComponent implements OnInit {
   currentSemester = computed(() => this.einschreibung()?.aktuellesSemester || 1);
   totalEcts = computed(() => this.einschreibung()?.studiengang?.gesamtEcts || 0);
   
-  // Berechnungsdaten vom Service
-  gesamtnote = computed(() => this.berechnung()?.gesamtnote ?? null);
+  // Berechnungsdaten vom Service oder Fallback-Berechnung
+  gesamtnote = computed(() => {
+    // Versuche zuerst vom Berechnungsservice
+    const berechnung = this.berechnung();
+    
+    if (berechnung?.gesamtnote !== null && berechnung?.gesamtnote !== undefined) {
+      return berechnung.gesamtnote;
+    }
+    
+    // Fallback: Durchschnitt aus bestandenen Noten berechnen
+    const bestandeneNoten = this.noten().filter(n => 
+      (n.bestanden === true || n.status === 'FREIGEGEBEN' || n.status === 'VALIDIERT') &&
+      n.noteWert !== null && n.noteWert !== undefined
+    );
+    
+    if (bestandeneNoten.length === 0) {
+      return null;
+    }
+    
+    const summe = bestandeneNoten.reduce((sum, n) => sum + n.noteWert, 0);
+    const durchschnitt = summe / bestandeneNoten.length;
+    return Math.round(durchschnitt * 10) / 10; // Auf 1 Dezimalstelle runden
+  });
+  
+  // Flag ob Service erreichbar war (unabhängig davon ob Gesamtnote berechnet wurde)
+  berechnungServiceErreichbar = computed(() => {
+    const berechnung = this.berechnung();
+    // Service ist erreichbar wenn wir ein Berechnung-Objekt haben
+    return berechnung !== null;
+  });
+
+  // Flag ob Gesamtnote vom Service kommt (nicht vom Fallback)
+  gesamtnoteVomService = computed(() => {
+    const berechnung = this.berechnung();
+    const vomService = berechnung?.gesamtnote !== null && berechnung?.gesamtnote !== undefined;
+    return vomService;
+  });
   
   bestandenCount = computed(() => {
     const f = this.fortschritt();
-    if (f) return f.moduleBestanden;
+    if (f && f.moduleBestanden > 0) return f.moduleBestanden;
     // Fallback: aus Noten berechnen
-    return this.noten().filter(n => n.bestanden === true).length;
+    const bestandeneNoten = this.noten().filter(n => {
+      return n.bestanden === true || n.status === 'FREIGEGEBEN' || n.status === 'VALIDIERT';
+    });
+    return bestandeneNoten.length;
   });
   
   ectsErreicht = computed(() => {
     const f = this.fortschritt();
-    if (f) return f.ectsErreicht;
+    if (f && f.ectsErreicht > 0) return f.ectsErreicht;
     // Fallback: aus Noten berechnen
-    const bestandeneModulIds = new Set(
-      this.noten().filter(n => n.bestanden === true).map(n => n.modulId)
+    const bestandeneNoten = this.noten().filter(n => 
+      n.bestanden === true || n.status === 'FREIGEGEBEN' || n.status === 'VALIDIERT'
     );
-    return this.module()
-      .filter(m => bestandeneModulIds.has(m.id))
-      .reduce((sum, m) => sum + m.ects, 0);
+    const bestandeneModulIds = new Set(
+      bestandeneNoten.map(n => String(n.modulId))
+    );
+    const moduleList = this.module();
+    const ects = moduleList
+      .filter(m => bestandeneModulIds.has(String(m.id)))
+      .reduce((sum, m) => sum + (m.ects || 0), 0);
+    return ects;
   });
   
   offeneModule = computed(() => {
-    const f = this.fortschritt();
-    if (f) return f.moduleOffen;
-    // Fallback: aus Noten berechnen
-    const bestandeneModulIds = new Set(
-      this.noten().filter(n => n.bestanden === true).map(n => n.modulId)
+    // Immer aus Modulen berechnen, da Service-Daten oft unvollständig
+    const moduleList = this.module();
+    if (moduleList.length === 0) {
+      // Kein Fallback möglich, prüfe Service
+      const f = this.fortschritt();
+      if (f && f.moduleOffen > 0) return f.moduleOffen;
+      return 0;
+    }
+    
+    const bestandeneNoten = this.noten().filter(n => 
+      n.bestanden === true || n.status === 'FREIGEGEBEN' || n.status === 'VALIDIERT'
     );
-    return this.module().filter(m => !bestandeneModulIds.has(m.id)).length;
+    const bestandeneModulIds = new Set(
+      bestandeneNoten.map(n => String(n.modulId))
+    );
+    return moduleList.filter(m => !bestandeneModulIds.has(String(m.id))).length;
   });
   
   progressPercent = computed(() => {
-    const f = this.fortschritt();
-    if (f) return f.fortschrittProzent;
-    // Fallback: aus ECTS berechnen
+    // Immer aus ECTS berechnen für konsistente Anzeige
     const total = this.totalEcts();
+    const erreicht = this.ectsErreicht();
     if (total === 0) return 0;
-    return (this.ectsErreicht() / total) * 100;
+    return (erreicht / total) * 100;
   });
   
   recentNoten = computed(() => {
@@ -1064,6 +1185,7 @@ export class DashboardComponent implements OnInit {
       errorPolicy: 'all'
     });
 
+    // Lade Hauptdaten (Einschreibung und Noten)
     Promise.all([
       firstValueFrom(einschreibungQuery).catch(err => {
         console.error('Einschreibung Query Error:', err);
@@ -1072,17 +1194,8 @@ export class DashboardComponent implements OnInit {
       firstValueFrom(notenQuery).catch(err => {
         console.error('Noten Query Error:', err);
         return { data: { notenByStudent: [], durchschnittsnote: null }, errors: [] };
-      }),
-      // Lade Berechnungsdaten vom Berechnungs-Service
-      firstValueFrom(this.calculationService.getGesamtnote(this.selectedEinschreibung)).catch(err => {
-        console.warn('Berechnung Service Error:', err);
-        return { success: false, data: null, message: err.message || 'Berechnung nicht verfügbar' };
-      }),
-      firstValueFrom(this.calculationService.getFortschritt(this.selectedEinschreibung)).catch(err => {
-        console.warn('Fortschritt Service Error:', err);
-        return { success: false, data: null, message: err.message || 'Fortschritt nicht verfügbar' };
       })
-    ]).then(([einschreibungResult, notenResult, berechnungResult, fortschrittResult]) => {
+    ]).then(([einschreibungResult, notenResult]) => {
       console.log('Einschreibung Result:', einschreibungResult);
       console.log('Noten Result:', notenResult);
       
@@ -1110,46 +1223,16 @@ export class DashboardComponent implements OnInit {
 
       this.einschreibung.set(einschreibungData);
       
-      // Module aus Prüfungsordnung laden (kann null sein)
+      // Module aus Prüfungsordnung laden
       const moduleList = einschreibungData.pruefungsordnung?.module || [];
-      console.log('Loaded modules from PO:', moduleList.length);
       this.module.set(moduleList);
       
-      // Noten laden (kann leer sein)
+      // Noten laden
       const notenList = notenResult?.data?.notenByStudent || [];
-      console.log('Loaded noten:', notenList.length);
       this.noten.set(notenList);
       
-      // Berechnungsdaten vom Berechnungs-Service
-      if (berechnungResult?.success && berechnungResult.data) {
-        console.log('Loaded berechnung:', berechnungResult.data);
-        this.berechnung.set(berechnungResult.data);
-      } else {
-        console.warn('Berechnung nicht verfügbar, versuche Neuberechnung...');
-        // Versuche Neuberechnung zu triggern, wenn poId vorhanden
-        const poId = einschreibungData.poId;
-        const ectsGesamt = einschreibungData.studiengang?.gesamtEcts || 180;
-        if (poId) {
-          this.calculationService.berechneGesamtnote(this.selectedEinschreibung, poId, ectsGesamt)
-            .subscribe({
-              next: (result) => {
-                if (result.success && result.data) {
-                  this.berechnung.set(result.data);
-                }
-              },
-              error: (err) => console.warn('Neuberechnung fehlgeschlagen:', err)
-            });
-        }
-      }
-      
-      // Fortschrittsdaten vom Berechnungs-Service
-      if (fortschrittResult?.success && fortschrittResult.data) {
-        console.log('Loaded fortschritt:', fortschrittResult.data);
-        this.fortschritt.set(fortschrittResult.data);
-      }
-      
-      console.log('Loaded modules:', this.module().length);
-      console.log('Loaded noten:', this.noten().length);
+      // Lade Berechnungsdaten vom Berechnungs-Service (optional - im Hintergrund)
+      this.loadBerechnungsdaten(einschreibungData);
       
       this.dataLoaded.set(true);
       this.loading.set(false);
@@ -1213,5 +1296,103 @@ export class DashboardComponent implements OnInit {
       'FREIGEGEBEN': 'success'
     };
     return colors[status] || 'info';
+  }
+
+  /**
+   * Lädt Berechnungsdaten vom Berechnungs-Service (optional, im Hintergrund).
+   * Das Dashboard funktioniert auch ohne diese Daten.
+   */
+  private loadBerechnungsdaten(einschreibungData: any): void {
+    const poId = einschreibungData.poId;
+    const ectsGesamt = einschreibungData.studiengang?.gesamtEcts || 180;
+    
+    console.log('loadBerechnungsdaten - poId:', poId, 'ectsGesamt:', ectsGesamt);
+    
+    // Lade Gesamtnote
+    this.calculationService.getGesamtnote(this.selectedEinschreibung).subscribe({
+      next: (result) => {
+        console.log('getGesamtnote result:', result);
+        if (result.success && result.data) {
+          console.log('Loaded berechnung:', result.data);
+          this.berechnung.set(result.data);
+          
+          // Wenn Berechnung existiert aber keine Gesamtnote hat, triggere Neuberechnung
+          if (result.data.gesamtnote === null && poId) {
+            console.log('Berechnung ohne Gesamtnote, starte Neuberechnung...');
+            this.triggerNeuberechnung(poId, ectsGesamt);
+          }
+        } else {
+          // Keine Berechnung vorhanden, triggere Neuberechnung
+          console.log('Keine Berechnung vorhanden, starte Neuberechnung... poId:', poId);
+          if (poId) {
+            this.triggerNeuberechnung(poId, ectsGesamt);
+          } else {
+            console.warn('Keine poId vorhanden - kann keine Neuberechnung triggern');
+          }
+        }
+      },
+      error: (err) => {
+        console.warn('Berechnung Service Fehler:', err.status, err.message);
+        // 404 = keine Berechnung vorhanden, versuche Neuberechnung
+        console.log('Versuche Neuberechnung... poId:', poId);
+        if (poId) {
+          this.triggerNeuberechnung(poId, ectsGesamt);
+        } else {
+          console.warn('Keine poId vorhanden - kann keine Neuberechnung triggern');
+        }
+      }
+    });
+
+    // Lade Fortschritt
+    this.calculationService.getFortschritt(this.selectedEinschreibung).subscribe({
+      next: (result) => {
+        if (result.success && result.data) {
+          console.log('Loaded fortschritt:', result.data);
+          this.fortschritt.set(result.data);
+        }
+      },
+      error: (err) => {
+        console.warn('Fortschritt Service nicht verfügbar:', err);
+        // Nicht kritisch, Dashboard funktioniert auch ohne
+      }
+    });
+  }
+
+  /**
+   * Triggert eine Neuberechnung der Gesamtnote.
+   */
+  private triggerNeuberechnung(poId: string, ectsGesamt: number): void {
+    console.log('=== TRIGGER NEUBERECHNUNG ===');
+    console.log('Einschreibung:', this.selectedEinschreibung);
+    console.log('PO-ID:', poId);
+    console.log('ECTS Gesamt:', ectsGesamt);
+    
+    this.calculationService.berechneGesamtnote(this.selectedEinschreibung, poId, ectsGesamt)
+      .subscribe({
+        next: (result) => {
+          console.log('Neuberechnung Response:', result);
+          if (result.success && result.data) {
+            console.log('Neuberechnung erfolgreich - Gesamtnote:', result.data.gesamtnote);
+            this.berechnung.set(result.data);
+            // Lade auch Fortschritt neu
+            this.calculationService.getFortschritt(this.selectedEinschreibung).subscribe({
+              next: (fortschrittResult) => {
+                if (fortschrittResult.success && fortschrittResult.data) {
+                  console.log('Fortschritt aktualisiert:', fortschrittResult.data);
+                  this.fortschritt.set(fortschrittResult.data);
+                }
+              },
+              error: (err) => console.warn('Fortschritt nach Neuberechnung nicht verfügbar:', err)
+            });
+          } else {
+            console.warn('Neuberechnung: Kein Ergebnis in Response', result);
+          }
+        },
+        error: (err) => {
+          console.error('Neuberechnung FEHLER:', err);
+          console.error('Status:', err.status, 'Message:', err.message);
+          // Dashboard funktioniert trotzdem mit Fallback-Berechnung
+        }
+      });
   }
 }

@@ -37,6 +37,7 @@ public class RegelwerkServiceGrpcImpl extends RegelwerkServiceGrpc.RegelwerkServ
             
             Optional<Pruefungsordnung> poOpt = pruefungsordnungRepository.findById(poId);
             if (poOpt.isEmpty()) {
+                log.warn("gRPC: Pruefungsordnung nicht gefunden: {}", poId);
                 responseObserver.onError(io.grpc.Status.NOT_FOUND
                         .withDescription("Prüfungsordnung nicht gefunden: " + poId)
                         .asRuntimeException());
@@ -44,6 +45,8 @@ public class RegelwerkServiceGrpcImpl extends RegelwerkServiceGrpc.RegelwerkServ
             }
 
             Pruefungsordnung po = poOpt.get();
+            log.info("gRPC: Gefunden PO: {} - Berechnungsart: {}", po.getVersion(), 
+                    po.getBerechnungsart() != null ? po.getBerechnungsart().name() : "NULL");
             
             // Regelwerk für PO laden
             Optional<PoRegelwerk> regelwerkOpt = poRegelwerkRepository.findByPruefungsordnungId(poId);
@@ -56,18 +59,24 @@ public class RegelwerkServiceGrpcImpl extends RegelwerkServiceGrpc.RegelwerkServ
                 parameter = regelwerk.getBeschreibung() != null ? regelwerk.getBeschreibung() : "";
             }
 
+            // Null-Check für berechnungsart
+            String berechnungsartStr = po.getBerechnungsart() != null 
+                    ? po.getBerechnungsart().name() 
+                    : "GEWICHTET";
+
             RegelwerkResponse response = RegelwerkResponse.newBuilder()
                     .setPoId(poId.toString())
-                    .setBerechnungsart(po.getBerechnungsart().name())
+                    .setBerechnungsart(berechnungsartStr)
                     .setFormel(formel)
                     .setParameterJson(parameter)
                     .build();
 
+            log.info("gRPC: Sending Regelwerk response for PO: {}", poId);
             responseObserver.onNext(response);
             responseObserver.onCompleted();
 
         } catch (Exception e) {
-            log.error("gRPC Error getting Regelwerk: {}", e.getMessage());
+            log.error("gRPC Error getting Regelwerk: {} - Stacktrace:", e.getMessage(), e);
             responseObserver.onError(io.grpc.Status.INTERNAL
                     .withDescription("Fehler beim Abrufen des Regelwerks: " + e.getMessage())
                     .asRuntimeException());
@@ -83,14 +92,18 @@ public class RegelwerkServiceGrpcImpl extends RegelwerkServiceGrpc.RegelwerkServ
             UUID poId = UUID.fromString(request.getPoId());
             
             List<Modul> module = modulRepository.findByPruefungsordnungId(poId);
+            log.info("gRPC: Found {} Module in DB for PO: {}", module.size(), poId);
 
             ModulGewichtungListResponse.Builder responseBuilder = ModulGewichtungListResponse.newBuilder();
 
             for (Modul modul : module) {
+                String modulNr = modul.getModulNr() != null ? modul.getModulNr() : "?";
+                double gewichtungWert = modul.getGewichtung() != null ? modul.getGewichtung().doubleValue() : 1.0;
+                
                 ModulGewichtung gewichtung = ModulGewichtung.newBuilder()
                         .setModulId(modul.getId().toString())
-                        .setModulNr(modul.getModulNr())
-                        .setGewichtung(modul.getGewichtung() != null ? modul.getGewichtung().doubleValue() : 1.0)
+                        .setModulNr(modulNr)
+                        .setGewichtung(gewichtungWert)
                         .setInGesamtnote(modul.isInGesamtnote())
                         .build();
                 
@@ -102,7 +115,7 @@ public class RegelwerkServiceGrpcImpl extends RegelwerkServiceGrpc.RegelwerkServ
             responseObserver.onCompleted();
 
         } catch (Exception e) {
-            log.error("gRPC Error getting Modul-Gewichtungen: {}", e.getMessage());
+            log.error("gRPC Error getting Modul-Gewichtungen: {} - Stacktrace:", e.getMessage(), e);
             responseObserver.onError(io.grpc.Status.INTERNAL
                     .withDescription("Fehler beim Abrufen der Gewichtungen: " + e.getMessage())
                     .asRuntimeException());

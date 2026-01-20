@@ -27,8 +27,8 @@ if (-not $dockerCmd) {
         Write-Host "FEHLER: Docker Compose konnte nicht gestartet werden!" -ForegroundColor Red
         exit 1
     }
-    Write-Host "Warte 5 Sekunden auf PostgreSQL..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 5
+    Write-Host "Warte 3 Sekunden auf PostgreSQL..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 3
     Write-Host ""
 }
 
@@ -77,7 +77,7 @@ foreach ($service in $services) {
     
     # Warte kurz zwischen den Starts
     if ($service.Order -lt $services.Count) {
-        Start-Sleep -Seconds 3
+        Start-Sleep -Seconds 1
     }
 }
 

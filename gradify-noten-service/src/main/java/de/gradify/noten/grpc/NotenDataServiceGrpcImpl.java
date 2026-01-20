@@ -21,16 +21,31 @@ public class NotenDataServiceGrpcImpl extends NotenDataServiceGrpc.NotenDataServ
 
     private final NoteRepository noteRepository;
 
+    @jakarta.annotation.PostConstruct
+    public void init() {
+        log.info("=== NotenDataServiceGrpcImpl initialized ===");
+    }
+
     @Override
     public void getNotenFuerBerechnung(NotenRequest request, StreamObserver<NotenListResponse> responseObserver) {
+        log.info("=== gRPC CALL RECEIVED ===");
         log.info("gRPC: Getting Noten for Berechnung, einschreibungId: {}", request.getEinschreibungId());
 
         try {
             UUID einschreibungId = UUID.fromString(request.getEinschreibungId());
             
-            // Nur freigegebene Noten für Berechnung verwenden
-            List<Note> noten = noteRepository.findByEinschreibungIdAndStatus(
+            // Noten mit Status FREIGEGEBEN oder VALIDIERT für Berechnung verwenden
+            List<Note> notenFreigegeben = noteRepository.findByEinschreibungIdAndStatus(
                     einschreibungId, Note.NoteStatus.FREIGEGEBEN);
+            List<Note> notenValidiert = noteRepository.findByEinschreibungIdAndStatus(
+                    einschreibungId, Note.NoteStatus.VALIDIERT);
+            
+            // Zusammenführen
+            List<Note> noten = new java.util.ArrayList<>(notenFreigegeben);
+            noten.addAll(notenValidiert);
+            
+            log.info("gRPC: Found {} FREIGEGEBEN + {} VALIDIERT = {} Noten", 
+                    notenFreigegeben.size(), notenValidiert.size(), noten.size());
 
             NotenListResponse.Builder responseBuilder = NotenListResponse.newBuilder();
 
