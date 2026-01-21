@@ -1,6 +1,7 @@
 import { Routes } from '@angular/router';
 import { authGuard, authGuardChild, authGuardMatch } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
+import { roleRedirectGuard } from './core/guards/role-redirect.guard';
 
 export const routes: Routes = [
   // Public Routes (ohne Shell)
@@ -22,8 +23,8 @@ export const routes: Routes = [
     children: [
       {
         path: '',
-        redirectTo: 'dashboard',
-        pathMatch: 'full'
+        canActivate: [roleRedirectGuard],
+        children: []
       },
       {
         path: 'dashboard',
@@ -74,6 +75,21 @@ export const routes: Routes = [
         path: 'admin',
         loadComponent: () => import('./features/admin/admin.component')
           .then(m => m.AdminComponent)
+      },
+      {
+        path: 'admin/mandanten',
+        loadComponent: () => import('./features/admin/mandanten/mandanten.component')
+          .then(m => m.MandantenComponent)
+      },
+      {
+        path: 'admin/users',
+        loadComponent: () => import('./features/admin/users/users-admin.component')
+          .then(m => m.UsersAdminComponent)
+      },
+      {
+        path: 'admin/assignments',
+        loadComponent: () => import('./features/admin/assignments/assignments.component')
+          .then(m => m.AssignmentsComponent)
       },
       {
         path: 'profile',

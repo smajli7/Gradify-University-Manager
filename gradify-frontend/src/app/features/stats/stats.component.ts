@@ -658,8 +658,9 @@ interface ModulStats {
     .badge {
       display: inline-block;
       padding: 2px 8px;
-      background: var(--color-primary);
-      color: white;
+      background: rgba(0, 242, 255, 0.1);
+      border: 1px solid rgba(0, 242, 255, 0.2);
+      color: var(--color-primary);
       border-radius: var(--radius-full);
       font-size: 0.75rem;
       font-weight: 600;

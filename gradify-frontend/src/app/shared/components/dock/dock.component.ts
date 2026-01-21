@@ -22,7 +22,7 @@ export interface DockItem {
             class="dock-item"
             [routerLink]="item.route"
             routerLinkActive="dock-item--active"
-            [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' }"
+            [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/admin' }"
             [title]="item.label">
             
             <!-- Custom Icon Image -->

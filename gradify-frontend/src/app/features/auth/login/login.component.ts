@@ -1039,7 +1039,26 @@ export class LoginComponent {
     this.authService.login({ username: this.username, password: this.password }).subscribe({
       next: () => {
         this.isLoading = false;
-        this.router.navigate(['/dashboard']);
+        // Redirect basierend auf Rolle
+        const user = this.authService.currentUser();
+        const role = user?.roles[0];
+        
+        switch (role) {
+          case 'ROLE_ADMIN':
+            this.router.navigate(['/admin']);
+            break;
+          case 'ROLE_LEHRENDER':
+            this.router.navigate(['/dashboard']);
+            break;
+          case 'ROLE_PRUEFUNGSAMT':
+            this.router.navigate(['/students']);
+            break;
+          case 'ROLE_STUDENT':
+            this.router.navigate(['/dashboard']);
+            break;
+          default:
+            this.router.navigate(['/dashboard']);
+        }
       },
       error: (err) => {
         this.isLoading = false;

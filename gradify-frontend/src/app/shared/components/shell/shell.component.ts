@@ -92,12 +92,34 @@ export class ShellComponent {
   // Navigation Items mit Custom Icons
   // Ersetze .svg durch .png wenn du eigene Photoshop-Icons erstellst
   dockItems: DockItem[] = [
+    // === ADMIN ===
     {
-      id: 'dashboard',
-      label: 'Dashboard',
-      route: '/dashboard',
+      id: 'admin',
+      label: 'Übersicht',
+      route: '/admin',
       icon: 'assets/icons/dashboard.svg',
-      roles: ['ADMIN', 'LEHRENDER', 'PRUEFUNGSAMT', 'STUDENT']
+      roles: ['ADMIN']
+    },
+    {
+      id: 'mandanten',
+      label: 'Hochschulen',
+      route: '/admin/mandanten',
+      icon: 'assets/icons/stats.svg',
+      roles: ['ADMIN']
+    },
+    {
+      id: 'users',
+      label: 'Benutzer',
+      route: '/admin/users',
+      icon: 'assets/icons/admin.svg',
+      roles: ['ADMIN']
+    },
+    {
+      id: 'assignments',
+      label: 'Zuweisungen',
+      route: '/admin/assignments',
+      icon: 'assets/icons/grades.svg',
+      roles: ['ADMIN']
     },
     {
       id: 'students',
@@ -105,20 +127,6 @@ export class ShellComponent {
       route: '/students',
       icon: 'assets/icons/students.svg',
       roles: ['ADMIN', 'PRUEFUNGSAMT']
-    },
-    {
-      id: 'grades',
-      label: 'Noten',
-      route: '/grades',
-      icon: 'assets/icons/grades.svg',
-      roles: ['STUDENT']
-    },
-    {
-      id: 'grade-entry',
-      label: 'Notenerfassung',
-      route: '/grades/entry',
-      icon: 'assets/icons/grades.svg',
-      roles: ['LEHRENDER']
     },
     {
       id: 'validation',
@@ -142,6 +150,34 @@ export class ShellComponent {
       roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT']
     },
     {
+      id: 'study-plan',
+      label: 'Studienplan',
+      route: '/study-plan',
+      icon: 'assets/icons/progress.svg',
+      roles: ['ADMIN', 'PRUEFUNGSAMT', 'STUDENT']
+    },
+    
+    // === DOZENT ===
+    {
+      id: 'dashboard-dozent',
+      label: 'Module',
+      route: '/dashboard',
+      icon: 'assets/icons/grades.svg',
+      roles: ['LEHRENDER']
+    },
+    
+    // === PRÜFUNGSAMT ===
+    // (nutzt Admin-Items: Students, Validation, Calculation, Stats)
+    
+    // === STUDENT ===
+    {
+      id: 'grades',
+      label: 'Noten',
+      route: '/grades',
+      icon: 'assets/icons/grades.svg',
+      roles: ['STUDENT']
+    },
+    {
       id: 'progress',
       label: 'Fortschritt',
       route: '/progress',
@@ -149,19 +185,14 @@ export class ShellComponent {
       roles: ['STUDENT']
     },
     {
-      id: 'study-plan',
-      label: 'Studienplan',
-      route: '/study-plan',
-      icon: 'assets/icons/progress.svg',
-      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT', 'STUDENT']
+      id: 'dashboard-student',
+      label: 'Studenten Übersicht',
+      route: '/dashboard',
+      icon: 'assets/icons/dashboard.svg',
+      roles: ['STUDENT']
     },
-    {
-      id: 'admin',
-      label: 'Admin',
-      route: '/admin',
-      icon: 'assets/icons/admin.svg',
-      roles: ['ADMIN']
-    },
+    
+    // === ALLE ===
     {
       id: 'profile',
       label: 'Profil',

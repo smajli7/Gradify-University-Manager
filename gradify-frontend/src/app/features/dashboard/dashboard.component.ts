@@ -2,6 +2,7 @@ import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Apollo, gql } from 'apollo-angular';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
@@ -189,31 +190,121 @@ interface EinschreibungOption {
             <div class="module-list">
               @for (modul of dozentenModule(); track modul.id) {
                 <div class="modul-item card">
-                  <div class="modul-main">
+                  <div class="modul-header-section">
                     <div class="modul-title">
                       <span class="modul-nr-badge">{{ modul.modulNr }}</span>
                       <h2>{{ modul.name }}</h2>
                     </div>
-                    <div class="modul-details">
-                      <div class="detail-row">
-                        <span class="detail-label">Prüfungsform:</span>
-                        <span class="detail-value">{{ modul.pruefungsform }}</span>
-                        @if (modul.pruefungsdauer) {
-                          <span class="detail-value-muted">({{ modul.pruefungsdauer }})</span>
-                        }
-                      </div>
-                      @if (modul.vorleistung) {
-                        <div class="detail-row">
-                          <span class="detail-label">Vorleistung:</span>
-                          <span class="detail-value">{{ modul.vorleistung }}</span>
+                    <button class="btn-toggle" (click)="toggleModul(modul.id)">
+                      {{ expandedModul() === modul.id ? 'Einklappen' : 'Notenerfassung öffnen' }}
+                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" 
+                           [style.transform]="expandedModul() === modul.id ? 'rotate(180deg)' : 'rotate(0)'">
+                        <polyline points="6 9 12 15 18 9"/>
+                      </svg>
+                    </button>
+                  </div>
+                  
+                  <div class="modul-meta">
+                    <span class="meta-badge">{{ modul.pruefungsform }}</span>
+                    @if (modul.pruefungsdauer) {
+                      <span class="meta-text">{{ modul.pruefungsdauer }}</span>
+                    }
+                    <span class="meta-text">{{ modul.ects }} ECTS</span>
+                    <span class="meta-text">Semester {{ modul.semester }}</span>
+                  </div>
+
+                  @if (expandedModul() === modul.id) {
+                    <div class="notenerfassung-section">
+                      @if (loadingStudentsForModul()) {
+                        <div class="loading-students">
+                          <div class="spinner"></div>
+                          <span>Lade Studierende...</span>
                         </div>
                       }
-                      <div class="detail-row">
-                        <span class="detail-label">Umfang:</span>
-                        <span class="detail-value">{{ modul.ects }} ECTS · Semester {{ modul.semester }}</span>
-                      </div>
+
+                      @if (!loadingStudentsForModul() && studentsForModul().length === 0) {
+                        <p class="text-muted">Keine Studierenden in diesem Modul eingeschrieben</p>
+                      }
+
+                      @if (!loadingStudentsForModul() && studentsForModul().length > 0) {
+                        <div class="noten-table-container">
+                          <table class="noten-table">
+                            <thead>
+                              <tr>
+                                <th>Matrikelnr.</th>
+                                <th>Name</th>
+                                <th>Note</th>
+                                <th>Bestanden</th>
+                                <th>Versuch</th>
+                                <th>Prüfungsdatum</th>
+                                <th></th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              @for (student of studentsForModul(); track student.id) {
+                                <tr>
+                                  <td>{{ student.matrikelnummer }}</td>
+                                  <td>{{ student.vorname }} {{ student.nachname }}</td>
+                                  <td>
+                                    <input 
+                                      type="number" 
+                                      class="note-input"
+                                      step="0.1"
+                                      min="1.0"
+                                      max="5.0"
+                                      [(ngModel)]="student.noteWert"
+                                      (change)="markChanged(student)"
+                                      placeholder="--">
+                                  </td>
+                                  <td class="col-center">
+                                    <input 
+                                      type="checkbox" 
+                                      class="checkbox"
+                                      [(ngModel)]="student.bestanden"
+                                      (change)="markChanged(student)">
+                                  </td>
+                                  <td class="col-center">
+                                    <select class="versuch-select" [(ngModel)]="student.versuch" (change)="markChanged(student)">
+                                      <option [value]="1">1</option>
+                                      <option [value]="2">2</option>
+                                      <option [value]="3">3</option>
+                                    </select>
+                                  </td>
+                                  <td>
+                                    <input 
+                                      type="date" 
+                                      class="date-input"
+                                      [(ngModel)]="student.pruefungsdatum"
+                                      (change)="markChanged(student)">
+                                  </td>
+                                  <td class="col-center">
+                                    <button 
+                                      class="btn-save" 
+                                      (click)="saveGradeForStudent(student)" 
+                                      [disabled]="!student.changed || student.saving"
+                                      [class.has-changes]="student.changed">
+                                      @if (student.saving) {
+                                        <div class="spinner-tiny"></div>
+                                      } @else if (student.noteId) {
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                          <polyline points="20 6 9 17 4 12"/>
+                                        </svg>
+                                      } @else {
+                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
+                                          <polyline points="17 21 17 13 7 13 7 21"/>
+                                        </svg>
+                                      }
+                                    </button>
+                                  </td>
+                                </tr>
+                              }
+                            </tbody>
+                          </table>
+                        </div>
+                      }
                     </div>
-                  </div>
+                  }
                 </div>
               }
             </div>
@@ -487,6 +578,8 @@ interface EinschreibungOption {
 
     .modul-item {
       padding: var(--spacing-xl);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
     }
 
     .modul-main {
@@ -507,8 +600,9 @@ interface EinschreibungOption {
       justify-content: center;
       min-width: 60px;
       padding: 8px 12px;
-      background: var(--color-primary);
-      color: white;
+      background: rgba(0, 242, 255, 0.1);
+      border: 1px solid rgba(0, 242, 255, 0.2);
+      color: var(--color-primary);
       border-radius: var(--radius-md);
       font-size: 0.875rem;
       font-weight: 700;
@@ -552,6 +646,194 @@ interface EinschreibungOption {
       text-align: center;
       padding: var(--spacing-2xl);
       color: var(--text-muted);
+    }
+
+    .modul-header-section {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--spacing-md);
+    }
+
+    .btn-toggle {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: var(--bg-hover);
+      border: 1px solid var(--border-color);
+      color: var(--text-primary);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      font-size: 0.875rem;
+      font-weight: 500;
+      transition: all 0.2s;
+    }
+
+    .btn-toggle:hover {
+      background: var(--bg-elevated);
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    .btn-toggle svg {
+      width: 16px;
+      height: 16px;
+      transition: transform 0.3s;
+    }
+
+    .modul-meta {
+      display: flex;
+      gap: var(--spacing-sm);
+      flex-wrap: wrap;
+      margin-bottom: var(--spacing-md);
+      padding-bottom: var(--spacing-md);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .meta-badge {
+      padding: 4px 8px;
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-weight: 600;
+    }
+
+    .meta-text {
+      padding: 4px 8px;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+    }
+
+    .notenerfassung-section {
+      margin-top: var(--spacing-lg);
+      padding-top: var(--spacing-lg);
+    }
+
+    .loading-students {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      justify-content: center;
+      padding: var(--spacing-xl);
+    }
+
+    .spinner, .spinner-tiny {
+      border: 2px solid var(--border-color);
+      border-top-color: var(--color-primary);
+      border-radius: 50%;
+      animation: spin 0.8s linear infinite;
+    }
+
+    .spinner {
+      width: 20px;
+      height: 20px;
+    }
+
+    .spinner-tiny {
+      width: 14px;
+      height: 14px;
+    }
+
+    .noten-table-container {
+      overflow-x: auto;
+      background: rgba(11, 14, 20, 0.5);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-sm);
+    }
+
+    .noten-table {
+      width: 100%;
+      border-collapse: collapse;
+    }
+
+    .noten-table th,
+    .noten-table td {
+      padding: var(--spacing-sm) var(--spacing-md);
+      text-align: left;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .noten-table th {
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 0.75rem;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      background: var(--bg-hover);
+    }
+
+    .noten-table tbody tr:hover {
+      background: var(--bg-hover);
+    }
+
+    .note-input, .versuch-select, .date-input {
+      padding: 4px 8px;
+      background: var(--bg-deep);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-primary);
+      font-size: 0.875rem;
+    }
+
+    .note-input {
+      width: 70px;
+      text-align: center;
+      font-weight: 600;
+    }
+
+    .note-input:focus, .versuch-select:focus, .date-input:focus {
+      outline: none;
+      border-color: var(--color-primary);
+    }
+
+    .versuch-select {
+      width: 50px;
+    }
+
+    .date-input {
+      width: 130px;
+    }
+
+    .checkbox {
+      width: 18px;
+      height: 18px;
+    }
+
+    .btn-save {
+      padding: 6px;
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-sm);
+      color: var(--text-muted);
+      cursor: pointer;
+      transition: all 0.2s;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+    }
+
+    .btn-save:hover:not(:disabled) {
+      border-color: var(--color-primary);
+      color: var(--color-primary);
+    }
+
+    .btn-save.has-changes {
+      border-color: var(--color-success);
+      color: var(--color-success);
+      background: rgba(0, 255, 136, 0.05);
+    }
+
+    .btn-save:disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .btn-save svg {
+      width: 16px;
+      height: 16px;
     }
 
     .selection-controls {
@@ -1030,7 +1312,7 @@ interface EinschreibungOption {
   `]
 })
 export class DashboardComponent implements OnInit {
-  private readonly authService = inject(AuthService);
+  protected readonly authService = inject(AuthService);
   
   selectedStudent = '';
   selectedEinschreibung = '';
@@ -1057,6 +1339,9 @@ export class DashboardComponent implements OnInit {
   // Dozenten Data
   dozentenModule = signal<any[]>([]);
   loadingDozentenModule = signal(false);
+  expandedModul = signal<string | null>(null);
+  studentsForModul = signal<any[]>([]);
+  loadingStudentsForModul = signal(false);
   
   // Computed
   studiengangName = computed(() => {
@@ -1167,6 +1452,8 @@ export class DashboardComponent implements OnInit {
 
   private readonly calculationService = inject(CalculationService);
 
+  private readonly http = inject(HttpClient);
+  
   constructor(private readonly apollo: Apollo) {}
 
   ngOnInit(): void {
@@ -1552,5 +1839,144 @@ export class DashboardComponent implements OnInit {
           // Dashboard funktioniert trotzdem mit Fallback-Berechnung
         }
       });
+  }
+
+  // ==================== DOZENTEN: NOTENERFASSUNG ====================
+
+  toggleModul(modulId: string): void {
+    if (this.expandedModul() === modulId) {
+      this.expandedModul.set(null);
+      this.studentsForModul.set([]);
+    } else {
+      this.expandedModul.set(modulId);
+      this.loadStudentsForModulData(modulId);
+    }
+  }
+
+  async loadStudentsForModulData(modulId: string): Promise<void> {
+    this.loadingStudentsForModul.set(true);
+
+    try {
+      // Query für alle Einschreibungen
+      const ALL_EINSCHREIBUNGEN = gql`
+        query GetAllEinschreibungenForModul {
+          einschreibungen {
+            id
+            studentId
+            aktuellesSemester
+          }
+        }
+      `;
+
+      // Parallel laden
+      const [studentsResult, einschreibungenResult, notenResponse] = await Promise.all([
+        firstValueFrom(this.apollo.query<{ students: any[] }>({
+          query: GET_STUDENTS_QUERY,
+          context: { clientName: 'user' },
+          fetchPolicy: 'network-only'
+        })),
+        firstValueFrom(this.apollo.query<{ einschreibungen: any[] }>({
+          query: ALL_EINSCHREIBUNGEN,
+          fetchPolicy: 'network-only'
+        })),
+        firstValueFrom(this.http.get<any>('/api/noten', {
+          params: { modulId }
+        }))
+      ]);
+
+      const allStudents = studentsResult.data?.students || [];
+      const allEinschreibungen = einschreibungenResult.data?.einschreibungen || [];
+      const existingNotes = notenResponse?.data || [];
+
+      // Maps erstellen
+      const studentMap = new Map(allStudents.map((s: any) => [s.id, s]));
+      const einschreibungMap = new Map(allEinschreibungen.map((e: any) => [e.id, e]));
+      const noteMap = new Map(existingNotes.map((n: any) => [`${n.einschreibungId}`, n]));
+
+      // Alle Einschreibungen durchgehen
+      const studentsWithGrades = allEinschreibungen
+        .filter((e: any) => e.studentId)
+        .map((e: any) => {
+          const student = studentMap.get(e.studentId);
+          if (!student) return null;
+
+          const existingNote: any = noteMap.get(e.id);
+
+          return {
+            ...student,
+            einschreibungId: e.id,
+            semester: e.aktuellesSemester,
+            noteId: existingNote?.id,
+            noteWert: existingNote?.noteWert || null,
+            bestanden: existingNote?.bestanden || false,
+            versuch: existingNote?.versuch || 1,
+            pruefungsdatum: existingNote?.pruefungsdatum || this.getTodayString(),
+            bemerkung: existingNote?.bemerkung || '',
+            status: existingNote?.status || 'ERFASST',
+            modulId,
+            saving: false,
+            changed: false
+          };
+        })
+        .filter((s: any) => s !== null);
+
+      this.studentsForModul.set(studentsWithGrades);
+
+    } catch (error) {
+      console.error('Error loading students for modul:', error);
+    } finally {
+      this.loadingStudentsForModul.set(false);
+    }
+  }
+
+  markChanged(student: any): void {
+    student.changed = true;
+    // Re-assign array to trigger change detection
+    this.studentsForModul.set([...this.studentsForModul()]);
+  }
+
+  async saveGradeForStudent(student: any): Promise<void> {
+    if (!student.noteWert) return;
+
+    student.saving = true;
+    this.studentsForModul.set([...this.studentsForModul()]);
+
+    try {
+      const payload = {
+        einschreibungId: student.einschreibungId,
+        modulId: student.modulId,
+        noteWert: student.noteWert,
+        bestanden: student.bestanden,
+        versuch: student.versuch,
+        pruefungsdatum: student.pruefungsdatum,
+        bemerkung: student.bemerkung || null
+      };
+
+      if (student.noteId) {
+        // Update
+        await firstValueFrom(
+          this.http.put<any>(`/api/noten/${student.noteId}`, payload)
+        );
+      } else {
+        // Create
+        const response = await firstValueFrom(
+          this.http.post<any>('/api/noten', payload)
+        );
+        student.noteId = response.data.id;
+      }
+
+      student.changed = false;
+
+    } catch (err: any) {
+      console.error('Error saving grade:', err);
+      alert('Fehler beim Speichern: ' + (err.error?.message || err.message));
+    } finally {
+      student.saving = false;
+      this.studentsForModul.set([...this.studentsForModul()]);
+    }
+  }
+
+  private getTodayString(): string {
+    return new Date().toISOString().split('T')[0];
   }
 }

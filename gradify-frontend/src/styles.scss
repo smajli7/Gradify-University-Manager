@@ -251,13 +251,16 @@ a {
     cursor: not-allowed;
   }
 
-  /* Primary Button - Gradient with Glow */
-  &--primary {
-    background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
-    color: white;
+  /* Primary Button - Transparent Cyan */
+  &--primary, &.btn-primary {
+    background: rgba(0, 242, 255, 0.1);
+    color: var(--color-primary);
+    border: 1px solid rgba(0, 242, 255, 0.3);
     
     &:hover:not(:disabled) {
-      box-shadow: var(--shadow-glow-primary);
+      background: rgba(0, 242, 255, 0.15);
+      border-color: var(--color-primary);
+      box-shadow: 0 0 20px rgba(0, 242, 255, 0.2);
       transform: translateY(-1px);
     }
   }
