@@ -94,15 +94,21 @@ public class BerechnungsService {
         for (NoteData note : notenDaten) {
             ModulGewichtung gew = gewichtungMap.get(note.getModulId());
             
+            // ECTS und Modulname aus gRPC-Daten (mit Fallback-Werten)
+            int ectsWert = (gew != null && gew.getEcts() > 0) ? gew.getEcts() : 5;
+            String modulName = (gew != null && !gew.getModulName().isEmpty()) 
+                    ? gew.getModulName() 
+                    : "Modul " + (gew != null ? gew.getModulNr() : note.getModulId());
+            
             ModulBerechnung mb = ModulBerechnung.builder()
                     .modulId(UUID.fromString(note.getModulId()))
                     .modulNr(gew != null ? gew.getModulNr() : "?")
-                    .modulName("Modul " + (gew != null ? gew.getModulNr() : note.getModulId()))
+                    .modulName(modulName)
                     .note(BigDecimal.valueOf(note.getNoteWert()))
                     .gewichtung(gew != null ? BigDecimal.valueOf(gew.getGewichtung()) : BigDecimal.ONE)
                     .inGesamtnote(gew != null ? gew.getInGesamtnote() : true)
                     .bestanden(note.getBestanden())
-                    .ects(5) // TODO: ECTS aus Modul-Daten
+                    .ects(ectsWert)
                     .build();
             
             // Gewichteten Beitrag berechnen
@@ -345,7 +351,15 @@ public class BerechnungsService {
                 ? (double) e.getEctsErreicht() / e.getEctsGesamt() * 100 
                 : 0;
 
-        int moduleOffen = e.getModuleGesamt() - e.getModuleBestanden();
+        // Module nicht bestanden aus DB ermitteln
+        List<ModulBerechnung> modulBerechnungen = 
+                modulBerechnungRepository.findByBerechnungsergebnisId(e.getId());
+        
+        int moduleNichtBestanden = (int) modulBerechnungen.stream()
+                .filter(m -> !m.isBestanden() && m.getNote() != null)
+                .count();
+        
+        int moduleOffen = e.getModuleGesamt() - e.getModuleBestanden() - moduleNichtBestanden;
 
         return FortschrittDto.builder()
                 .einschreibungId(e.getEinschreibungId())
@@ -353,7 +367,7 @@ public class BerechnungsService {
                 .ectsGesamt(e.getEctsGesamt())
                 .moduleBestanden(e.getModuleBestanden())
                 .moduleOffen(moduleOffen)
-                .moduleNichtBestanden(0) // TODO: aus ModulBerechnungen ermitteln
+                .moduleNichtBestanden(moduleNichtBestanden)
                 .fortschrittProzent(BigDecimal.valueOf(prozent).setScale(1, RoundingMode.HALF_UP))
                 .build();
     }

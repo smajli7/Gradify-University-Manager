@@ -93,6 +93,8 @@ message ModulGewichtung {
   string modul_nr = 2;
   double gewichtung = 3;
   bool in_gesamtnote = 4;
+  int32 ects = 5;
+  string modul_name = 6;
 }
 
 message ModulGewichtungListResponse {

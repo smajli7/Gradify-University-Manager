@@ -1,6 +1,7 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Apollo, gql } from 'apollo-angular';
 import { firstValueFrom } from 'rxjs';
 import { Modul, Note } from '../../types';
@@ -1185,9 +1186,10 @@ export class StudyPlanComponent implements OnInit {
   selectedModul = signal<ModulMitNote | null>(null);
   newNoteValue = '';
   newNoteDatum = '';
+  savingNote = signal(false);
   
-  // Demo: isPruefungsamt toggle
-  _isPruefungsamt = signal(true);
+  // HTTP Client für REST API
+  private readonly http = inject(HttpClient);
 
   // Computed values
   semesterRows = computed(() => {
@@ -1445,7 +1447,8 @@ export class StudyPlanComponent implements OnInit {
   }
 
   isPruefungsamt(): boolean {
-    return this._isPruefungsamt();
+    const role = this.authService.userRole();
+    return role === 'PRUEFUNGSAMT' || role === 'ADMIN';
   }
 
   loadStudyPlan(): void {
@@ -1612,15 +1615,46 @@ export class StudyPlanComponent implements OnInit {
     this.selectedModul.set(null);
   }
 
-  saveNote(): void {
-    // TODO: Implement GraphQL mutation to save note
-    console.log('Saving note:', {
-      modulId: this.selectedModul()?.id,
-      note: this.newNoteValue,
-      datum: this.newNoteDatum
-    });
+  async saveNote(): Promise<void> {
+    const modul = this.selectedModul();
+    const einschreibungId = this.selectedEinschreibungId();
     
-    alert('Note speichern (GraphQL-Mutation noch nicht implementiert)');
-    this.closeModulDetail();
+    if (!modul || !einschreibungId || !this.newNoteValue) {
+      return;
+    }
+    
+    const noteWert = Number.parseFloat(this.newNoteValue);
+    if (Number.isNaN(noteWert) || noteWert < 1 || noteWert > 5) {
+      alert('Bitte geben Sie eine gültige Note zwischen 1.0 und 5.0 ein.');
+      return;
+    }
+    
+    this.savingNote.set(true);
+    
+    try {
+      const notePayload = {
+        einschreibungId: einschreibungId,
+        modulId: modul.id,
+        noteWert: noteWert,
+        bestanden: noteWert <= 4,
+        versuch: 1,
+        pruefungsdatum: this.newNoteDatum || new Date().toISOString().split('T')[0],
+        status: 'ERFASST'
+      };
+      
+      await firstValueFrom(
+        this.http.post('/api/noten', notePayload)
+      );
+      
+      // Noten neu laden
+      await this.loadNoten();
+      this.closeModulDetail();
+      
+    } catch (error: any) {
+      console.error('Fehler beim Speichern der Note:', error);
+      alert('Fehler beim Speichern: ' + (error.error?.message || error.message || 'Unbekannter Fehler'));
+    } finally {
+      this.savingNote.set(false);
+    }
   }
 }

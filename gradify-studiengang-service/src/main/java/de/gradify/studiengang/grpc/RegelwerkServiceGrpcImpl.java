@@ -98,13 +98,17 @@ public class RegelwerkServiceGrpcImpl extends RegelwerkServiceGrpc.RegelwerkServ
 
             for (Modul modul : module) {
                 String modulNr = modul.getModulNr() != null ? modul.getModulNr() : "?";
+                String modulName = modul.getName() != null ? modul.getName() : "Unbekannt";
                 double gewichtungWert = modul.getGewichtung() != null ? modul.getGewichtung().doubleValue() : 1.0;
+                int ectsWert = modul.getEcts();
                 
                 ModulGewichtung gewichtung = ModulGewichtung.newBuilder()
                         .setModulId(modul.getId().toString())
                         .setModulNr(modulNr)
                         .setGewichtung(gewichtungWert)
                         .setInGesamtnote(modul.isInGesamtnote())
+                        .setEcts(ectsWert)
+                        .setModulName(modulName)
                         .build();
                 
                 responseBuilder.addModule(gewichtung);
