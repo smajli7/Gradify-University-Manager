@@ -29,6 +29,13 @@ spring:
       enabled: true
     path: /graphql
 
+  # File Upload
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+
 # gRPC Server + Client
 grpc:
   server:

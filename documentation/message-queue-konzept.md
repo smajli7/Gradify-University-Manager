@@ -1,6 +1,8 @@
-# Message Queue Konzept (Optional)
+# Message Queue Implementierung
 
-Dieses Dokument beschreibt ein optionales Message Queue Konzept für asynchrone Kommunikation zwischen Services.
+Dieses Dokument beschreibt die Message Queue Implementierung mit RabbitMQ für asynchrone Kommunikation zwischen Services.
+
+> **Status: IMPLEMENTIERT** - Die Message Queue ist vollständig integriert.
 
 ---
 
@@ -233,16 +235,41 @@ gradify:
 
 ---
 
+## Implementierte Komponenten
+
+| Komponente | Datei | Beschreibung |
+|------------|-------|--------------|
+| **Docker** | `docker-compose.yml` | RabbitMQ Container (Ports 5672, 15672) |
+| **Event-DTO** | `gradify-shared/.../event/NoteEvent.java` | Event-Datenstruktur |
+| **Event-Typen** | `gradify-shared/.../event/NoteEventType.java` | Enum für Event-Typen |
+| **Producer-Config** | `gradify-noten-service/.../config/RabbitMQConfig.java` | Exchange, Queue, Bindings |
+| **Publisher** | `gradify-noten-service/.../messaging/NoteEventPublisher.java` | Sendet Events |
+| **Consumer-Config** | `gradify-berechnungs-service/.../config/RabbitMQConfig.java` | Listener-Factory |
+| **Consumer** | `gradify-berechnungs-service/.../messaging/NoteEventConsumer.java` | Empfängt Events |
+
+---
+
+## Starten
+
+```bash
+# RabbitMQ starten
+docker-compose up -d rabbitmq
+
+# Management UI öffnen
+# http://localhost:15672
+# User: gradify / Password: gradify123
+```
+
+---
+
 ## Fazit
 
-Die Message Queue ist **optional** und für den aktuellen Funktionsumfang nicht zwingend erforderlich. Sie bietet jedoch Vorteile für:
+Die Message Queue ist **vollständig implementiert** und bietet:
 
-- **Zukünftige Skalierung**: Wenn viele Noten gleichzeitig erfasst werden
-- **Benachrichtigungen**: Email/Push bei Notenänderungen
-- **Audit-Trail**: Lückenlose Ereignisprotokollierung
-- **Microservice-Muster**: Best Practice für lose Kopplung
-
-Die synchrone Kommunikation via gRPC ist für den aktuellen Umfang ausreichend und performant.
+- **Automatische Neuberechnung**: Bei jeder Notenänderung wird die Gesamtnote automatisch neu berechnet
+- **Entkopplung**: Noten-Service und Berechnungs-Service kommunizieren asynchron
+- **Fehlertoleranz**: Events werden gepuffert, falls ein Service temporär nicht verfügbar ist
+- **Erweiterbarkeit**: Weitere Consumer können einfach hinzugefügt werden (z.B. Benachrichtigungs-Service)
 
 ---
 

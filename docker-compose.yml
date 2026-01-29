@@ -19,6 +19,25 @@ services:
       timeout: 5s
       retries: 5
 
+  # RabbitMQ Message Broker
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: gradify-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: gradify
+      RABBITMQ_DEFAULT_PASS: gradify123
+    ports:
+      - "5672:5672"    # AMQP Protocol
+      - "15672:15672"  # Management UI
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
   # pgAdmin für Datenbank-Management (optional)
   pgadmin:
     image: dpage/pgadmin4:latest
@@ -37,4 +56,5 @@ services:
 volumes:
   postgres_data:
   pgadmin_data:
+  rabbitmq_data:
 

@@ -46,6 +46,12 @@
             <artifactId>gradify-shared</artifactId>
         </dependency>
 
+        <!-- RabbitMQ (Message Queue) -->
+        <dependency>
+            <groupId>org.springframework.boot</groupId>
+            <artifactId>spring-boot-starter-amqp</artifactId>
+        </dependency>
+
         <!-- Security -->
         <dependency>
             <groupId>org.springframework.boot</groupId>

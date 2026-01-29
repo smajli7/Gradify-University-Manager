@@ -305,6 +305,11 @@ Die vollständige Projektdokumentation befindet sich im Ordner `/documentation`:
 | [Kommunikationskonzept](documentation/kommunikationskonzept.md) | REST/GraphQL/gRPC |
 | [Schnittstellenentwürfe](documentation/schnittstellenentwuerfe.md) | API-Spezifikationen |
 | [Frontend](documentation/frontend.md) | Design-System, Farben, Layout |
+| [Authentifizierung](documentation/authentifizierung.md) | Login, Token, Rollen, Guards |
+| [Deployment](documentation/deployment.md) | Docker, Kubernetes, Multi-Tenant |
+| [Message Queue](documentation/message-queue-konzept.md) | RabbitMQ-Konzept (optional) |
+| [Bioverfahrenstechnik](documentation/bioverfahrenstechnik.md) | PO Bachelor |
+| [Forschung Soziale Arbeit](documentation/forschungsozialearbeit.md) | PO Master |
 
 ## Contributing
 
@@ -322,4 +327,4 @@ Dieses Projekt ist Teil einer Hochschul-Lehrveranstaltung.
 
 **23.02.2026 - 23:59**
 
-Aktualisiert: 08.01.2026
+Aktualisiert: 12.01.2026

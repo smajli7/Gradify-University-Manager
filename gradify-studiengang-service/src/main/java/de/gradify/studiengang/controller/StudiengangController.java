@@ -1,11 +1,15 @@
 package de.gradify.studiengang.controller;
 
 import de.gradify.shared.dto.ApiResponse;
+import de.gradify.studiengang.dto.CreateStudiengangRequest;
 import de.gradify.studiengang.dto.ModulDto;
 import de.gradify.studiengang.dto.StudiengangDto;
+import de.gradify.studiengang.entity.Mandant;
 import de.gradify.studiengang.entity.Modul;
 import de.gradify.studiengang.entity.Studiengang;
+import de.gradify.studiengang.repository.MandantRepository;
 import de.gradify.studiengang.service.StudiengangService;
+import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
@@ -22,6 +26,7 @@ import java.util.stream.Collectors;
 public class StudiengangController {
 
     private final StudiengangService studiengangService;
+    private final MandantRepository mandantRepository;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<StudiengangDto>>> getAllStudiengaenge(
@@ -50,6 +55,40 @@ public class StudiengangController {
         return studiengangService.findById(id)
             .map(studiengang -> ResponseEntity.ok(ApiResponse.success(toDto(studiengang))))
             .orElse(ResponseEntity.notFound().build());
+    }
+
+    @PostMapping
+    public ResponseEntity<ApiResponse<StudiengangDto>> createStudiengang(
+            @Valid @RequestBody CreateStudiengangRequest request) {
+        log.info("Creating Studiengang: {} ({})", request.getName(), request.getKuerzel());
+
+        // Mandant laden
+        Mandant mandant = mandantRepository.findById(request.getMandantId())
+            .orElse(null);
+        
+        if (mandant == null) {
+            return ResponseEntity.badRequest()
+                .body(ApiResponse.error("Mandant nicht gefunden: " + request.getMandantId()));
+        }
+
+        // Studiengang erstellen
+        Studiengang studiengang = Studiengang.builder()
+            .mandant(mandant)
+            .name(request.getName())
+            .kuerzel(request.getKuerzel())
+            .abschlussart(Studiengang.Abschlussart.valueOf(request.getAbschlussart()))
+            .regelstudienzeit(request.getRegelstudienzeit())
+            .gesamtEcts(request.getGesamtEcts())
+            .studienvariante(request.getStudienvariante() != null 
+                ? Studiengang.Studienvariante.valueOf(request.getStudienvariante()) 
+                : Studiengang.Studienvariante.ALLGEMEIN)
+            .aktiv(request.isAktiv())
+            .build();
+
+        Studiengang saved = studiengangService.save(studiengang);
+        log.info("Created Studiengang with id: {}", saved.getId());
+
+        return ResponseEntity.ok(ApiResponse.success(toDto(saved), "Studiengang erfolgreich erstellt"));
     }
 
     @GetMapping("/kuerzel/{kuerzel}")

@@ -29,6 +29,13 @@ spring:
       enabled: true
     path: /graphql
 
+  # RabbitMQ (Message Queue)
+  rabbitmq:
+    host: localhost
+    port: 5672
+    username: gradify
+    password: gradify123
+
 # gRPC Server + Client
 grpc:
   server:

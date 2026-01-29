@@ -1617,7 +1617,7 @@ export class StudyPlanComponent implements OnInit {
 
   async saveNote(): Promise<void> {
     const modul = this.selectedModul();
-    const einschreibungId = this.selectedEinschreibungId();
+    const einschreibungId = this.selectedEinschreibung;
     
     if (!modul || !einschreibungId || !this.newNoteValue) {
       return;
@@ -1646,8 +1646,8 @@ export class StudyPlanComponent implements OnInit {
         this.http.post('/api/noten', notePayload)
       );
       
-      // Noten neu laden
-      await this.loadNoten();
+      // Daten neu laden
+      this.loadStudyPlan();
       this.closeModulDetail();
       
     } catch (error: any) {

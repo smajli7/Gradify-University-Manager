@@ -4,6 +4,7 @@ import de.gradify.noten.dto.CreateNoteRequest;
 import de.gradify.noten.dto.NoteDto;
 import de.gradify.noten.dto.UpdateNoteRequest;
 import de.gradify.noten.entity.Note;
+import de.gradify.noten.messaging.NoteEventPublisher;
 import de.gradify.noten.repository.NoteRepository;
 import de.gradify.noten.validation.NoteValidator;
 import lombok.RequiredArgsConstructor;
@@ -24,6 +25,7 @@ public class NotenService {
 
     private final NoteRepository noteRepository;
     private final NoteValidator noteValidator;
+    private final NoteEventPublisher eventPublisher;
 
     /**
      * Holt alle Noten, optional gefiltert.
@@ -118,6 +120,9 @@ public class NotenService {
         note = noteRepository.save(note);
         log.info("Note created with id: {}", note.getId());
 
+        // Event an Message Queue senden für automatische Neuberechnung
+        eventPublisher.publishNoteCreated(note, erfasstVon != null ? erfasstVon.toString() : "system");
+
         return toDto(note);
     }
 
@@ -157,6 +162,9 @@ public class NotenService {
             note = noteRepository.save(note);
             log.info("Note updated: {}", id);
             
+            // Event an Message Queue senden für automatische Neuberechnung
+            eventPublisher.publishNoteUpdated(note, "system");
+            
             return toDto(note);
         });
     }
@@ -185,6 +193,9 @@ public class NotenService {
             note = noteRepository.save(note);
             log.info("Note validated: {}", id);
             
+            // Event an Message Queue senden
+            eventPublisher.publishNoteValidated(note, validiertVon != null ? validiertVon.toString() : "system");
+            
             return toDto(note);
         });
     }
@@ -203,6 +214,9 @@ public class NotenService {
             note = noteRepository.save(note);
             log.info("Note released: {}", id);
             
+            // Event an Message Queue senden
+            eventPublisher.publishNoteReleased(note, "system");
+            
             return toDto(note);
         });
     }
@@ -216,6 +230,10 @@ public class NotenService {
             if (note.getStatus() != Note.NoteStatus.ERFASST) {
                 throw new IllegalStateException("Nur ERFASST-Noten können gelöscht werden");
             }
+            
+            // Event VOR dem Löschen senden (damit die Daten noch verfügbar sind)
+            eventPublisher.publishNoteDeleted(note, "system");
+            
             noteRepository.delete(note);
             log.info("Note deleted: {}", id);
             return true;
