@@ -53,6 +53,12 @@ interface ApiResponse<T> {
   message?: string;
 }
 
+interface ImportResult {
+  created: number;
+  skipped: number;
+  errors: number;
+}
+
 @Component({
   selector: 'app-users-admin',
   standalone: true,
@@ -64,13 +70,31 @@ interface ApiResponse<T> {
           <h1>Benutzerverwaltung</h1>
           <p class="subtitle">{{ users().length }} Benutzer registriert</p>
         </div>
-        <button class="btn btn-primary" (click)="openNewUserModal()">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <line x1="12" y1="5" x2="12" y2="19"/>
-            <line x1="5" y1="12" x2="19" y2="12"/>
-          </svg>
-          Neuer Benutzer
-        </button>
+        <div class="header-actions">
+          <button class="btn btn-secondary" (click)="exportUsers()" [disabled]="users().length === 0">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="7 10 12 15 17 10"/>
+              <line x1="12" y1="15" x2="12" y2="3"/>
+            </svg>
+            Export
+          </button>
+          <button class="btn btn-secondary" (click)="openImportModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+              <polyline points="17 8 12 3 7 8"/>
+              <line x1="12" y1="3" x2="12" y2="15"/>
+            </svg>
+            Import
+          </button>
+          <button class="btn btn-primary" (click)="openNewUserModal()">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+              <line x1="12" y1="5" x2="12" y2="19"/>
+              <line x1="5" y1="12" x2="19" y2="12"/>
+            </svg>
+            Neuer Benutzer
+          </button>
+        </div>
       </header>
 
       @if (loading()) {
@@ -240,6 +264,115 @@ interface ApiResponse<T> {
               <button class="btn btn-primary" (click)="saveUser()" [disabled]="!isFormValid()">
                 {{ editMode() ? 'Speichern' : 'Anlegen' }}
               </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Modal: CSV Import -->
+      @if (showImportModal()) {
+        <div class="modal-overlay" (click)="closeImportModal()">
+          <div class="modal modal--wide" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2>Benutzer importieren</h2>
+              <button class="modal-close" (click)="closeImportModal()">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+
+            <div class="modal-body">
+              <div class="import-info">
+                <h3>CSV-Format</h3>
+                <p class="text-muted">Importieren Sie Benutzer mit einer CSV-Datei (Semikolon-getrennt, UTF-8).</p>
+                
+                <div class="format-example">
+                  <div class="format-cols">
+                    <span class="col-tag">Benutzername</span>
+                    <span class="col-tag">Vorname</span>
+                    <span class="col-tag">Nachname</span>
+                    <span class="col-tag">Email</span>
+                    <span class="col-tag col-tag--role">Rolle</span>
+                    <span class="col-tag col-tag--pw">Passwort</span>
+                    <span class="col-tag">Aktiv</span>
+                  </div>
+                </div>
+
+                <div class="format-values">
+                  <strong>Rollen:</strong> STUDENT, LEHRENDER, PRUEFUNGSAMT, ADMIN
+                </div>
+
+                <button class="btn btn-secondary btn-sm" (click)="downloadTemplate()">
+                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Vorlage herunterladen
+                </button>
+              </div>
+
+              <div class="upload-area" 
+                   [class.upload-area--dragover]="isDragover"
+                   (dragover)="onDragOver($event)"
+                   (dragleave)="onDragLeave($event)"
+                   (drop)="onDrop($event)"
+                   (click)="fileInput.click()">
+                <input #fileInput type="file" accept=".csv" (change)="onFileSelected($event)" hidden>
+                
+                @if (!selectedFile()) {
+                  <div class="upload-icon">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5">
+                      <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                      <polyline points="17 8 12 3 7 8"/>
+                      <line x1="12" y1="3" x2="12" y2="15"/>
+                    </svg>
+                  </div>
+                  <p>CSV-Datei hierher ziehen oder klicken</p>
+                } @else {
+                  <div class="file-selected">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                      <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
+                      <polyline points="14 2 14 8 20 8"/>
+                    </svg>
+                    <span>{{ selectedFile()!.name }}</span>
+                    <button class="remove-file" (click)="removeFile($event)">×</button>
+                  </div>
+                }
+              </div>
+
+              @if (importResult()) {
+                <div class="import-result">
+                  <h4>Import abgeschlossen</h4>
+                  <div class="result-stats">
+                    <div class="stat stat--success">
+                      <span class="stat-value">{{ importResult()!.created }}</span>
+                      <span class="stat-label">erstellt</span>
+                    </div>
+                    <div class="stat stat--muted">
+                      <span class="stat-value">{{ importResult()!.skipped }}</span>
+                      <span class="stat-label">übersprungen</span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+
+            <div class="modal-footer">
+              <button class="btn btn-secondary" (click)="closeImportModal()">
+                {{ importResult() ? 'Schließen' : 'Abbrechen' }}
+              </button>
+              @if (!importResult()) {
+                <button class="btn btn-primary" (click)="importUsers()" [disabled]="importing() || !selectedFile()">
+                  @if (importing()) {
+                    Importiere...
+                  } @else {
+                    Import starten
+                  }
+                </button>
+              }
             </div>
           </div>
         </div>
@@ -603,6 +736,162 @@ interface ApiResponse<T> {
       height: 20px;
       cursor: pointer;
     }
+
+    .header-actions {
+      display: flex;
+      gap: var(--spacing-sm);
+    }
+
+    .modal--wide {
+      max-width: 640px;
+    }
+
+    .btn-sm {
+      padding: 6px 12px;
+      font-size: 0.875rem;
+    }
+
+    .import-info h3 {
+      margin: 0 0 var(--spacing-xs) 0;
+      font-size: 1rem;
+    }
+
+    .format-example {
+      background: var(--bg-deep);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      padding: var(--spacing-md);
+      margin: var(--spacing-md) 0;
+    }
+
+    .format-cols {
+      display: flex;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .col-tag {
+      padding: 2px 8px;
+      background: rgba(0, 242, 255, 0.15);
+      color: var(--color-primary);
+      border-radius: var(--radius-sm);
+      font-size: 0.75rem;
+      font-family: 'JetBrains Mono', monospace;
+    }
+
+    .col-tag--role {
+      background: rgba(168, 85, 247, 0.15);
+      color: #a855f7;
+    }
+
+    .col-tag--pw {
+      background: rgba(239, 68, 68, 0.15);
+      color: #ef4444;
+    }
+
+    .format-values {
+      margin: var(--spacing-md) 0;
+      font-size: 0.875rem;
+      color: var(--text-secondary);
+    }
+
+    .upload-area {
+      border: 2px dashed var(--border-color);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-xl);
+      text-align: center;
+      cursor: pointer;
+      transition: all 0.2s;
+      background: var(--bg-deep);
+      margin-top: var(--spacing-lg);
+    }
+
+    .upload-area:hover {
+      border-color: var(--color-primary);
+      background: rgba(0, 242, 255, 0.05);
+    }
+
+    .upload-area--dragover {
+      border-color: var(--color-primary);
+      background: rgba(0, 242, 255, 0.1);
+    }
+
+    .upload-icon {
+      color: var(--text-muted);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .upload-icon svg {
+      width: 48px;
+      height: 48px;
+    }
+
+    .file-selected {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      gap: var(--spacing-sm);
+      color: var(--color-success);
+    }
+
+    .file-selected svg {
+      width: 24px;
+      height: 24px;
+    }
+
+    .remove-file {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      font-size: 1.25rem;
+      cursor: pointer;
+      padding: 0 4px;
+    }
+
+    .remove-file:hover {
+      color: var(--color-danger);
+    }
+
+    .import-result {
+      margin-top: var(--spacing-lg);
+      padding: var(--spacing-lg);
+      background: rgba(0, 255, 136, 0.05);
+      border: 1px solid rgba(0, 255, 136, 0.3);
+      border-radius: var(--radius-lg);
+    }
+
+    .import-result h4 {
+      margin: 0 0 var(--spacing-md) 0;
+      color: var(--color-success);
+    }
+
+    .result-stats {
+      display: flex;
+      gap: var(--spacing-xl);
+    }
+
+    .result-stats .stat {
+      display: flex;
+      flex-direction: column;
+    }
+
+    .result-stats .stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+    }
+
+    .result-stats .stat--success .stat-value {
+      color: var(--color-success);
+    }
+
+    .result-stats .stat--muted .stat-value {
+      color: var(--text-muted);
+    }
+
+    .result-stats .stat-label {
+      font-size: 0.875rem;
+      color: var(--text-muted);
+    }
   `]
 })
 export class UsersAdminComponent implements OnInit {
@@ -614,6 +903,13 @@ export class UsersAdminComponent implements OnInit {
   showModal = signal(false);
   editMode = signal(false);
   users = signal<User[]>([]);
+
+  // Import State
+  showImportModal = signal(false);
+  importing = signal(false);
+  selectedFile = signal<File | null>(null);
+  importResult = signal<ImportResult | null>(null);
+  isDragover = false;
 
   // Form data
   formData: UserFormData = this.getEmptyFormData();
@@ -749,5 +1045,128 @@ export class UsersAdminComponent implements OnInit {
       rolle: '',
       aktiv: true
     };
+  }
+
+  // ========== EXPORT ==========
+  async exportUsers(): Promise<void> {
+    try {
+      const response = await firstValueFrom(
+        this.http.get('/api/users/export', { responseType: 'text' })
+      );
+      
+      const blob = new Blob([response], { type: 'text/csv;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `benutzer_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export fehlgeschlagen. Ist der User-Service gestartet?');
+    }
+  }
+
+  // ========== IMPORT ==========
+  openImportModal(): void {
+    this.selectedFile.set(null);
+    this.importResult.set(null);
+    this.showImportModal.set(true);
+  }
+
+  closeImportModal(): void {
+    this.showImportModal.set(false);
+    if (this.importResult()) {
+      this.loadUsers();
+    }
+  }
+
+  async downloadTemplate(): Promise<void> {
+    try {
+      const response = await firstValueFrom(
+        this.http.get('/api/users/import/template', { responseType: 'text' })
+      );
+      
+      const blob = new Blob([response], { type: 'text/csv;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = 'benutzer_template.csv';
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Template download failed:', error);
+      alert('Vorlage konnte nicht heruntergeladen werden.');
+    }
+  }
+
+  onDragOver(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragover = true;
+  }
+
+  onDragLeave(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragover = false;
+  }
+
+  onDrop(event: DragEvent): void {
+    event.preventDefault();
+    event.stopPropagation();
+    this.isDragover = false;
+    
+    const files = event.dataTransfer?.files;
+    if (files && files.length > 0) {
+      this.handleFile(files[0]);
+    }
+  }
+
+  onFileSelected(event: Event): void {
+    const input = event.target as HTMLInputElement;
+    if (input.files && input.files.length > 0) {
+      this.handleFile(input.files[0]);
+    }
+  }
+
+  handleFile(file: File): void {
+    if (!file.name.endsWith('.csv')) {
+      alert('Bitte nur CSV-Dateien hochladen');
+      return;
+    }
+    this.selectedFile.set(file);
+    this.importResult.set(null);
+  }
+
+  removeFile(event: Event): void {
+    event.stopPropagation();
+    this.selectedFile.set(null);
+    this.importResult.set(null);
+  }
+
+  async importUsers(): Promise<void> {
+    const file = this.selectedFile();
+    if (!file) return;
+
+    this.importing.set(true);
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const response = await firstValueFrom(
+        this.http.post<ApiResponse<ImportResult>>('/api/users/import', formData)
+      );
+
+      if (response.success && response.data) {
+        this.importResult.set(response.data);
+      }
+
+    } catch (error: any) {
+      console.error('Import error:', error);
+      alert('Import fehlgeschlagen: ' + (error.error?.message || error.message || 'Unbekannter Fehler'));
+    } finally {
+      this.importing.set(false);
+    }
   }
 }

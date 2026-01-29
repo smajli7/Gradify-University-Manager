@@ -95,14 +95,24 @@ interface ImportResult {
               <h2 class="section-title">
                 Studiengänge: {{ selectedMandant()!.name }}
               </h2>
-              <button class="btn btn--primary" (click)="openImportModal()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="17 8 12 3 7 8"/>
-                  <line x1="12" y1="3" x2="12" y2="15"/>
-                </svg>
-                CSV-Import
-              </button>
+              <div class="btn-group">
+                <button class="btn btn--secondary" (click)="exportCsv()" [disabled]="selectedMandant()!.studiengaenge.length === 0">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="7 10 12 15 17 10"/>
+                    <line x1="12" y1="15" x2="12" y2="3"/>
+                  </svg>
+                  Export
+                </button>
+                <button class="btn btn--primary" (click)="openImportModal()">
+                  <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
+                    <polyline points="17 8 12 3 7 8"/>
+                    <line x1="12" y1="3" x2="12" y2="15"/>
+                  </svg>
+                  Import
+                </button>
+              </div>
             </div>
             
             @if (selectedMandant()!.studiengaenge.length > 0) {
@@ -483,6 +493,11 @@ interface ImportResult {
 
     .section-header .section-title {
       margin: 0;
+    }
+
+    .btn-group {
+      display: flex;
+      gap: var(--spacing-sm);
     }
 
     .mandant-card.selected {
@@ -1004,6 +1019,28 @@ export class MandantenComponent implements OnInit {
       alert('Import fehlgeschlagen: ' + (error.error?.message || error.message || 'Unbekannter Fehler'));
     } finally {
       this.saving.set(false);
+    }
+  }
+
+  async exportCsv(): Promise<void> {
+    const mandant = this.selectedMandant();
+    if (!mandant) return;
+
+    try {
+      const response = await firstValueFrom(
+        this.http.get(`/api/import/export/studiengaenge?mandantId=${mandant.id}`, { responseType: 'text' })
+      );
+      
+      const blob = new Blob([response], { type: 'text/csv;charset=utf-8' });
+      const url = window.URL.createObjectURL(blob);
+      const link = document.createElement('a');
+      link.href = url;
+      link.download = `studiengaenge_${mandant.kuerzel}_${new Date().toISOString().split('T')[0]}.csv`;
+      link.click();
+      window.URL.revokeObjectURL(url);
+    } catch (error) {
+      console.error('Export failed:', error);
+      alert('Export fehlgeschlagen. Ist der Studiengang-Service gestartet?');
     }
   }
 }

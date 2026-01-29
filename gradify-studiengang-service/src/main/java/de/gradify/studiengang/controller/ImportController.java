@@ -101,6 +101,84 @@ public class ImportController {
             .body(template);
     }
 
+    /**
+     * Exportiert alle Studiengänge und Module eines Mandanten als CSV.
+     */
+    @GetMapping(value = "/export/studiengaenge", produces = "text/csv")
+    public ResponseEntity<String> exportStudiengaenge(
+            @RequestParam("mandantId") UUID mandantId) {
+        
+        log.info("CSV Export started for mandant: {}", mandantId);
+
+        Mandant mandant = mandantRepository.findById(mandantId).orElse(null);
+        if (mandant == null) {
+            return ResponseEntity.notFound().build();
+        }
+
+        StringBuilder csv = new StringBuilder();
+        csv.append("Studiengang_Kuerzel;Studiengang_Name;Abschlussart;Regelstudienzeit;GesamtECTS;PO_Version;Modul_Nr;Modul_Name;ECTS;Semester;Pruefungsform;Modultyp;Gewichtung;In_Gesamtnote\n");
+
+        List<Studiengang> studiengaenge = studiengangRepository.findByMandantId(mandantId);
+        
+        for (Studiengang sg : studiengaenge) {
+            Pruefungsordnung po = sg.getAktuellePo();
+            if (po == null) {
+                // Studiengang ohne Module
+                csv.append(String.format("%s;%s;%s;%d;%d;-;-;(keine Module);0;-;-;-;0;false\n",
+                    sg.getKuerzel(),
+                    sg.getName(),
+                    sg.getAbschlussart().name(),
+                    sg.getRegelstudienzeit(),
+                    sg.getGesamtEcts()
+                ));
+                continue;
+            }
+
+            List<Modul> module = modulRepository.findByPruefungsordnungId(po.getId());
+            
+            if (module.isEmpty()) {
+                csv.append(String.format("%s;%s;%s;%d;%d;%s;-;(keine Module);0;-;-;-;0;false\n",
+                    sg.getKuerzel(),
+                    sg.getName(),
+                    sg.getAbschlussart().name(),
+                    sg.getRegelstudienzeit(),
+                    sg.getGesamtEcts(),
+                    po.getVersion()
+                ));
+            } else {
+                for (Modul m : module) {
+                    csv.append(String.format("%s;%s;%s;%d;%d;%s;%s;%s;%d;%s;%s;%s;%s;%s\n",
+                        sg.getKuerzel(),
+                        sg.getName(),
+                        sg.getAbschlussart().name(),
+                        sg.getRegelstudienzeit(),
+                        sg.getGesamtEcts(),
+                        po.getVersion(),
+                        m.getModulNr(),
+                        m.getName(),
+                        m.getEcts(),
+                        m.getSemester(),
+                        m.getPruefungsform().name(),
+                        m.getModultyp().name(),
+                        m.getGewichtung().toString(),
+                        m.isInGesamtnote()
+                    ));
+                }
+            }
+        }
+
+        String filename = String.format("studiengaenge_%s_%s.csv", 
+            mandant.getKuerzel(), 
+            java.time.LocalDate.now().toString());
+
+        log.info("CSV Export completed: {} studiengaenge", studiengaenge.size());
+
+        return ResponseEntity.ok()
+            .header("Content-Disposition", "attachment; filename=" + filename)
+            .header("Content-Type", "text/csv; charset=UTF-8")
+            .body(csv.toString());
+    }
+
     private List<CsvRow> parseCsv(MultipartFile file) throws Exception {
         List<CsvRow> rows = new ArrayList<>();
         

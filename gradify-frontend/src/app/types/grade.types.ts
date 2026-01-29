@@ -16,6 +16,7 @@ export interface Note {
   erfasstAm: string;
   validiertAm?: string;
   validiertVon?: string;
+  ects?: number; // ECTS des Moduls (optional, wird aus Modul-Daten geladen)
 }
 
 export enum NoteStatus {

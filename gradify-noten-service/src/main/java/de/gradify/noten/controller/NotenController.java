@@ -200,4 +200,39 @@ public class NotenController {
     public ResponseEntity<ApiResponse<Set<BigDecimal>>> getGueltigeNoten() {
         return ResponseEntity.ok(ApiResponse.success(noteValidator.getGueltigeNoten()));
     }
+
+    @Operation(summary = "Noten exportieren", description = "Exportiert alle Noten einer Einschreibung als CSV")
+    @GetMapping(value = "/export/{einschreibungId}", produces = "text/csv")
+    public ResponseEntity<String> exportNoten(@PathVariable("einschreibungId") UUID einschreibungId) {
+        log.info("Exporting Noten for einschreibung: {}", einschreibungId);
+        
+        List<NoteDto> noten = notenService.getNotenByEinschreibung(einschreibungId);
+        
+        StringBuilder csv = new StringBuilder();
+        csv.append("Modul_Nr;Modul_Name;Note;Versuch;Pruefungsdatum;Status;Bestanden;ECTS;Kommentar\n");
+        
+        for (NoteDto note : noten) {
+            String modulNr = note.getModulId() != null ? note.getModulId().toString().substring(0, 8) : "-";
+            String modulName = "-"; // Wird im Frontend aufgelöst
+            String noteWert = note.getNoteWert() != null ? note.getNoteWert().toString().replace(".", ",") : "-";
+            String versuch = String.valueOf(note.getVersuch());
+            String datum = note.getPruefungsdatum() != null ? note.getPruefungsdatum().toString() : "-";
+            String status = note.getStatus() != null ? note.getStatus() : "-";
+            String bestanden = note.getBestanden() != null ? (note.getBestanden() ? "Ja" : "Nein") : "-";
+            String ects = note.getEcts() != null ? String.valueOf(note.getEcts()) : "-";
+            String kommentar = note.getKommentar() != null ? note.getKommentar().replace(";", ",") : "";
+            
+            csv.append(String.format("%s;%s;%s;%s;%s;%s;%s;%s;%s\n",
+                modulNr, modulName, noteWert, versuch, datum, status, bestanden, ects, kommentar));
+        }
+        
+        String filename = String.format("noten_%s.csv", java.time.LocalDate.now().toString());
+        
+        log.info("Export completed: {} noten", noten.size());
+        
+        return ResponseEntity.ok()
+            .header("Content-Disposition", "attachment; filename=" + filename)
+            .header("Content-Type", "text/csv; charset=UTF-8")
+            .body(csv.toString());
+    }
 }

@@ -32,6 +32,13 @@ spring:
       printer:
         enabled: true
 
+  # File Upload
+  servlet:
+    multipart:
+      enabled: true
+      max-file-size: 10MB
+      max-request-size: 10MB
+
 # gRPC Server
 grpc:
   server:
