@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -14,7 +13,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class ModulDto {
     
-    private UUID id;
+    private Long id;
     private String modulNr;
     private String name;
     private int ects;
@@ -25,5 +24,5 @@ public class ModulDto {
     private BigDecimal gewichtung;
     private boolean inGesamtnote;
     private String wahlpflichtGruppe;
-    private UUID pruefungsordnungId;
+    private Long pruefungsordnungId;
 }

@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -17,10 +16,10 @@ import java.util.UUID;
 public class CreateNoteRequest {
     
     @NotNull(message = "Einschreibungs-ID darf nicht leer sein")
-    private UUID einschreibungId;
+    private Long einschreibungId;
     
     @NotNull(message = "Modul-ID darf nicht leer sein")
-    private UUID modulId;
+    private Long modulId;
     
     @DecimalMin(value = "1.0", message = "Note muss mindestens 1.0 sein")
     @DecimalMax(value = "5.0", message = "Note darf maximal 5.0 sein")

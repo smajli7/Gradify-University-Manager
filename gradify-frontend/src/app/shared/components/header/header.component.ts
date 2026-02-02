@@ -1,11 +1,12 @@
 import { Component, Input, Output, EventEmitter } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
+import { GrpcStatusComponent } from '../grpc-status/grpc-status.component';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterLink],
+  imports: [CommonModule, RouterLink, GrpcStatusComponent],
   template: `
     <header class="header">
       <div class="header-container">
@@ -48,6 +49,9 @@ import { RouterLink } from '@angular/router';
 
         <!-- Spacer -->
         <div class="spacer"></div>
+
+        <!-- gRPC Status Indicator -->
+        <app-grpc-status class="hide-mobile"></app-grpc-status>
 
         <!-- User Menu -->
         <div class="user-menu">

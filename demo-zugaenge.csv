@@ -1,0 +1,43 @@
+Benutzername;Passwort;Rolle;Vorname;Nachname;E-Mail;Studiengang;Semester
+admin;web00100113!;ADMIN;System;Administrator;admin@gradify.local;;
+pruefungsamt;web00100113!;PRUEFUNGSAMT;Paula;Prüfung;pruefungsamt@thm.de;;
+prof.mueller;web00100113!;LEHRENDER;Prof. Dr. Max;Mueller;mueller@thm.de;;
+prof.schmidt;web00100113!;LEHRENDER;Prof. Dr. Anna;Schmidt;schmidt@thm.de;;
+prof.weber;web00100113!;LEHRENDER;Prof. Dr. Thomas;Weber;weber@thm.de;;
+prof.klein;web00100113!;LEHRENDER;Prof. Dr. Lisa;Klein;klein@thm.de;;
+prof.richter;web00100113!;LEHRENDER;Prof. Dr. Michael;Richter;richter@thm.de;;
+max.mustermann;web00100113!;STUDENT;Max;Mustermann;max.mustermann@student.thm.de;Bioverfahrenstechnik (BVT);6
+anna.schmidt;web00100113!;STUDENT;Anna;Schmidt;anna.schmidt@student.thm.de;Bioverfahrenstechnik (BVT);6
+felix.bauer;web00100113!;STUDENT;Felix;Bauer;felix.bauer@student.thm.de;Bioverfahrenstechnik (BVT);6
+lisa.meyer;web00100113!;STUDENT;Lisa;Meyer;lisa.meyer@student.thm.de;Bioverfahrenstechnik (BVT);4
+jonas.wagner;web00100113!;STUDENT;Jonas;Wagner;jonas.wagner@student.thm.de;Bioverfahrenstechnik (BVT);4
+emma.fischer;web00100113!;STUDENT;Emma;Fischer;emma.fischer@student.thm.de;Bioverfahrenstechnik (BVT);4
+lukas.hoffmann;web00100113!;STUDENT;Lukas;Hoffmann;lukas.hoffmann@student.thm.de;Bioverfahrenstechnik (BVT);4
+mia.schulz;web00100113!;STUDENT;Mia;Schulz;mia.schulz@student.thm.de;Bioverfahrenstechnik (BVT);3
+leon.koch;web00100113!;STUDENT;Leon;Koch;leon.koch@student.thm.de;Bioverfahrenstechnik (BVT);3
+sophie.richter;web00100113!;STUDENT;Sophie;Richter;sophie.richter@student.thm.de;Bioverfahrenstechnik (BVT);3
+paul.klein;web00100113!;STUDENT;Paul;Klein;paul.klein@student.thm.de;Bioverfahrenstechnik (BVT);3
+lena.wolf;web00100113!;STUDENT;Lena;Wolf;lena.wolf@student.thm.de;Bioverfahrenstechnik (BVT);3
+tim.schroeder;web00100113!;STUDENT;Tim;Schröder;tim.schroeder@student.thm.de;Bioverfahrenstechnik (BVT);2
+laura.neumann;web00100113!;STUDENT;Laura;Neumann;laura.neumann@student.thm.de;Bioverfahrenstechnik (BVT);2
+niklas.schwarz;web00100113!;STUDENT;Niklas;Schwarz;niklas.schwarz@student.thm.de;Bioverfahrenstechnik (BVT);2
+julia.zimmermann;web00100113!;STUDENT;Julia;Zimmermann;julia.zimmermann@student.thm.de;Bioverfahrenstechnik (BVT);2
+leon.weber;web00100113!;STUDENT;Leon;Weber;leon.weber@student.thm.de;Bioverfahrenstechnik (BVT);1
+marie.braun;web00100113!;STUDENT;Marie;Braun;marie.braun@student.thm.de;Bioverfahrenstechnik (BVT);1
+david.hartmann;web00100113!;STUDENT;David;Hartmann;david.hartmann@student.thm.de;Bioverfahrenstechnik (BVT);1
+sarah.lange;web00100113!;STUDENT;Sarah;Lange;sarah.lange@student.thm.de;Bioverfahrenstechnik (BVT);1
+sophie.braun;web00100113!;STUDENT;Sophie;Braun;sophie.braun@student.thm.de;Forschung Soziale Arbeit (FSA);4
+markus.jung;web00100113!;STUDENT;Markus;Jung;markus.jung@student.thm.de;Forschung Soziale Arbeit (FSA);4
+nina.krause;web00100113!;STUDENT;Nina;Krause;nina.krause@student.thm.de;Forschung Soziale Arbeit (FSA);3
+kevin.frank;web00100113!;STUDENT;Kevin;Frank;kevin.frank@student.thm.de;Forschung Soziale Arbeit (FSA);3
+lisa.sommer;web00100113!;STUDENT;Lisa;Sommer;lisa.sommer@student.thm.de;Forschung Soziale Arbeit (FSA);3
+jan.winter;web00100113!;STUDENT;Jan;Winter;jan.winter@student.thm.de;Forschung Soziale Arbeit (FSA);3
+elena.vogt;web00100113!;STUDENT;Elena;Vogt;elena.vogt@student.thm.de;Forschung Soziale Arbeit (FSA);2
+tobias.stein;web00100113!;STUDENT;Tobias;Stein;tobias.stein@student.thm.de;Forschung Soziale Arbeit (FSA);2
+julia.berger;web00100113!;STUDENT;Julia;Berger;julia.berger@student.thm.de;Forschung Soziale Arbeit (FSA);2
+alexander.horn;web00100113!;STUDENT;Alexander;Horn;alexander.horn@student.thm.de;Forschung Soziale Arbeit (FSA);2
+tim.hoffmann;web00100113!;STUDENT;Tim;Hoffmann;tim.hoffmann@student.thm.de;Forschung Soziale Arbeit (FSA);1
+carla.huber;web00100113!;STUDENT;Carla;Huber;carla.huber@student.thm.de;Forschung Soziale Arbeit (FSA);1
+florian.keller;web00100113!;STUDENT;Florian;Keller;florian.keller@student.thm.de;Forschung Soziale Arbeit (FSA);1
+hannah.beck;web00100113!;STUDENT;Hannah;Beck;hannah.beck@student.thm.de;Forschung Soziale Arbeit (FSA);1
+simon.lorenz;web00100113!;STUDENT;Simon;Lorenz;simon.lorenz@student.thm.de;Forschung Soziale Arbeit (FSA);1

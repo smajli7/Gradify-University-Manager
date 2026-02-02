@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -14,7 +13,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class StudiengangDto {
     
-    private UUID id;
+    private Long id;
     private String name;
     private String kuerzel;
     private String abschlussart;
@@ -22,9 +21,9 @@ public class StudiengangDto {
     private int gesamtEcts;
     private String studienvariante;
     private boolean aktiv;
-    private UUID mandantId;
+    private Long mandantId;
     private String mandantName;
-    private UUID aktuellePoId;
+    private Long aktuellePoId;
     private String aktuellePoVersion;
     private LocalDateTime erstelltAm;
 }

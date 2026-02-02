@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -15,7 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class BerechnungDto {
     
-    private UUID einschreibungId;
+    private Long einschreibungId;
     private String studiengang;
     private BigDecimal gesamtnote;
     private BigDecimal gesamtnoteRoh;

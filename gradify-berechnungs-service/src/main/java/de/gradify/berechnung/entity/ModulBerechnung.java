@@ -4,7 +4,6 @@ import jakarta.persistence.*;
 import lombok.*;
 
 import java.math.BigDecimal;
-import java.util.UUID;
 
 @Entity
 @Table(name = "modul_berechnungen")
@@ -16,15 +15,15 @@ import java.util.UUID;
 public class ModulBerechnung {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "berechnungsergebnis_id", nullable = false)
     private Berechnungsergebnis berechnungsergebnis;
 
     @Column(nullable = false)
-    private UUID modulId;
+    private Long modulId;
 
     @Column(nullable = false, length = 10)
     private String modulNr;

@@ -9,7 +9,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -18,7 +17,7 @@ import java.util.UUID;
 public class CreateStudentRequest {
     
     // Benutzer-Daten (werden mit erstellt wenn benutzerId null)
-    private UUID benutzerId;
+    private Long benutzerId;
     
     @NotBlank(message = "Vorname darf nicht leer sein")
     private String vorname;
@@ -31,7 +30,7 @@ public class CreateStudentRequest {
     private String email;
     
     // MandantId ist optional - wird über mandantKuerzel Query-Parameter ermittelt
-    private UUID mandantId;
+    private Long mandantId;
     
     private LocalDate geburtsdatum;
     

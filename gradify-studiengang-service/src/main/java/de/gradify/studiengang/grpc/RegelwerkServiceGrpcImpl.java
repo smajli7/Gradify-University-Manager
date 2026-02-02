@@ -1,9 +1,12 @@
 package de.gradify.studiengang.grpc;
 
 import de.gradify.shared.grpc.berechnung.*;
+import de.gradify.studiengang.entity.Einschreibung;
+import org.springframework.transaction.annotation.Transactional;
 import de.gradify.studiengang.entity.Modul;
 import de.gradify.studiengang.entity.PoRegelwerk;
 import de.gradify.studiengang.entity.Pruefungsordnung;
+import de.gradify.studiengang.repository.EinschreibungRepository;
 import de.gradify.studiengang.repository.ModulRepository;
 import de.gradify.studiengang.repository.PoRegelwerkRepository;
 import de.gradify.studiengang.repository.PruefungsordnungRepository;
@@ -14,7 +17,6 @@ import net.devh.boot.grpc.server.service.GrpcService;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * gRPC Server für Regelwerk und Modul-Gewichtungen.
@@ -22,19 +24,20 @@ import java.util.UUID;
 @GrpcService
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class RegelwerkServiceGrpcImpl extends RegelwerkServiceGrpc.RegelwerkServiceImplBase {
 
     private final PruefungsordnungRepository pruefungsordnungRepository;
     private final ModulRepository modulRepository;
     private final PoRegelwerkRepository poRegelwerkRepository;
+    private final EinschreibungRepository einschreibungRepository;
 
     @Override
     public void getRegelwerk(RegelwerkRequest request, StreamObserver<RegelwerkResponse> responseObserver) {
-        log.info("gRPC: Getting Regelwerk for PO: {}", request.getPoId());
+        Long poId = request.getPoId();
+        log.info("gRPC: Getting Regelwerk for PO: {}", poId);
 
         try {
-            UUID poId = UUID.fromString(request.getPoId());
-            
             Optional<Pruefungsordnung> poOpt = pruefungsordnungRepository.findById(poId);
             if (poOpt.isEmpty()) {
                 log.warn("gRPC: Pruefungsordnung nicht gefunden: {}", poId);
@@ -65,7 +68,7 @@ public class RegelwerkServiceGrpcImpl extends RegelwerkServiceGrpc.RegelwerkServ
                     : "GEWICHTET";
 
             RegelwerkResponse response = RegelwerkResponse.newBuilder()
-                    .setPoId(poId.toString())
+                    .setPoId(poId)
                     .setBerechnungsart(berechnungsartStr)
                     .setFormel(formel)
                     .setParameterJson(parameter)
@@ -86,11 +89,10 @@ public class RegelwerkServiceGrpcImpl extends RegelwerkServiceGrpc.RegelwerkServ
     @Override
     public void getModulGewichtungen(ModulGewichtungRequest request, 
                                       StreamObserver<ModulGewichtungListResponse> responseObserver) {
-        log.info("gRPC: Getting Modul-Gewichtungen for PO: {}", request.getPoId());
+        Long poId = request.getPoId();
+        log.info("gRPC: Getting Modul-Gewichtungen for PO: {}", poId);
 
         try {
-            UUID poId = UUID.fromString(request.getPoId());
-            
             List<Modul> module = modulRepository.findByPruefungsordnungId(poId);
             log.info("gRPC: Found {} Module in DB for PO: {}", module.size(), poId);
 
@@ -103,7 +105,7 @@ public class RegelwerkServiceGrpcImpl extends RegelwerkServiceGrpc.RegelwerkServ
                 int ectsWert = modul.getEcts();
                 
                 ModulGewichtung gewichtung = ModulGewichtung.newBuilder()
-                        .setModulId(modul.getId().toString())
+                        .setModulId(modul.getId())
                         .setModulNr(modulNr)
                         .setGewichtung(gewichtungWert)
                         .setInGesamtnote(modul.isInGesamtnote())
@@ -122,6 +124,55 @@ public class RegelwerkServiceGrpcImpl extends RegelwerkServiceGrpc.RegelwerkServ
             log.error("gRPC Error getting Modul-Gewichtungen: {} - Stacktrace:", e.getMessage(), e);
             responseObserver.onError(io.grpc.Status.INTERNAL
                     .withDescription("Fehler beim Abrufen der Gewichtungen: " + e.getMessage())
+                    .asRuntimeException());
+        }
+    }
+
+    /**
+     * Holt Einschreibungsdetails (PO-ID, ECTS) für Berechnungs-Service.
+     */
+    @Override
+    public void getEinschreibungDetails(EinschreibungDetailsRequest request,
+                                        StreamObserver<EinschreibungDetailsResponse> responseObserver) {
+        Long einschreibungId = request.getEinschreibungId();
+        log.info("gRPC: Getting Einschreibung details for: {}", einschreibungId);
+
+        try {
+            Optional<Einschreibung> einschreibungOpt = einschreibungRepository.findByIdWithDetails(einschreibungId);
+            
+            if (einschreibungOpt.isEmpty()) {
+                log.warn("gRPC: Einschreibung nicht gefunden: {}", einschreibungId);
+                responseObserver.onNext(EinschreibungDetailsResponse.newBuilder()
+                        .setEinschreibungId(einschreibungId)
+                        .setFound(false)
+                        .build());
+                responseObserver.onCompleted();
+                return;
+            }
+
+            Einschreibung einschreibung = einschreibungOpt.get();
+            Pruefungsordnung po = einschreibung.getPruefungsordnung();
+            
+            // ECTS-Gesamt aus Studiengang ermitteln
+            int ectsGesamt = einschreibung.getStudiengang().getGesamtEcts();
+            String studiengangName = einschreibung.getStudiengang().getName();
+
+            EinschreibungDetailsResponse response = EinschreibungDetailsResponse.newBuilder()
+                    .setEinschreibungId(einschreibungId)
+                    .setPoId(po.getId())
+                    .setEctsGesamt(ectsGesamt)
+                    .setStudiengangName(studiengangName)
+                    .setFound(true)
+                    .build();
+
+            log.info("gRPC: Returning Einschreibung details - PO: {}, ECTS: {}", po.getId(), ectsGesamt);
+            responseObserver.onNext(response);
+            responseObserver.onCompleted();
+
+        } catch (Exception e) {
+            log.error("gRPC Error getting Einschreibung details: {} - Stacktrace:", e.getMessage(), e);
+            responseObserver.onError(io.grpc.Status.INTERNAL
+                    .withDescription("Fehler beim Abrufen der Einschreibung: " + e.getMessage())
                     .asRuntimeException());
         }
     }

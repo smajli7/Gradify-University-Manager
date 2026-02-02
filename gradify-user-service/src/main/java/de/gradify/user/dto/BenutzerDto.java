@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.time.LocalDateTime;
 import java.util.Set;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -15,12 +14,12 @@ import java.util.UUID;
 @AllArgsConstructor
 public class BenutzerDto {
     
-    private UUID id;
+    private Long id;
     private String benutzername;
     private String email;
     private String vorname;
     private String nachname;
-    private UUID mandantId;
+    private Long mandantId;
     private boolean aktiv;
     private Set<String> rollen;
     private LocalDateTime letzterLogin;

@@ -12,7 +12,6 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -25,7 +24,7 @@ public class UserController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<BenutzerDto>>> getAllUsers(
-            @RequestParam(value = "mandantId", required = false) UUID mandantId) {
+            @RequestParam(value = "mandantId", required = false) Long mandantId) {
         log.info("Getting all users, mandantId={}", mandantId);
         
         List<BenutzerDto> users;
@@ -40,7 +39,7 @@ public class UserController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<BenutzerDto>> getUserById(
-            @PathVariable(value = "id") UUID id) {
+            @PathVariable(value = "id") Long id) {
         log.info("Getting user by id: {}", id);
         
         return benutzerService.findById(id)
@@ -74,7 +73,7 @@ public class UserController {
 
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<BenutzerDto>> updateUser(
-            @PathVariable(value = "id") UUID id,
+            @PathVariable(value = "id") Long id,
             @Valid @RequestBody CreateBenutzerRequest request) {
         log.info("Updating user: {}", id);
         
@@ -85,7 +84,7 @@ public class UserController {
 
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteUser(
-            @PathVariable(value = "id") UUID id) {
+            @PathVariable(value = "id") Long id) {
         log.info("Deleting user: {}", id);
         
         if (benutzerService.delete(id)) {
@@ -96,8 +95,8 @@ public class UserController {
 
     @PostMapping("/{id}/roles/{roleId}")
     public ResponseEntity<ApiResponse<Void>> assignRole(
-            @PathVariable(value = "id") UUID id, 
-            @PathVariable(value = "roleId") UUID roleId) {
+            @PathVariable(value = "id") Long id, 
+            @PathVariable(value = "roleId") Long roleId) {
         log.info("Assigning role {} to user {}", roleId, id);
         
         if (benutzerService.assignRole(id, roleId)) {
@@ -108,8 +107,8 @@ public class UserController {
 
     @DeleteMapping("/{id}/roles/{roleId}")
     public ResponseEntity<ApiResponse<Void>> removeRole(
-            @PathVariable(value = "id") UUID id, 
-            @PathVariable(value = "roleId") UUID roleId) {
+            @PathVariable(value = "id") Long id, 
+            @PathVariable(value = "roleId") Long roleId) {
         log.info("Removing role {} from user {}", roleId, id);
         
         if (benutzerService.removeRole(id, roleId)) {
@@ -124,7 +123,7 @@ public class UserController {
         
         List<Object> roles = benutzerService.findAllRoles().stream()
             .map(rolle -> new Object() {
-                public final UUID id = rolle.getId();
+                public final Long id = rolle.getId();
                 public final String name = rolle.getName();
                 public final String beschreibung = rolle.getBeschreibung();
             })

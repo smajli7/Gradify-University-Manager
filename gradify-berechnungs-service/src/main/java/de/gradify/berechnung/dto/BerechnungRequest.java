@@ -6,8 +6,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.UUID;
-
 /**
  * Request DTO für Gesamtnoten-Berechnung.
  */
@@ -18,10 +16,10 @@ import java.util.UUID;
 public class BerechnungRequest {
     
     @NotNull(message = "Einschreibungs-ID darf nicht leer sein")
-    private UUID einschreibungId;
+    private Long einschreibungId;
     
     @NotNull(message = "Prüfungsordnungs-ID darf nicht leer sein")
-    private UUID pruefungsordnungId;
+    private Long pruefungsordnungId;
     
     /**
      * Gesamt-ECTS des Studiengangs.

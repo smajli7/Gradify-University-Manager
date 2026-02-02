@@ -10,7 +10,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/mandanten")
@@ -34,7 +33,7 @@ public class MandantController {
      * Mandant nach ID abrufen.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<MandantDto>> getMandantById(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<MandantDto>> getMandantById(@PathVariable Long id) {
         log.info("Getting Mandant by id: {}", id);
         
         return mandantService.getMandantById(id)
@@ -47,7 +46,7 @@ public class MandantController {
      * Mandant-Kürzel abrufen (für Matrikelnummer-Generierung).
      */
     @GetMapping("/{id}/kuerzel")
-    public ResponseEntity<ApiResponse<String>> getMandantKuerzel(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<String>> getMandantKuerzel(@PathVariable Long id) {
         log.info("Getting Mandant Kürzel for id: {}", id);
         
         return mandantService.getMandantKuerzel(id)

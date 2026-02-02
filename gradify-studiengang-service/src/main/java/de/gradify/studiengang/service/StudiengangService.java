@@ -13,7 +13,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Service
 @RequiredArgsConstructor
@@ -29,7 +28,7 @@ public class StudiengangService {
         return studiengangRepository.findAll();
     }
 
-    public List<Studiengang> findByMandantId(UUID mandantId) {
+    public List<Studiengang> findByMandantId(Long mandantId) {
         return studiengangRepository.findByMandantId(mandantId);
     }
 
@@ -37,7 +36,7 @@ public class StudiengangService {
         return studiengangRepository.findByAktivTrue();
     }
 
-    public Optional<Studiengang> findById(UUID id) {
+    public Optional<Studiengang> findById(Long id) {
         return studiengangRepository.findById(id);
     }
 
@@ -45,7 +44,7 @@ public class StudiengangService {
         return studiengangRepository.findByKuerzel(kuerzel);
     }
 
-    public List<Modul> findModuleByStudiengangId(UUID studiengangId) {
+    public List<Modul> findModuleByStudiengangId(Long studiengangId) {
         return studiengangRepository.findById(studiengangId)
             .map(studiengang -> {
                 if (studiengang.getAktuellePo() != null) {
@@ -56,19 +55,19 @@ public class StudiengangService {
             .orElse(List.of());
     }
 
-    public List<Modul> findModuleByPoId(UUID poId) {
+    public List<Modul> findModuleByPoId(Long poId) {
         return modulRepository.findByPruefungsordnungId(poId);
     }
 
-    public Optional<Modul> findModulById(UUID modulId) {
+    public Optional<Modul> findModulById(Long modulId) {
         return modulRepository.findById(modulId);
     }
 
-    public List<Pruefungsordnung> findPruefungsordnungenByStudiengangId(UUID studiengangId) {
+    public List<Pruefungsordnung> findPruefungsordnungenByStudiengangId(Long studiengangId) {
         return pruefungsordnungRepository.findByStudiengangId(studiengangId);
     }
 
-    public Optional<Pruefungsordnung> findPruefungsordnungById(UUID poId) {
+    public Optional<Pruefungsordnung> findPruefungsordnungById(Long poId) {
         return pruefungsordnungRepository.findById(poId);
     }
 
@@ -78,7 +77,7 @@ public class StudiengangService {
     }
 
     @Transactional
-    public void deleteById(UUID id) {
+    public void deleteById(Long id) {
         studiengangRepository.deleteById(id);
     }
 }

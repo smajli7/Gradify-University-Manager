@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -14,13 +13,13 @@ import java.util.UUID;
 @AllArgsConstructor
 public class EinschreibungDto {
     
-    private UUID id;
-    private UUID studentId;
+    private Long id;
+    private Long studentId;
     private String matrikelnummer;
     private String studentName;
-    private UUID studiengangId;
+    private Long studiengangId;
     private String studiengangName;
-    private UUID pruefungsordnungId;
+    private Long pruefungsordnungId;
     private String pruefungsordnungVersion;
     private String studienvariante;
     private LocalDate immatrikuliertAm;

@@ -8,7 +8,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.Set;
-import java.util.UUID;
 
 @Entity
 @Table(name = "benutzer")
@@ -20,14 +19,8 @@ import java.util.UUID;
 public class Benutzer {
 
     @Id
-    private UUID id;
-
-    @PrePersist
-    public void prePersist() {
-        if (id == null) {
-            id = UUID.randomUUID();
-        }
-    }
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(nullable = false, unique = true, length = 50)
     private String benutzername;
@@ -45,7 +38,7 @@ public class Benutzer {
     private String nachname;
 
     @Column(nullable = false)
-    private UUID mandantId;
+    private Long mandantId;
 
     @Column(nullable = false)
     @Builder.Default

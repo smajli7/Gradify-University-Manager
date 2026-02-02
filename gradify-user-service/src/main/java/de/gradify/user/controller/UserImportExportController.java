@@ -17,7 +17,12 @@ import org.springframework.web.multipart.MultipartFile;
 import java.io.BufferedReader;
 import java.io.InputStreamReader;
 import java.nio.charset.StandardCharsets;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashMap;
+import java.util.HashSet;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Controller für den CSV-Import/Export von Benutzern.
@@ -36,7 +41,7 @@ public class UserImportExportController {
     private final PasswordEncoder passwordEncoder;
 
     // Demo-Mandant-ID (sollte später aus dem Auth-Context kommen)
-    private static final UUID DEMO_MANDANT_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    private static final Long DEMO_MANDANT_ID = 1L;
 
     /**
      * Exportiert alle Benutzer als CSV.

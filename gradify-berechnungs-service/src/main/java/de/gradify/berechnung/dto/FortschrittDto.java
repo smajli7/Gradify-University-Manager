@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -15,7 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class FortschrittDto {
     
-    private UUID einschreibungId;
+    private Long einschreibungId;
     private int ectsErreicht;
     private int ectsGesamt;
     private BigDecimal fortschrittProzent;
@@ -29,7 +28,7 @@ public class FortschrittDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class OffeneModulInfo {
-        private UUID modulId;
+        private Long modulId;
         private String modulName;
         private String modulNr;
         private int ects;

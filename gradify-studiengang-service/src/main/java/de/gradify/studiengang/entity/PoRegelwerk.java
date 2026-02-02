@@ -3,8 +3,6 @@ package de.gradify.studiengang.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.UUID;
-
 @Entity
 @Table(name = "po_regelwerke")
 @Data
@@ -15,8 +13,8 @@ import java.util.UUID;
 public class PoRegelwerk {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @OneToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "po_id", nullable = false)

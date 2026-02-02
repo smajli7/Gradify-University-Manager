@@ -9,20 +9,19 @@ import org.springframework.stereotype.Repository;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface PruefungsordnungRepository extends JpaRepository<Pruefungsordnung, UUID> {
+public interface PruefungsordnungRepository extends JpaRepository<Pruefungsordnung, Long> {
 
-    List<Pruefungsordnung> findByStudiengangId(UUID studiengangId);
+    List<Pruefungsordnung> findByStudiengangId(Long studiengangId);
 
-    Optional<Pruefungsordnung> findByStudiengangIdAndVersion(UUID studiengangId, String version);
+    Optional<Pruefungsordnung> findByStudiengangIdAndVersion(Long studiengangId, String version);
 
     @Query("SELECT p FROM Pruefungsordnung p WHERE p.studiengang.id = :studiengangId AND p.gueltigAb <= :datum AND (p.gueltigBis IS NULL OR p.gueltigBis >= :datum)")
-    Optional<Pruefungsordnung> findAktuelleByStudiengangId(@Param("studiengangId") UUID studiengangId, @Param("datum") LocalDate datum);
+    Optional<Pruefungsordnung> findAktuelleByStudiengangId(@Param("studiengangId") Long studiengangId, @Param("datum") LocalDate datum);
 
     @Query("SELECT p FROM Pruefungsordnung p WHERE p.studiengang.id = :studiengangId ORDER BY p.gueltigAb DESC")
-    List<Pruefungsordnung> findByStudiengangIdOrderByGueltigAbDesc(@Param("studiengangId") UUID studiengangId);
+    List<Pruefungsordnung> findByStudiengangIdOrderByGueltigAbDesc(@Param("studiengangId") Long studiengangId);
 }
 
 

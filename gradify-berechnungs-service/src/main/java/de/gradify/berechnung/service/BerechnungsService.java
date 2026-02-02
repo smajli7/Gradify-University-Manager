@@ -35,7 +35,7 @@ public class BerechnungsService {
      * Holt die Gesamtnote für eine Einschreibung.
      */
     @Transactional(readOnly = true)
-    public Optional<BerechnungDto> getGesamtnote(UUID einschreibungId) {
+    public Optional<BerechnungDto> getGesamtnote(Long einschreibungId) {
         log.info("Getting Gesamtnote for einschreibung: {}", einschreibungId);
         return berechnungsergebnisRepository.findByEinschreibungId(einschreibungId)
                 .map(this::toDto);
@@ -45,7 +45,7 @@ public class BerechnungsService {
      * Holt die Detail-Berechnung mit allen Modulbeiträgen.
      */
     @Transactional(readOnly = true)
-    public Optional<DetailBerechnungDto> getDetailBerechnung(UUID einschreibungId) {
+    public Optional<DetailBerechnungDto> getDetailBerechnung(Long einschreibungId) {
         log.info("Getting DetailBerechnung for einschreibung: {}", einschreibungId);
         return berechnungsergebnisRepository.findByEinschreibungId(einschreibungId)
                 .map(this::toDetailDto);
@@ -55,7 +55,7 @@ public class BerechnungsService {
      * Holt den Studienfortschritt (ECTS, bestandene Module).
      */
     @Transactional(readOnly = true)
-    public Optional<FortschrittDto> getFortschritt(UUID einschreibungId) {
+    public Optional<FortschrittDto> getFortschritt(Long einschreibungId) {
         log.info("Getting Fortschritt for einschreibung: {}", einschreibungId);
         return berechnungsergebnisRepository.findByEinschreibungId(einschreibungId)
                 .map(this::toFortschrittDto);
@@ -69,20 +69,25 @@ public class BerechnungsService {
      * @param ectsGesamt Gesamt-ECTS des Studiengangs
      */
     @Transactional
-    public BerechnungDto berechneGesamtnote(UUID einschreibungId, UUID poId, int ectsGesamt) {
+    public BerechnungDto berechneGesamtnote(Long einschreibungId, Long poId, int ectsGesamt) {
         log.info("Calculating Gesamtnote for einschreibung: {}, PO: {}", einschreibungId, poId);
 
         // 1. Noten via gRPC abrufen
-        List<NoteData> notenDaten = notenGrpcClient.getNotenFuerBerechnung(einschreibungId);
-        log.info("Received {} Noten via gRPC", notenDaten.size());
+        var notenResult = notenGrpcClient.getNotenFuerBerechnung(einschreibungId);
+        List<NoteData> notenDaten = notenResult.noten();
+        log.info("gRPC Noten-Service: {} - {} Noten erhalten", 
+                notenResult.status().available() ? "OK" : "FEHLER", notenDaten.size());
 
         // 2. Modul-Gewichtungen via gRPC abrufen
-        List<ModulGewichtung> gewichtungen = studiengangGrpcClient.getModulGewichtungen(poId);
-        log.info("Received {} Modul-Gewichtungen via gRPC", gewichtungen.size());
+        var gewichtungenResult = studiengangGrpcClient.getModulGewichtungen(poId);
+        List<ModulGewichtung> gewichtungen = gewichtungenResult.gewichtungen();
+        log.info("gRPC Studiengang-Service: {} - {} Module erhalten", 
+                gewichtungenResult.status().available() ? "OK" : "FEHLER", gewichtungen.size());
 
         // 3. Regelwerk abrufen
-        Optional<StudiengangGrpcClient.RegelwerkInfo> regelwerkOpt = studiengangGrpcClient.getRegelwerk(poId);
-        String berechnungsart = regelwerkOpt.map(StudiengangGrpcClient.RegelwerkInfo::berechnungsart)
+        var regelwerkResult = studiengangGrpcClient.getRegelwerk(poId);
+        String berechnungsart = regelwerkResult.regelwerk()
+                .map(StudiengangGrpcClient.RegelwerkInfo::berechnungsart)
                 .orElse("GEWICHTET");
 
         // 4. Noten und Gewichtungen zusammenführen
@@ -101,7 +106,7 @@ public class BerechnungsService {
                     : "Modul " + (gew != null ? gew.getModulNr() : note.getModulId());
             
             ModulBerechnung mb = ModulBerechnung.builder()
-                    .modulId(UUID.fromString(note.getModulId()))
+                    .modulId(Long.parseLong(note.getModulId()))
                     .modulNr(gew != null ? gew.getModulNr() : "?")
                     .modulName(modulName)
                     .note(BigDecimal.valueOf(note.getNoteWert()))
@@ -127,7 +132,7 @@ public class BerechnungsService {
      * Einfache Berechnung ohne gRPC (für Tests / wenn Services nicht erreichbar).
      */
     @Transactional
-    public BerechnungDto berechneGesamtnote(UUID einschreibungId) {
+    public BerechnungDto berechneGesamtnote(Long einschreibungId) {
         log.info("Calculating Gesamtnote for einschreibung (ohne gRPC): {}", einschreibungId);
 
         // Bestehende Berechnung laden oder neue erstellen
@@ -151,7 +156,7 @@ public class BerechnungsService {
      * Aktualisiert die Berechnung basierend auf vorhandenen ModulBerechnungen.
      */
     @Transactional
-    public BerechnungDto aktualisiereBerechnung(UUID einschreibungId, 
+    public BerechnungDto aktualisiereBerechnung(Long einschreibungId, 
                                                  List<ModulBerechnung> modulBerechnungen,
                                                  String berechnungsart,
                                                  int ectsGesamt) {

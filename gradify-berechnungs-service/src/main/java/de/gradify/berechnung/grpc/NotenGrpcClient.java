@@ -8,8 +8,6 @@ import org.springframework.stereotype.Service;
 
 import java.util.Collections;
 import java.util.List;
-import java.util.UUID;
-import java.util.stream.Collectors;
 
 /**
  * gRPC Client für Noten-Service.
@@ -20,40 +18,52 @@ public class NotenGrpcClient {
 
     @GrpcClient("noten-service")
     private NotenDataServiceGrpc.NotenDataServiceBlockingStub notenStub;
+    
+    private volatile GrpcStatus lastStatus = new GrpcStatus(false, "Nicht initialisiert");
 
     /**
      * Holt alle freigegebenen Noten einer Einschreibung für Berechnung.
      */
-    public List<NoteData> getNotenFuerBerechnung(UUID einschreibungId) {
+    public NotenResult getNotenFuerBerechnung(Long einschreibungId) {
         log.info("gRPC: Requesting Noten for einschreibung: {}", einschreibungId);
 
         if (notenStub == null) {
-            log.warn("gRPC: NotenStub not initialized");
-            return Collections.emptyList();
+            log.error("gRPC: NotenStub not initialized!");
+            lastStatus = new GrpcStatus(false, "Stub nicht initialisiert");
+            return new NotenResult(Collections.emptyList(), lastStatus);
         }
 
         try {
             NotenRequest request = NotenRequest.newBuilder()
-                    .setEinschreibungId(einschreibungId.toString())
+                    .setEinschreibungId(einschreibungId)
                     .build();
 
             NotenListResponse response = notenStub.getNotenFuerBerechnung(request);
             
             log.info("gRPC: Received {} Noten", response.getNotenCount());
-            return response.getNotenList();
+            lastStatus = new GrpcStatus(true, "OK - " + response.getNotenCount() + " Noten");
+            return new NotenResult(response.getNotenList(), lastStatus);
 
         } catch (StatusRuntimeException e) {
             log.error("gRPC Error getting Noten: {} - {}", e.getStatus().getCode(), e.getMessage());
-            return Collections.emptyList();
+            lastStatus = new GrpcStatus(false, "Fehler: " + e.getStatus().getCode());
+            return new NotenResult(Collections.emptyList(), lastStatus);
         }
     }
+    
+    public GrpcStatus getLastStatus() {
+        return lastStatus;
+    }
+    
+    public record GrpcStatus(boolean available, String message) {}
+    public record NotenResult(List<NoteData> noten, GrpcStatus status) {}
 
     /**
      * Konvertiert NoteData zu einer einfachen DTO-Map.
      */
     public static NotenInfo toNotenInfo(NoteData data) {
         return new NotenInfo(
-                UUID.fromString(data.getModulId()),
+                data.getModulId(),
                 data.getNoteWert(),
                 data.getBestanden(),
                 data.getInGesamtnote()
@@ -63,7 +73,7 @@ public class NotenGrpcClient {
     /**
      * Einfache DTO Klasse für Noten-Daten.
      */
-    public record NotenInfo(UUID modulId, double noteWert, boolean bestanden, boolean inGesamtnote) {}
+    public record NotenInfo(Long modulId, double noteWert, boolean bestanden, boolean inGesamtnote) {}
 }
 
 

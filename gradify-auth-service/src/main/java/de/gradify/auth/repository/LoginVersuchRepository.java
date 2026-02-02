@@ -8,10 +8,9 @@ import org.springframework.stereotype.Repository;
 
 import java.time.LocalDateTime;
 import java.util.List;
-import java.util.UUID;
 
 @Repository
-public interface LoginVersuchRepository extends JpaRepository<LoginVersuch, UUID> {
+public interface LoginVersuchRepository extends JpaRepository<LoginVersuch, Long> {
 
     @Query("SELECT COUNT(l) FROM LoginVersuch l WHERE l.benutzername = :benutzername AND l.erfolgreich = false AND l.zeitpunkt > :seit")
     long countFehlgeschlageneVersucheSeit(@Param("benutzername") String benutzername, @Param("seit") LocalDateTime seit);

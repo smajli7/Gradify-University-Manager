@@ -13,7 +13,6 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/einschreibungen")
@@ -28,8 +27,8 @@ public class EinschreibungController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<EinschreibungDto>>> getAllEinschreibungen(
-            @RequestParam(required = false) UUID studentId,
-            @RequestParam(required = false) UUID studiengangId) {
+            @RequestParam(required = false) Long studentId,
+            @RequestParam(required = false) Long studiengangId) {
         log.info("Getting Einschreibungen - studentId: {}, studiengangId: {}", studentId, studiengangId);
         
         List<EinschreibungDto> einschreibungen;
@@ -49,7 +48,7 @@ public class EinschreibungController {
      * Einschreibung nach ID abrufen.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<EinschreibungDto>> getEinschreibungById(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<EinschreibungDto>> getEinschreibungById(@PathVariable Long id) {
         log.info("Getting Einschreibung by id: {}", id);
         
         return einschreibungService.getEinschreibungById(id)
@@ -82,7 +81,7 @@ public class EinschreibungController {
      * Einschreibung abschließen (Student hat bestanden).
      */
     @PostMapping("/{id}/abschliessen")
-    public ResponseEntity<ApiResponse<EinschreibungDto>> abschliessenEinschreibung(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<EinschreibungDto>> abschliessenEinschreibung(@PathVariable Long id) {
         log.info("Completing Einschreibung: {}", id);
         
         return einschreibungService.beendeEinschreibung(id, Einschreibung.EinschreibungStatus.ABGESCHLOSSEN)
@@ -95,7 +94,7 @@ public class EinschreibungController {
      * Einschreibung abbrechen.
      */
     @PostMapping("/{id}/abbrechen")
-    public ResponseEntity<ApiResponse<EinschreibungDto>> abbrechenEinschreibung(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<EinschreibungDto>> abbrechenEinschreibung(@PathVariable Long id) {
         log.info("Cancelling Einschreibung: {}", id);
         
         return einschreibungService.beendeEinschreibung(id, Einschreibung.EinschreibungStatus.ABGEBROCHEN)
@@ -108,7 +107,7 @@ public class EinschreibungController {
      * Semester erhöhen.
      */
     @PostMapping("/{id}/semester")
-    public ResponseEntity<ApiResponse<EinschreibungDto>> erhoheSemester(@PathVariable UUID id) {
+    public ResponseEntity<ApiResponse<EinschreibungDto>> erhoheSemester(@PathVariable Long id) {
         log.info("Incrementing semester for Einschreibung: {}", id);
         
         return einschreibungService.erhoheSemester(id)

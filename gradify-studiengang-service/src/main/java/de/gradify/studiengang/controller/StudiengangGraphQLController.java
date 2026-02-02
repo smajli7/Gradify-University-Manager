@@ -10,7 +10,6 @@ import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * GraphQL Controller fuer Studiengang-Abfragen.
@@ -49,7 +48,7 @@ public class StudiengangGraphQLController {
     @QueryMapping
     public Mandant mandant(@Argument("id") String id) {
         log.info("GraphQL: Fetching mandant by id: {}", id);
-        return mandantRepository.findById(UUID.fromString(id)).orElse(null);
+        return mandantRepository.findById(Long.parseLong(id)).orElse(null);
     }
 
     // ==================== STUDIENGANG QUERIES ====================
@@ -63,7 +62,7 @@ public class StudiengangGraphQLController {
         log.info("GraphQL: Fetching studiengaenge - mandantId: {}", mandantId);
         
         if (mandantId != null) {
-            return studiengangRepository.findByMandantId(UUID.fromString(mandantId));
+            return studiengangRepository.findByMandantId(Long.parseLong(mandantId));
         }
         return studiengangRepository.findAll();
     }
@@ -75,7 +74,7 @@ public class StudiengangGraphQLController {
     @QueryMapping
     public Studiengang studiengang(@Argument("id") String id) {
         log.info("GraphQL: Fetching studiengang by id: {}", id);
-        return studiengangRepository.findById(UUID.fromString(id)).orElse(null);
+        return studiengangRepository.findById(Long.parseLong(id)).orElse(null);
     }
 
     /**
@@ -99,11 +98,11 @@ public class StudiengangGraphQLController {
         log.info("GraphQL: Fetching module - studiengangId: {}, poId: {}", studiengangId, poId);
         
         if (poId != null) {
-            return modulRepository.findByPruefungsordnungId(UUID.fromString(poId));
+            return modulRepository.findByPruefungsordnungId(Long.parseLong(poId));
         }
         if (studiengangId != null) {
             // Studiengang holen und dessen aktuelle PO verwenden
-            return studiengangRepository.findById(UUID.fromString(studiengangId))
+            return studiengangRepository.findById(Long.parseLong(studiengangId))
                     .map(sg -> {
                         if (sg.getAktuellePo() != null) {
                             return modulRepository.findByPruefungsordnungId(sg.getAktuellePo().getId());
@@ -122,7 +121,7 @@ public class StudiengangGraphQLController {
     @QueryMapping
     public Modul modul(@Argument("id") String id) {
         log.info("GraphQL: Fetching modul by id: {}", id);
-        return modulRepository.findById(UUID.fromString(id)).orElse(null);
+        return modulRepository.findById(Long.parseLong(id)).orElse(null);
     }
 
     // ==================== EINSCHREIBUNG QUERIES ====================
@@ -136,10 +135,10 @@ public class StudiengangGraphQLController {
         log.info("GraphQL: Fetching einschreibungen - studentId: {}, studiengangId: {}", studentId, studiengangId);
         
         if (studentId != null) {
-            return einschreibungRepository.findByStudentId(UUID.fromString(studentId));
+            return einschreibungRepository.findByStudentId(Long.parseLong(studentId));
         }
         if (studiengangId != null) {
-            return einschreibungRepository.findByStudiengangId(UUID.fromString(studiengangId));
+            return einschreibungRepository.findByStudiengangId(Long.parseLong(studiengangId));
         }
         return einschreibungRepository.findAll();
     }
@@ -151,7 +150,7 @@ public class StudiengangGraphQLController {
     @QueryMapping
     public Einschreibung einschreibung(@Argument("id") String id) {
         log.info("GraphQL: Fetching einschreibung by id: {}", id);
-        return einschreibungRepository.findById(UUID.fromString(id)).orElse(null);
+        return einschreibungRepository.findById(Long.parseLong(id)).orElse(null);
     }
 
     // ==================== SCHEMA MAPPINGS (Nested Fields) ====================
@@ -238,8 +237,8 @@ public class StudiengangGraphQLController {
     public List<Modul> dozentenModule(@Argument("dozentId") String dozentId) {
         log.info("GraphQL: Fetching modules for dozent: {}", dozentId);
         
-        List<ModulZuweisung> zuweisungen = modulZuweisungRepository.findByDozentId(UUID.fromString(dozentId));
-        List<UUID> modulIds = zuweisungen.stream()
+        List<ModulZuweisung> zuweisungen = modulZuweisungRepository.findByDozentId(Long.parseLong(dozentId));
+        List<Long> modulIds = zuweisungen.stream()
             .map(ModulZuweisung::getModulId)
             .toList();
         

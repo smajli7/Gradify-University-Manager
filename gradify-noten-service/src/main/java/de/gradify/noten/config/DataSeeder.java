@@ -24,7 +24,7 @@ import java.util.UUID;
  * - Leon Weber (Einschreibung 3): Forschung Soziale Arbeit MA, 2. Semester
  */
 @Component
-@Profile("dev")
+@Profile("java-seed") // Deaktiviert - verwende data.sql stattdessen
 @RequiredArgsConstructor
 @Slf4j
 public class DataSeeder implements CommandLineRunner {

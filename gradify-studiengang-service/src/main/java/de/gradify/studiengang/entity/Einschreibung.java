@@ -6,7 +6,6 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "einschreibungen")
@@ -18,17 +17,11 @@ import java.util.UUID;
 public class Einschreibung {
 
     @Id
-    private UUID id;
-    
-    @PrePersist
-    public void prePersist() {
-        if (id == null) {
-            id = UUID.randomUUID();
-        }
-    }
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(nullable = false)
-    private UUID studentId;
+    private Long studentId;
 
     @ManyToOne(fetch = FetchType.LAZY)
     @JoinColumn(name = "studiengang_id", nullable = false)

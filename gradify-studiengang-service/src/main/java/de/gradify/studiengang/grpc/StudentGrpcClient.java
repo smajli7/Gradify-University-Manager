@@ -8,8 +8,10 @@ import org.springframework.context.annotation.Lazy;
 import org.springframework.stereotype.Service;
 
 import jakarta.annotation.PostConstruct;
+import java.util.ArrayList;
+import java.util.Collections;
+import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 /**
  * gRPC Client für den User-Service.
@@ -33,32 +35,41 @@ public class StudentGrpcClient {
      * Prüft ob ein Student existiert.
      * 
      * @param studentId Die ID des Studenten
-     * @return true wenn der Student existiert, sonst false
+     * @return StudentValidationResult mit Status und gRPC-Verfügbarkeit
      */
-    public boolean studentExists(UUID studentId) {
+    public StudentValidationResult studentExists(Long studentId) {
         log.debug("Checking if student exists: {}", studentId);
         
         if (studentStub == null) {
-            log.warn("gRPC stub not available - skipping student validation");
-            return true; // In dev: Accept wenn gRPC nicht verfügbar
+            log.error("gRPC stub not available - cannot validate student!");
+            return new StudentValidationResult(false, false, "gRPC nicht verfügbar");
         }
         
         try {
             StudentIdRequest request = StudentIdRequest.newBuilder()
-                    .setStudentId(studentId.toString())
+                    .setStudentId(studentId)
                     .build();
             
             StudentExistsResponse response = studentStub.studentExists(request);
-            return response.getExists();
+            return new StudentValidationResult(response.getExists(), true, "gRPC OK");
             
         } catch (StatusRuntimeException e) {
-            log.warn("gRPC error checking student existence (User-Service down?): {}", e.getMessage());
-            return true; // In dev: Accept wenn Service nicht erreichbar
+            log.error("gRPC error checking student existence: {} - {}", e.getStatus().getCode(), e.getMessage());
+            return new StudentValidationResult(false, false, "gRPC Fehler: " + e.getStatus().getCode());
         } catch (Exception e) {
-            log.warn("Error checking student existence: {}", e.getMessage());
-            return true;
+            log.error("Error checking student existence: {}", e.getMessage());
+            return new StudentValidationResult(false, false, "Fehler: " + e.getMessage());
         }
     }
+    
+    /**
+     * Ergebnis der Student-Validierung mit gRPC-Status.
+     */
+    public record StudentValidationResult(
+            boolean exists,
+            boolean grpcAvailable,
+            String statusMessage
+    ) {}
 
     /**
      * Holt einen Studenten.
@@ -66,7 +77,7 @@ public class StudentGrpcClient {
      * @param studentId Die ID des Studenten
      * @return Der Student oder empty wenn nicht gefunden
      */
-    public Optional<StudentInfo> getStudent(UUID studentId) {
+    public Optional<StudentInfo> getStudent(Long studentId) {
         log.debug("Getting student: {}", studentId);
         
         if (studentStub == null) {
@@ -76,17 +87,17 @@ public class StudentGrpcClient {
         
         try {
             StudentIdRequest request = StudentIdRequest.newBuilder()
-                    .setStudentId(studentId.toString())
+                    .setStudentId(studentId)
                     .build();
             
             StudentResponse response = studentStub.getStudent(request);
             
-            if (response.getId().isEmpty()) {
+            if (response.getId() == 0) {
                 return Optional.empty();
             }
             
             return Optional.of(new StudentInfo(
-                    UUID.fromString(response.getId()),
+                    response.getId(),
                     response.getMatrikelnummer(),
                     response.getVorname(),
                     response.getNachname(),
@@ -103,10 +114,56 @@ public class StudentGrpcClient {
     }
 
     /**
+     * Holt alle Studenten eines Studiengangs.
+     * 
+     * @param studiengangId Die Studiengang-ID
+     * @return Liste der Studenten (leer wenn keine gefunden oder Fehler)
+     */
+    public List<StudentInfo> getStudentsByStudiengang(Long studiengangId) {
+        log.debug("Getting students for studiengang: {}", studiengangId);
+        
+        if (studentStub == null) {
+            log.warn("gRPC stub not available - returning empty list");
+            return Collections.emptyList();
+        }
+        
+        try {
+            StudiengangIdRequest request = StudiengangIdRequest.newBuilder()
+                    .setStudiengangId(studiengangId)
+                    .build();
+            
+            StudentListResponse response = studentStub.getStudentsByStudiengang(request);
+            
+            List<StudentInfo> students = new ArrayList<>();
+            for (StudentResponse sr : response.getStudentsList()) {
+                if (sr.getId() != 0) {
+                    students.add(new StudentInfo(
+                            sr.getId(),
+                            sr.getMatrikelnummer(),
+                            sr.getVorname(),
+                            sr.getNachname(),
+                            sr.getStatus()
+                    ));
+                }
+            }
+            
+            log.info("gRPC: Found {} students for studiengang: {}", students.size(), studiengangId);
+            return students;
+            
+        } catch (StatusRuntimeException e) {
+            log.warn("gRPC error getting students (User-Service down?): {}", e.getMessage());
+            return Collections.emptyList();
+        } catch (Exception e) {
+            log.warn("Error getting students: {}", e.getMessage());
+            return Collections.emptyList();
+        }
+    }
+
+    /**
      * Info-Klasse für Studentendaten.
      */
     public record StudentInfo(
-            UUID id,
+            Long id,
             String matrikelnummer,
             String vorname,
             String nachname,

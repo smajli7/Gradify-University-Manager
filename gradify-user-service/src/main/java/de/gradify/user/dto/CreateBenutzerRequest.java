@@ -10,7 +10,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.util.Set;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -37,9 +36,9 @@ public class CreateBenutzerRequest {
     private String nachname;
     
     @NotNull(message = "Mandant-ID darf nicht leer sein")
-    private UUID mandantId;
+    private Long mandantId;
     
-    private Set<UUID> rollenIds;
+    private Set<Long> rollenIds;
 }
 
 

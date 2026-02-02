@@ -4,6 +4,8 @@ import de.gradify.berechnung.dto.BerechnungDto;
 import de.gradify.berechnung.dto.BerechnungRequest;
 import de.gradify.berechnung.dto.DetailBerechnungDto;
 import de.gradify.berechnung.dto.FortschrittDto;
+import de.gradify.berechnung.grpc.NotenGrpcClient;
+import de.gradify.berechnung.grpc.StudiengangGrpcClient;
 import de.gradify.berechnung.service.BerechnungsService;
 import de.gradify.shared.dto.ApiResponse;
 import io.swagger.v3.oas.annotations.Operation;
@@ -17,7 +19,7 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.math.BigDecimal;
-import java.util.UUID;
+import java.util.Map;
 
 @RestController
 @RequestMapping("/api/berechnungen")
@@ -27,11 +29,13 @@ import java.util.UUID;
 public class BerechnungsController {
 
     private final BerechnungsService berechnungsService;
+    private final NotenGrpcClient notenGrpcClient;
+    private final StudiengangGrpcClient studiengangGrpcClient;
 
     @Operation(summary = "Gesamtnote abrufen", description = "Liefert die berechnete Gesamtnote einer Einschreibung")
     @GetMapping("/einschreibung/{einschreibungId}")
     public ResponseEntity<ApiResponse<BerechnungDto>> getGesamtnote(
-            @PathVariable("einschreibungId") UUID einschreibungId) {
+            @PathVariable("einschreibungId") Long einschreibungId) {
         log.info("Getting Gesamtnote for einschreibung: {}", einschreibungId);
         
         return berechnungsService.getGesamtnote(einschreibungId)
@@ -43,7 +47,7 @@ public class BerechnungsController {
     @Operation(summary = "Detail-Berechnung abrufen", description = "Zeigt die Einzelbeitraege aller Module zur Gesamtnote")
     @GetMapping("/einschreibung/{einschreibungId}/details")
     public ResponseEntity<ApiResponse<DetailBerechnungDto>> getDetailBerechnung(
-            @PathVariable("einschreibungId") UUID einschreibungId) {
+            @PathVariable("einschreibungId") Long einschreibungId) {
         log.info("Getting Detail-Berechnung for einschreibung: {}", einschreibungId);
         
         return berechnungsService.getDetailBerechnung(einschreibungId)
@@ -57,7 +61,7 @@ public class BerechnungsController {
      */
     @GetMapping("/einschreibung/{einschreibungId}/fortschritt")
     public ResponseEntity<ApiResponse<FortschrittDto>> getFortschritt(
-            @PathVariable("einschreibungId") UUID einschreibungId) {
+            @PathVariable("einschreibungId") Long einschreibungId) {
         log.info("Getting Fortschritt for einschreibung: {}", einschreibungId);
         
         return berechnungsService.getFortschritt(einschreibungId)
@@ -73,8 +77,8 @@ public class BerechnungsController {
      */
     @PostMapping("/einschreibung/{einschreibungId}/berechnen")
     public ResponseEntity<ApiResponse<BerechnungDto>> berechneGesamtnote(
-            @PathVariable("einschreibungId") UUID einschreibungId,
-            @RequestParam(value = "poId", required = false) UUID poId,
+            @PathVariable("einschreibungId") Long einschreibungId,
+            @RequestParam(value = "poId", required = false) Long poId,
             @RequestParam(value = "ectsGesamt", required = false, defaultValue = "180") int ectsGesamt) {
         log.info("Calculating Gesamtnote for einschreibung: {}, PO: {}", einschreibungId, poId);
         
@@ -147,5 +151,30 @@ public class BerechnungsController {
             public final String ARITHMETISCH_GEMISCHT_FORMEL = "Gesamtnote = (2 * Thesis-Note + Modulmittel) / 3";
         };
         return ResponseEntity.ok(ApiResponse.success(arten));
+    }
+    
+    @Operation(summary = "gRPC Status", description = "Zeigt den Status der gRPC-Verbindungen zu anderen Services")
+    @GetMapping("/grpc-status")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getGrpcStatus() {
+        var notenStatus = notenGrpcClient.getLastStatus();
+        var studiengangStatus = studiengangGrpcClient.getLastStatus();
+        
+        Map<String, Object> status = Map.of(
+            "notenService", Map.of(
+                "available", notenStatus.available(),
+                "message", notenStatus.message(),
+                "protocol", "gRPC",
+                "port", 9084
+            ),
+            "studiengangService", Map.of(
+                "available", studiengangStatus.available(),
+                "message", studiengangStatus.message(),
+                "protocol", "gRPC",
+                "port", 9083
+            ),
+            "allAvailable", notenStatus.available() && studiengangStatus.available()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(status));
     }
 }

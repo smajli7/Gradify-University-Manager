@@ -32,6 +32,46 @@ if (-not $dockerCmd) {
     Write-Host ""
 }
 
+# Shared-Modul zuerst bauen (gRPC-Klassen für Studiengang/Noten/Berechnungs-Service)
+Write-Host "Baue gradify-shared (gRPC-Klassen)..." -ForegroundColor Green
+$sharedPath = Join-Path $PSScriptRoot "gradify-shared"
+if (Test-Path $sharedPath) {
+    Push-Location $sharedPath
+    
+    # Force clean mit rmdir (robuster als mvn clean bei locked files)
+    $targetPath = "target"
+    if (Test-Path $targetPath) {
+        Write-Host "Loesche target-Ordner..." -ForegroundColor Yellow
+        cmd /c "rmdir /s /q target 2>nul"
+        Start-Sleep -Milliseconds 500
+    }
+    
+    # Clean build mit explizitem compile
+    Write-Host "Kompiliere gRPC-Klassen..." -ForegroundColor Yellow
+    mvn clean compile -DskipTests
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "FEHLER: gradify-shared konnte nicht kompiliert werden!" -ForegroundColor Red
+        Pop-Location
+        exit 1
+    }
+    
+    # Install in lokales Maven-Repo
+    Write-Host "Installiere gradify-shared in Maven-Repository..." -ForegroundColor Yellow
+    mvn install -DskipTests
+    if ($LASTEXITCODE -ne 0) {
+        Write-Host "FEHLER: gradify-shared konnte nicht installiert werden!" -ForegroundColor Red
+        Pop-Location
+        exit 1
+    }
+    
+    Pop-Location
+    Write-Host "gradify-shared erfolgreich gebaut und installiert." -ForegroundColor Green
+    Write-Host ""
+} else {
+    Write-Host "WARNUNG: gradify-shared nicht gefunden. Services koennten fehlschlagen." -ForegroundColor Yellow
+    Write-Host ""
+}
+
 # Definiere Services mit ihren Ports und Startreihenfolge
 $services = @(
     @{ Name = "gradify-auth-service"; Port = 8081; Order = 1 },

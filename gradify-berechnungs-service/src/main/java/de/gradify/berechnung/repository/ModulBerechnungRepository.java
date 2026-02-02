@@ -7,20 +7,19 @@ import org.springframework.data.repository.query.Param;
 import org.springframework.stereotype.Repository;
 
 import java.util.List;
-import java.util.UUID;
 
 @Repository
-public interface ModulBerechnungRepository extends JpaRepository<ModulBerechnung, UUID> {
+public interface ModulBerechnungRepository extends JpaRepository<ModulBerechnung, Long> {
 
-    List<ModulBerechnung> findByBerechnungsergebnisId(UUID berechnungsergebnisId);
+    List<ModulBerechnung> findByBerechnungsergebnisId(Long berechnungsergebnisId);
 
     @Query("SELECT m FROM ModulBerechnung m WHERE m.berechnungsergebnis.id = :berechnungsergebnisId AND m.inGesamtnote = true")
-    List<ModulBerechnung> findByBerechnungsergebnisIdAndInGesamtnoteTrue(@Param("berechnungsergebnisId") UUID berechnungsergebnisId);
+    List<ModulBerechnung> findByBerechnungsergebnisIdAndInGesamtnoteTrue(@Param("berechnungsergebnisId") Long berechnungsergebnisId);
 
     @Query("SELECT SUM(m.ects) FROM ModulBerechnung m WHERE m.berechnungsergebnis.id = :berechnungsergebnisId AND m.bestanden = true")
-    Integer sumEctsBestandenByBerechnungsergebnisId(@Param("berechnungsergebnisId") UUID berechnungsergebnisId);
+    Integer sumEctsBestandenByBerechnungsergebnisId(@Param("berechnungsergebnisId") Long berechnungsergebnisId);
 
-    void deleteByBerechnungsergebnisId(UUID berechnungsergebnisId);
+    void deleteByBerechnungsergebnisId(Long berechnungsergebnisId);
 }
 
 

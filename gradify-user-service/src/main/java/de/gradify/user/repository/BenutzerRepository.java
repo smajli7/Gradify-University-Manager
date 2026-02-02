@@ -8,10 +8,9 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface BenutzerRepository extends JpaRepository<Benutzer, UUID> {
+public interface BenutzerRepository extends JpaRepository<Benutzer, Long> {
 
     Optional<Benutzer> findByBenutzername(String benutzername);
 
@@ -21,7 +20,7 @@ public interface BenutzerRepository extends JpaRepository<Benutzer, UUID> {
 
     boolean existsByEmail(String email);
 
-    List<Benutzer> findByMandantId(UUID mandantId);
+    List<Benutzer> findByMandantId(Long mandantId);
 
     List<Benutzer> findByAktivTrue();
 
@@ -29,7 +28,7 @@ public interface BenutzerRepository extends JpaRepository<Benutzer, UUID> {
     List<Benutzer> findByRollenName(@Param("rollenName") String rollenName);
 
     @Query("SELECT b FROM Benutzer b JOIN b.rollen r WHERE r.name = :rollenName AND b.mandantId = :mandantId")
-    List<Benutzer> findByRollenNameAndMandantId(@Param("rollenName") String rollenName, @Param("mandantId") UUID mandantId);
+    List<Benutzer> findByRollenNameAndMandantId(@Param("rollenName") String rollenName, @Param("mandantId") Long mandantId);
 }
 
 

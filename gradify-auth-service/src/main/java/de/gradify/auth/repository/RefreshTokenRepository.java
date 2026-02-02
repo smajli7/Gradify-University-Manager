@@ -11,26 +11,25 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface RefreshTokenRepository extends JpaRepository<RefreshToken, UUID> {
+public interface RefreshTokenRepository extends JpaRepository<RefreshToken, Long> {
 
     Optional<RefreshToken> findByToken(String token);
 
-    List<RefreshToken> findByBenutzerIdAndWiderrufenFalse(UUID benutzerId);
+    List<RefreshToken> findByBenutzerIdAndWiderrufenFalse(Long benutzerId);
 
     @Modifying
     @Transactional
     @Query("UPDATE RefreshToken r SET r.widerrufen = true, r.widerrufenAm = :now WHERE r.benutzerId = :benutzerId AND r.widerrufen = false")
-    int widerrufeAlleByBenutzerId(@Param("benutzerId") UUID benutzerId, @Param("now") LocalDateTime now);
+    int widerrufeAlleByBenutzerId(@Param("benutzerId") Long benutzerId, @Param("now") LocalDateTime now);
 
     @Modifying
     @Transactional
     @Query("DELETE FROM RefreshToken r WHERE r.gueltigBis < :now OR r.widerrufen = true")
     int deleteAbgelaufeneUndWiderrufene(@Param("now") LocalDateTime now);
 
-    long countByBenutzerIdAndWiderrufenFalseAndGueltigBisAfter(UUID benutzerId, LocalDateTime now);
+    long countByBenutzerIdAndWiderrufenFalseAndGueltigBisAfter(Long benutzerId, LocalDateTime now);
 }
 
 

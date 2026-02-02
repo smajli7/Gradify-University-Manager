@@ -3,8 +3,6 @@ package de.gradify.studiengang.entity;
 import jakarta.persistence.*;
 import lombok.*;
 
-import java.util.UUID;
-
 /**
  * Zuordnung: Welcher Dozent unterrichtet welches Modul.
  * Ein Dozent kann max. 3 Module unterrichten.
@@ -18,20 +16,20 @@ import java.util.UUID;
 public class ModulZuweisung {
     
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     /**
      * ID des Dozenten (aus User-Service)
      */
     @Column(nullable = false)
-    private UUID dozentId;
+    private Long dozentId;
 
     /**
      * ID des Moduls
      */
     @Column(nullable = false)
-    private UUID modulId;
+    private Long modulId;
 
     /**
      * Optionale Beschreibung der Zuweisung

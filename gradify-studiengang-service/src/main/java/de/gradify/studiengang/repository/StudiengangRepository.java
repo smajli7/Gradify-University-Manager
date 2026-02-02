@@ -8,25 +8,24 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface StudiengangRepository extends JpaRepository<Studiengang, UUID> {
+public interface StudiengangRepository extends JpaRepository<Studiengang, Long> {
 
     Optional<Studiengang> findByKuerzel(String kuerzel);
 
     boolean existsByKuerzel(String kuerzel);
 
-    List<Studiengang> findByMandantId(UUID mandantId);
+    List<Studiengang> findByMandantId(Long mandantId);
 
     List<Studiengang> findByAktivTrue();
 
-    List<Studiengang> findByMandantIdAndAktivTrue(UUID mandantId);
+    List<Studiengang> findByMandantIdAndAktivTrue(Long mandantId);
 
     List<Studiengang> findByAbschlussart(Studiengang.Abschlussart abschlussart);
 
     @Query("SELECT s FROM Studiengang s WHERE s.mandant.id = :mandantId AND s.abschlussart = :abschlussart")
-    List<Studiengang> findByMandantIdAndAbschlussart(@Param("mandantId") UUID mandantId, @Param("abschlussart") Studiengang.Abschlussart abschlussart);
+    List<Studiengang> findByMandantIdAndAbschlussart(@Param("mandantId") Long mandantId, @Param("abschlussart") Studiengang.Abschlussart abschlussart);
 }
 
 

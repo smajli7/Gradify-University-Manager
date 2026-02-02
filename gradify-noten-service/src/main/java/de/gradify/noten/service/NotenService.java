@@ -15,7 +15,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -31,7 +30,7 @@ public class NotenService {
      * Holt alle Noten, optional gefiltert.
      */
     @Transactional(readOnly = true)
-    public List<NoteDto> getNoten(UUID einschreibungId, UUID modulId, Note.NoteStatus status) {
+    public List<NoteDto> getNoten(Long einschreibungId, Long modulId, Note.NoteStatus status) {
         List<Note> noten;
         
         if (einschreibungId != null && modulId != null) {
@@ -53,7 +52,7 @@ public class NotenService {
      * Holt eine Note nach ID.
      */
     @Transactional(readOnly = true)
-    public Optional<NoteDto> getNoteById(UUID id) {
+    public Optional<NoteDto> getNoteById(Long id) {
         return noteRepository.findById(id).map(this::toDto);
     }
 
@@ -61,7 +60,7 @@ public class NotenService {
      * Holt alle Noten einer Einschreibung.
      */
     @Transactional(readOnly = true)
-    public List<NoteDto> getNotenByEinschreibung(UUID einschreibungId) {
+    public List<NoteDto> getNotenByEinschreibung(Long einschreibungId) {
         return noteRepository.findByEinschreibungId(einschreibungId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -71,7 +70,7 @@ public class NotenService {
      * Holt alle Noten eines Moduls.
      */
     @Transactional(readOnly = true)
-    public List<NoteDto> getNotenByModul(UUID modulId) {
+    public List<NoteDto> getNotenByModul(Long modulId) {
         return noteRepository.findByModulId(modulId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -81,7 +80,7 @@ public class NotenService {
      * Erstellt eine neue Note.
      */
     @Transactional
-    public NoteDto createNote(CreateNoteRequest request, UUID erfasstVon) {
+    public NoteDto createNote(CreateNoteRequest request, Long erfasstVon) {
         log.info("Creating note for einschreibung: {}, modul: {}", 
                 request.getEinschreibungId(), request.getModulId());
 
@@ -130,7 +129,7 @@ public class NotenService {
      * Aktualisiert eine bestehende Note.
      */
     @Transactional
-    public Optional<NoteDto> updateNote(UUID id, UpdateNoteRequest request) {
+    public Optional<NoteDto> updateNote(Long id, UpdateNoteRequest request) {
         return noteRepository.findById(id).map(note -> {
             // Nur ERFASST-Noten können bearbeitet werden
             if (note.getStatus() != Note.NoteStatus.ERFASST) {
@@ -173,7 +172,7 @@ public class NotenService {
      * Validiert eine Note (Prüfungsamt).
      */
     @Transactional
-    public Optional<NoteDto> validateNote(UUID id, UUID validiertVon, String kommentar) {
+    public Optional<NoteDto> validateNote(Long id, Long validiertVon, String kommentar) {
         return noteRepository.findById(id).map(note -> {
             if (note.getStatus() != Note.NoteStatus.ERFASST) {
                 throw new IllegalStateException("Nur ERFASST-Noten können validiert werden");
@@ -204,7 +203,7 @@ public class NotenService {
      * Gibt eine Note frei (Studiengangleitung).
      */
     @Transactional
-    public Optional<NoteDto> releaseNote(UUID id) {
+    public Optional<NoteDto> releaseNote(Long id) {
         return noteRepository.findById(id).map(note -> {
             if (note.getStatus() != Note.NoteStatus.VALIDIERT) {
                 throw new IllegalStateException("Nur VALIDIERT-Noten können freigegeben werden");
@@ -225,7 +224,7 @@ public class NotenService {
      * Löscht eine Note (nur im Status ERFASST).
      */
     @Transactional
-    public boolean deleteNote(UUID id) {
+    public boolean deleteNote(Long id) {
         return noteRepository.findById(id).map(note -> {
             if (note.getStatus() != Note.NoteStatus.ERFASST) {
                 throw new IllegalStateException("Nur ERFASST-Noten können gelöscht werden");

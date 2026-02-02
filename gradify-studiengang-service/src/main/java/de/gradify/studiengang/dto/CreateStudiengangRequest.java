@@ -9,8 +9,6 @@ import lombok.Builder;
 import lombok.Data;
 import lombok.NoArgsConstructor;
 
-import java.util.UUID;
-
 /**
  * Request-DTO zum Erstellen eines neuen Studiengangs.
  */
@@ -21,7 +19,7 @@ import java.util.UUID;
 public class CreateStudiengangRequest {
 
     @NotNull(message = "Mandant-ID ist erforderlich")
-    private UUID mandantId;
+    private Long mandantId;
 
     @NotBlank(message = "Name ist erforderlich")
     @Size(max = 150, message = "Name darf maximal 150 Zeichen haben")

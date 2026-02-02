@@ -6,10 +6,9 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface MandantRepository extends JpaRepository<Mandant, UUID> {
+public interface MandantRepository extends JpaRepository<Mandant, Long> {
 
     Optional<Mandant> findByKuerzel(String kuerzel);
 

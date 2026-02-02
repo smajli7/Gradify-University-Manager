@@ -7,7 +7,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -16,13 +15,13 @@ import java.util.UUID;
 public class CreateEinschreibungRequest {
     
     @NotNull(message = "Student-ID darf nicht leer sein")
-    private UUID studentId;
+    private Long studentId;
     
     @NotNull(message = "Studiengang-ID darf nicht leer sein")
-    private UUID studiengangId;
+    private Long studiengangId;
     
     @NotNull(message = "Prüfungsordnung-ID darf nicht leer sein")
-    private UUID pruefungsordnungId;
+    private Long pruefungsordnungId;
     
     private String studienvariante; // Optional, Default: ALLGEMEIN
     

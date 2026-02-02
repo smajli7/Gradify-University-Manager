@@ -8,14 +8,13 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface BerechnungsergebnisRepository extends JpaRepository<Berechnungsergebnis, UUID> {
+public interface BerechnungsergebnisRepository extends JpaRepository<Berechnungsergebnis, Long> {
 
-    Optional<Berechnungsergebnis> findByEinschreibungId(UUID einschreibungId);
+    Optional<Berechnungsergebnis> findByEinschreibungId(Long einschreibungId);
 
-    boolean existsByEinschreibungId(UUID einschreibungId);
+    boolean existsByEinschreibungId(Long einschreibungId);
 
     List<Berechnungsergebnis> findByStatus(Berechnungsergebnis.BerechnungsStatus status);
 

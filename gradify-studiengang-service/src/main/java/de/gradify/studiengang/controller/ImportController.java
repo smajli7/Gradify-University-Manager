@@ -16,7 +16,12 @@ import java.io.InputStreamReader;
 import java.math.BigDecimal;
 import java.nio.charset.StandardCharsets;
 import java.time.LocalDate;
-import java.util.*;
+import java.util.ArrayList;
+import java.util.HashSet;
+import java.util.LinkedHashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 /**
  * Controller für den CSV-Import von Studiengängen und Modulen.
@@ -45,7 +50,7 @@ public class ImportController {
     @PostMapping(value = "/studiengaenge", consumes = MediaType.MULTIPART_FORM_DATA_VALUE)
     @Transactional
     public ResponseEntity<ApiResponse<ImportResult>> importStudiengaenge(
-            @RequestParam("mandantId") UUID mandantId,
+            @RequestParam("mandantId") Long mandantId,
             @RequestParam("file") MultipartFile file) {
         
         log.info("CSV Import started for mandant: {}", mandantId);
@@ -106,7 +111,7 @@ public class ImportController {
      */
     @GetMapping(value = "/export/studiengaenge", produces = "text/csv")
     public ResponseEntity<String> exportStudiengaenge(
-            @RequestParam("mandantId") UUID mandantId) {
+            @RequestParam("mandantId") Long mandantId) {
         
         log.info("CSV Export started for mandant: {}", mandantId);
 

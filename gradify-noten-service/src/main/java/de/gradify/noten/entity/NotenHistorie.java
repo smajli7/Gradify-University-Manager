@@ -6,7 +6,6 @@ import org.hibernate.annotations.CreationTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "noten_historie")
@@ -18,14 +17,14 @@ import java.util.UUID;
 public class NotenHistorie {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(nullable = false)
-    private UUID noteId;
+    private Long noteId;
 
     @Column(nullable = false)
-    private UUID geaendertVon;
+    private Long geaendertVon;
 
     @Enumerated(EnumType.STRING)
     @Column(nullable = false)

@@ -16,7 +16,6 @@ import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import java.util.List;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @RestController
@@ -30,7 +29,7 @@ public class StudiengangController {
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<StudiengangDto>>> getAllStudiengaenge(
-            @RequestParam(value = "mandantId", required = false) UUID mandantId) {
+            @RequestParam(value = "mandantId", required = false) Long mandantId) {
         log.info("Getting all Studiengaenge, mandantId={}", mandantId);
         
         List<Studiengang> studiengaenge;
@@ -49,7 +48,7 @@ public class StudiengangController {
 
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<StudiengangDto>> getStudiengangById(
-            @PathVariable(value = "id") UUID id) {
+            @PathVariable(value = "id") Long id) {
         log.info("Getting Studiengang by id: {}", id);
         
         return studiengangService.findById(id)
@@ -103,7 +102,7 @@ public class StudiengangController {
 
     @GetMapping("/{id}/module")
     public ResponseEntity<ApiResponse<List<ModulDto>>> getModuleByStudiengang(
-            @PathVariable(value = "id") UUID id) {
+            @PathVariable(value = "id") Long id) {
         log.info("Getting Module for Studiengang: {}", id);
         
         List<Modul> module = studiengangService.findModuleByStudiengangId(id);
@@ -116,7 +115,7 @@ public class StudiengangController {
 
     @GetMapping("/module/{modulId}")
     public ResponseEntity<ApiResponse<ModulDto>> getModulById(
-            @PathVariable(value = "modulId") UUID modulId) {
+            @PathVariable(value = "modulId") Long modulId) {
         log.info("Getting Modul by id: {}", modulId);
         
         return studiengangService.findModulById(modulId)
@@ -126,7 +125,7 @@ public class StudiengangController {
 
     @GetMapping("/po/{poId}/module")
     public ResponseEntity<ApiResponse<List<ModulDto>>> getModuleByPo(
-            @PathVariable(value = "poId") UUID poId) {
+            @PathVariable(value = "poId") Long poId) {
         log.info("Getting Module for PO: {}", poId);
         
         List<Modul> module = studiengangService.findModuleByPoId(poId);

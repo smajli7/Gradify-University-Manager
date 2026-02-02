@@ -6,7 +6,6 @@ import lombok.Data;
 import lombok.NoArgsConstructor;
 
 import java.time.LocalDate;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -14,8 +13,8 @@ import java.util.UUID;
 @AllArgsConstructor
 public class StudentDto {
     
-    private UUID id;
-    private UUID benutzerId;
+    private Long id;
+    private Long benutzerId;
     private String matrikelnummer;
     private String vorname;
     private String nachname;

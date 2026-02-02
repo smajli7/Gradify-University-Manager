@@ -17,7 +17,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -52,7 +51,7 @@ public class StudentService {
      * Holt alle Studenten eines Mandanten.
      */
     @Transactional(readOnly = true)
-    public List<StudentDto> getStudentsByMandant(UUID mandantId) {
+    public List<StudentDto> getStudentsByMandant(Long mandantId) {
         return studentRepository.findByMandantId(mandantId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -62,7 +61,7 @@ public class StudentService {
      * Holt einen Studenten nach ID.
      */
     @Transactional(readOnly = true)
-    public Optional<StudentDto> getStudentById(UUID id) {
+    public Optional<StudentDto> getStudentById(Long id) {
         return studentRepository.findById(id).map(this::toDto);
     }
 
@@ -78,7 +77,7 @@ public class StudentService {
      * Prüft ob ein Student existiert.
      */
     @Transactional(readOnly = true)
-    public boolean existsById(UUID id) {
+    public boolean existsById(Long id) {
         return studentRepository.existsById(id);
     }
 
@@ -99,7 +98,7 @@ public class StudentService {
         }
 
         // MandantId aus Kürzel ermitteln (für jetzt: feste Mapping)
-        UUID mandantId = getMandantIdFromKuerzel(mandantKuerzel);
+        Long mandantId = getMandantIdFromKuerzel(mandantKuerzel);
         
         // Benutzer erstellen oder laden
         Benutzer benutzer;
@@ -132,7 +131,7 @@ public class StudentService {
      * Aktualisiert einen bestehenden Studenten.
      */
     @Transactional
-    public Optional<StudentDto> updateStudent(UUID id, UpdateStudentRequest request) {
+    public Optional<StudentDto> updateStudent(Long id, UpdateStudentRequest request) {
         return studentRepository.findById(id).map(student -> {
             Benutzer benutzer = student.getBenutzer();
             
@@ -176,7 +175,7 @@ public class StudentService {
      * Löscht einen Studenten (setzt Status auf EXMATRIKULIERT).
      */
     @Transactional
-    public boolean deleteStudent(UUID id) {
+    public boolean deleteStudent(Long id) {
         return studentRepository.findById(id).map(student -> {
             student.setStatus(Student.StudentStatus.EXMATRIKULIERT);
             student.getBenutzer().setAktiv(false);
@@ -191,10 +190,10 @@ public class StudentService {
      * Ermittelt die MandantId aus dem Kürzel.
      * TODO: In Produktion über gRPC vom Studiengang-Service abrufen.
      */
-    private UUID getMandantIdFromKuerzel(String kuerzel) {
+    private Long getMandantIdFromKuerzel(String kuerzel) {
         // Feste Mapping für Entwicklung (gleiche IDs wie in DataSeeder)
         if ("THM".equalsIgnoreCase(kuerzel)) {
-            return UUID.fromString("11111111-1111-1111-1111-111111111111");
+            return 1L;
         }
         throw new IllegalArgumentException("Unbekanntes Mandant-Kürzel: " + kuerzel);
     }
@@ -202,7 +201,7 @@ public class StudentService {
     /**
      * Erstellt einen Benutzer für den Studenten.
      */
-    private Benutzer createBenutzer(CreateStudentRequest request, UUID mandantId) {
+    private Benutzer createBenutzer(CreateStudentRequest request, Long mandantId) {
         // Benutzername generieren (vorname.nachname)
         String benutzername = generateBenutzername(request.getVorname(), request.getNachname());
         
@@ -255,7 +254,7 @@ public class StudentService {
      */
     private String generatePassword() {
         // Einfaches Passwort für Entwicklung - in Produktion durch sicheres ersetzen
-        return UUID.randomUUID().toString().substring(0, 12);
+        return java.util.UUID.randomUUID().toString().substring(0, 12);
     }
 
     /**

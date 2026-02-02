@@ -19,7 +19,6 @@ import org.springframework.stereotype.Controller;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 /**
@@ -56,7 +55,7 @@ public class StudentGraphQLController {
     @QueryMapping
     public Benutzer user(@Argument("id") String id) {
         log.info("GraphQL: Fetching user by id: {}", id);
-        return benutzerRepository.findById(UUID.fromString(id)).orElse(null);
+        return benutzerRepository.findById(Long.parseLong(id)).orElse(null);
     }
 
     /**
@@ -76,7 +75,7 @@ public class StudentGraphQLController {
     @QueryMapping
     public Student student(@Argument("id") String id) {
         log.info("GraphQL: Fetching student by id: {}", id);
-        return studentRepository.findById(UUID.fromString(id)).orElse(null);
+        return studentRepository.findById(Long.parseLong(id)).orElse(null);
     }
 
     /**
@@ -105,7 +104,7 @@ public class StudentGraphQLController {
                 .passwortHash("{noop}" + input.get("passwort")) // Temporaer ohne Encoding fuer GraphQL
                 .vorname((String) input.get("vorname"))
                 .nachname((String) input.get("nachname"))
-                .mandantId(UUID.fromString((String) input.get("mandantId")))
+                .mandantId(Long.parseLong((String) input.get("mandantId")))
                 .aktiv(true)
                 .build();
         
@@ -114,7 +113,7 @@ public class StudentGraphQLController {
         List<String> rollenIds = (List<String>) input.get("rollenIds");
         if (rollenIds != null) {
             for (String rolleId : rollenIds) {
-                rolleRepository.findById(UUID.fromString(rolleId))
+                rolleRepository.findById(Long.parseLong(rolleId))
                         .ifPresent(rolle -> benutzer.getRollen().add(rolle));
             }
         }
@@ -130,7 +129,7 @@ public class StudentGraphQLController {
     public Benutzer updateUser(@Argument("id") String id, @Argument("input") Map<String, Object> input) {
         log.info("GraphQL: Updating user: {}", id);
         
-        return benutzerRepository.findById(UUID.fromString(id)).map(benutzer -> {
+        return benutzerRepository.findById(Long.parseLong(id)).map(benutzer -> {
             if (input.containsKey("email")) {
                 benutzer.setEmail((String) input.get("email"));
             }
@@ -155,7 +154,7 @@ public class StudentGraphQLController {
     public Boolean deleteUser(@Argument("id") String id) {
         log.info("GraphQL: Deleting user: {}", id);
         
-        return benutzerRepository.findById(UUID.fromString(id)).map(benutzer -> {
+        return benutzerRepository.findById(Long.parseLong(id)).map(benutzer -> {
             benutzer.setAktiv(false);
             benutzerRepository.save(benutzer);
             return true;
@@ -170,10 +169,10 @@ public class StudentGraphQLController {
     public Benutzer assignRole(@Argument("userId") String userId, @Argument("roleId") String roleId) {
         log.info("GraphQL: Assigning role {} to user {}", roleId, userId);
         
-        Benutzer benutzer = benutzerRepository.findById(UUID.fromString(userId))
+        Benutzer benutzer = benutzerRepository.findById(Long.parseLong(userId))
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
         
-        Rolle rolle = rolleRepository.findById(UUID.fromString(roleId))
+        Rolle rolle = rolleRepository.findById(Long.parseLong(roleId))
                 .orElseThrow(() -> new IllegalArgumentException("Role not found: " + roleId));
         
         benutzer.getRollen().add(rolle);
@@ -188,10 +187,10 @@ public class StudentGraphQLController {
     public Benutzer removeRole(@Argument("userId") String userId, @Argument("roleId") String roleId) {
         log.info("GraphQL: Removing role {} from user {}", roleId, userId);
         
-        Benutzer benutzer = benutzerRepository.findById(UUID.fromString(userId))
+        Benutzer benutzer = benutzerRepository.findById(Long.parseLong(userId))
                 .orElseThrow(() -> new IllegalArgumentException("User not found: " + userId));
         
-        benutzer.getRollen().removeIf(r -> r.getId().equals(UUID.fromString(roleId)));
+        benutzer.getRollen().removeIf(r -> r.getId().equals(Long.parseLong(roleId)));
         return benutzerRepository.save(benutzer);
     }
 
@@ -203,7 +202,7 @@ public class StudentGraphQLController {
     public Student createStudent(@Argument("input") Map<String, Object> input) {
         log.info("GraphQL: Creating student");
         
-        UUID benutzerId = UUID.fromString((String) input.get("benutzerId"));
+        Long benutzerId = Long.parseLong((String) input.get("benutzerId"));
         String matrikelnummer = (String) input.get("matrikelnummer");
         String geburtsdatumStr = (String) input.get("geburtsdatum");
         
@@ -228,7 +227,7 @@ public class StudentGraphQLController {
     public Student updateStudent(@Argument("id") String id, @Argument("input") Map<String, Object> input) {
         log.info("GraphQL: Updating student: {}", id);
         
-        return studentRepository.findById(UUID.fromString(id)).map(student -> {
+        return studentRepository.findById(Long.parseLong(id)).map(student -> {
             if (input.containsKey("geburtsdatum")) {
                 String datum = (String) input.get("geburtsdatum");
                 student.setGeburtsdatum(datum != null ? LocalDate.parse(datum) : null);

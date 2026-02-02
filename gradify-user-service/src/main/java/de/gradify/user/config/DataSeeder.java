@@ -19,7 +19,7 @@ import java.util.Set;
 import java.util.UUID;
 
 @Component
-@Profile("dev")
+@Profile("java-seed") // Deaktiviert - verwende data.sql stattdessen. Aktiviere mit: spring.profiles.active=java-seed
 @RequiredArgsConstructor
 @Slf4j
 public class DataSeeder implements CommandLineRunner {

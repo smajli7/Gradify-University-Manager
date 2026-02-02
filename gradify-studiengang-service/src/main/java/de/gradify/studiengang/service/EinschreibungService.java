@@ -19,7 +19,6 @@ import org.springframework.transaction.annotation.Transactional;
 import java.time.LocalDate;
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -57,7 +56,7 @@ public class EinschreibungService {
      * Holt Einschreibungen eines Studenten.
      */
     @Transactional(readOnly = true)
-    public List<EinschreibungDto> getEinschreibungenByStudent(UUID studentId) {
+    public List<EinschreibungDto> getEinschreibungenByStudent(Long studentId) {
         return einschreibungRepository.findByStudentId(studentId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -67,7 +66,7 @@ public class EinschreibungService {
      * Holt Einschreibungen eines Studiengangs.
      */
     @Transactional(readOnly = true)
-    public List<EinschreibungDto> getEinschreibungenByStudiengang(UUID studiengangId) {
+    public List<EinschreibungDto> getEinschreibungenByStudiengang(Long studiengangId) {
         return einschreibungRepository.findByStudiengangId(studiengangId).stream()
                 .map(this::toDto)
                 .collect(Collectors.toList());
@@ -77,7 +76,7 @@ public class EinschreibungService {
      * Holt eine Einschreibung nach ID.
      */
     @Transactional(readOnly = true)
-    public Optional<EinschreibungDto> getEinschreibungById(UUID id) {
+    public Optional<EinschreibungDto> getEinschreibungById(Long id) {
         return einschreibungRepository.findById(id).map(this::toDto);
     }
 
@@ -91,7 +90,12 @@ public class EinschreibungService {
                 request.getStudentId(), request.getStudiengangId());
 
         // 1. Validiere dass Student existiert (via gRPC)
-        if (!studentGrpcClient.studentExists(request.getStudentId())) {
+        var validationResult = studentGrpcClient.studentExists(request.getStudentId());
+        if (!validationResult.grpcAvailable()) {
+            log.error("gRPC nicht verfügbar: {}", validationResult.statusMessage());
+            throw new IllegalStateException("User-Service nicht erreichbar: " + validationResult.statusMessage());
+        }
+        if (!validationResult.exists()) {
             throw new IllegalArgumentException("Student nicht gefunden: " + request.getStudentId());
         }
 
@@ -140,7 +144,7 @@ public class EinschreibungService {
      * Beendet eine Einschreibung.
      */
     @Transactional
-    public Optional<EinschreibungDto> beendeEinschreibung(UUID id, Einschreibung.EinschreibungStatus status) {
+    public Optional<EinschreibungDto> beendeEinschreibung(Long id, Einschreibung.EinschreibungStatus status) {
         return einschreibungRepository.findById(id).map(einschreibung -> {
             einschreibung.setStatus(status);
             einschreibung.setExmatrikuliertAm(LocalDate.now());
@@ -154,7 +158,7 @@ public class EinschreibungService {
      * Erhöht das Semester eines Studenten.
      */
     @Transactional
-    public Optional<EinschreibungDto> erhoheSemester(UUID id) {
+    public Optional<EinschreibungDto> erhoheSemester(Long id) {
         return einschreibungRepository.findById(id).map(einschreibung -> {
             einschreibung.setAktuellesSemester(einschreibung.getAktuellesSemester() + 1);
             einschreibung = einschreibungRepository.save(einschreibung);

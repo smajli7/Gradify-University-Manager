@@ -17,7 +17,6 @@ import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
 import java.util.List;
-import java.util.UUID;
 
 @RestController
 @RequestMapping("/api/students")
@@ -31,7 +30,7 @@ public class StudentController {
     @Operation(summary = "Alle Studenten abrufen", description = "Liefert alle Studenten, optional gefiltert nach Mandant")
     @GetMapping
     public ResponseEntity<ApiResponse<List<StudentDto>>> getAllStudents(
-            @RequestParam(value = "mandantId", required = false) UUID mandantId) {
+            @RequestParam(value = "mandantId", required = false) Long mandantId) {
         log.info("Getting students - mandantId: {}", mandantId);
         
         List<StudentDto> students;
@@ -44,10 +43,10 @@ public class StudentController {
         return ResponseEntity.ok(ApiResponse.success(students));
     }
 
-    @Operation(summary = "Student nach ID abrufen", description = "Liefert einen einzelnen Studenten anhand seiner UUID")
+    @Operation(summary = "Student nach ID abrufen", description = "Liefert einen einzelnen Studenten anhand seiner ID")
     @GetMapping("/{id}")
     public ResponseEntity<ApiResponse<StudentDto>> getStudentById(
-            @Parameter(description = "UUID des Studenten") @PathVariable UUID id) {
+            @Parameter(description = "ID des Studenten") @PathVariable Long id) {
         log.info("Getting student by id: {}", id);
         
         return studentService.getStudentById(id)
@@ -71,7 +70,7 @@ public class StudentController {
     @Operation(summary = "Student-Existenz pruefen", description = "Prueft ob ein Student mit der angegebenen ID existiert")
     @GetMapping("/{id}/exists")
     public ResponseEntity<ApiResponse<Boolean>> studentExists(
-            @Parameter(description = "UUID des Studenten") @PathVariable UUID id) {
+            @Parameter(description = "ID des Studenten") @PathVariable Long id) {
         boolean exists = studentService.existsById(id);
         return ResponseEntity.ok(ApiResponse.success(exists));
     }
@@ -97,7 +96,7 @@ public class StudentController {
     @Operation(summary = "Student aktualisieren", description = "Aktualisiert die Daten eines bestehenden Studenten")
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<StudentDto>> updateStudent(
-            @PathVariable UUID id,
+            @PathVariable Long id,
             @Valid @RequestBody UpdateStudentRequest request) {
         log.info("Updating student: {}", id);
         
@@ -116,7 +115,7 @@ public class StudentController {
     @Operation(summary = "Student exmatrikulieren", description = "Exmatrikuliert einen Studenten (setzt Status auf EXMATRIKULIERT)")
     @DeleteMapping("/{id}")
     public ResponseEntity<ApiResponse<Void>> deleteStudent(
-            @Parameter(description = "UUID des Studenten") @PathVariable UUID id) {
+            @Parameter(description = "ID des Studenten") @PathVariable Long id) {
         log.info("Deleting student: {}", id);
         
         if (studentService.deleteStudent(id)) {

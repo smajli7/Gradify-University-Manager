@@ -21,7 +21,7 @@ import java.util.UUID;
  * - Forschung in der Sozialen Arbeit MA (PO 2022): 12 Module, 120 ECTS
  */
 @Component
-@Profile("dev")
+@Profile("java-seed") // Deaktiviert - verwende data.sql stattdessen
 @RequiredArgsConstructor
 @Slf4j
 public class DataSeeder implements CommandLineRunner {

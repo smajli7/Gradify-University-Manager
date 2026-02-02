@@ -10,7 +10,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -34,7 +33,7 @@ public class MandantService {
      * Holt einen Mandanten nach ID.
      */
     @Transactional(readOnly = true)
-    public Optional<MandantDto> getMandantById(UUID id) {
+    public Optional<MandantDto> getMandantById(Long id) {
         return mandantRepository.findById(id).map(this::toDto);
     }
 
@@ -42,7 +41,7 @@ public class MandantService {
      * Holt das Kürzel eines Mandanten.
      */
     @Transactional(readOnly = true)
-    public Optional<String> getMandantKuerzel(UUID mandantId) {
+    public Optional<String> getMandantKuerzel(Long mandantId) {
         return mandantRepository.findById(mandantId).map(Mandant::getKuerzel);
     }
 

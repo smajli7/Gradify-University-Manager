@@ -14,7 +14,6 @@ import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
-import java.util.UUID;
 
 /**
  * GraphQL Controller fuer Noten-Abfragen und -Mutationen.
@@ -40,11 +39,11 @@ public class NotenGraphQLController {
         
         if (einschreibungId != null && modulId != null) {
             return noteRepository.findByEinschreibungIdAndModulIdOrderByVersuchDesc(
-                    UUID.fromString(einschreibungId), UUID.fromString(modulId));
+                    Long.parseLong(einschreibungId), Long.parseLong(modulId));
         } else if (einschreibungId != null) {
-            return noteRepository.findByEinschreibungId(UUID.fromString(einschreibungId));
+            return noteRepository.findByEinschreibungId(Long.parseLong(einschreibungId));
         } else if (modulId != null) {
-            return noteRepository.findByModulId(UUID.fromString(modulId));
+            return noteRepository.findByModulId(Long.parseLong(modulId));
         }
         return noteRepository.findAll();
     }
@@ -56,7 +55,7 @@ public class NotenGraphQLController {
     @QueryMapping
     public Note note(@Argument("id") String id) {
         log.info("GraphQL: Fetching note by id: {}", id);
-        return noteRepository.findById(UUID.fromString(id)).orElse(null);
+        return noteRepository.findById(Long.parseLong(id)).orElse(null);
     }
 
     /**
@@ -66,7 +65,7 @@ public class NotenGraphQLController {
     @QueryMapping
     public List<Note> notenByStudent(@Argument("einschreibungId") String einschreibungId) {
         log.info("GraphQL: Fetching noten for einschreibung: {}", einschreibungId);
-        return noteRepository.findByEinschreibungId(UUID.fromString(einschreibungId));
+        return noteRepository.findByEinschreibungId(Long.parseLong(einschreibungId));
     }
 
     /**
@@ -76,7 +75,7 @@ public class NotenGraphQLController {
     @QueryMapping
     public List<Note> notenByModul(@Argument("modulId") String modulId) {
         log.info("GraphQL: Fetching noten for modul: {}", modulId);
-        return noteRepository.findByModulId(UUID.fromString(modulId));
+        return noteRepository.findByModulId(Long.parseLong(modulId));
     }
 
     /**
@@ -86,7 +85,7 @@ public class NotenGraphQLController {
     @QueryMapping
     public Double durchschnittsnote(@Argument("einschreibungId") String einschreibungId) {
         log.info("GraphQL: Calculating durchschnittsnote for: {}", einschreibungId);
-        List<Note> noten = noteRepository.findByEinschreibungId(UUID.fromString(einschreibungId));
+        List<Note> noten = noteRepository.findByEinschreibungId(Long.parseLong(einschreibungId));
         
         if (noten.isEmpty()) {
             return null;
@@ -116,7 +115,7 @@ public class NotenGraphQLController {
     @QueryMapping
     public Integer bestandeneModule(@Argument("einschreibungId") String einschreibungId) {
         log.info("GraphQL: Counting bestandene Module for: {}", einschreibungId);
-        List<Note> noten = noteRepository.findByEinschreibungId(UUID.fromString(einschreibungId));
+        List<Note> noten = noteRepository.findByEinschreibungId(Long.parseLong(einschreibungId));
         
         return (int) noten.stream()
                 .filter(n -> Boolean.TRUE.equals(n.getBestanden()))
@@ -148,9 +147,9 @@ public class NotenGraphQLController {
         }
         
         Note note = Note.builder()
-                .einschreibungId(UUID.fromString((String) input.get("einschreibungId")))
-                .modulId(UUID.fromString((String) input.get("modulId")))
-                .erfasstVon(UUID.fromString((String) input.get("erfasstVon")))
+                .einschreibungId(Long.parseLong((String) input.get("einschreibungId")))
+                .modulId(Long.parseLong((String) input.get("modulId")))
+                .erfasstVon(Long.parseLong((String) input.get("erfasstVon")))
                 .noteWert(noteWert)
                 .bestanden(bestanden)
                 .versuch((Integer) input.get("versuch"))
@@ -170,7 +169,7 @@ public class NotenGraphQLController {
     public Note updateNote(@Argument("id") String id, @Argument("input") Map<String, Object> input) {
         log.info("GraphQL: Updating note: {}", id);
         
-        return noteRepository.findById(UUID.fromString(id)).map(note -> {
+        return noteRepository.findById(Long.parseLong(id)).map(note -> {
             if (note.getStatus() != Note.NoteStatus.ERFASST) {
                 throw new IllegalStateException("Note kann nur im Status ERFASST bearbeitet werden");
             }
@@ -203,13 +202,13 @@ public class NotenGraphQLController {
     public Note validateNote(@Argument("id") String id, @Argument("validatorId") String validatorId) {
         log.info("GraphQL: Validating note: {} by: {}", id, validatorId);
         
-        return noteRepository.findById(UUID.fromString(id)).map(note -> {
+        return noteRepository.findById(Long.parseLong(id)).map(note -> {
             if (note.getStatus() != Note.NoteStatus.ERFASST) {
                 throw new IllegalStateException("Nur ERFASST-Noten koennen validiert werden");
             }
             
             note.setStatus(Note.NoteStatus.VALIDIERT);
-            note.setValidiertVon(UUID.fromString(validatorId));
+            note.setValidiertVon(Long.parseLong(validatorId));
             note.setValidiertAm(LocalDateTime.now());
             
             return noteRepository.save(note);
@@ -224,7 +223,7 @@ public class NotenGraphQLController {
     public Note releaseNote(@Argument("id") String id) {
         log.info("GraphQL: Releasing note: {}", id);
         
-        return noteRepository.findById(UUID.fromString(id)).map(note -> {
+        return noteRepository.findById(Long.parseLong(id)).map(note -> {
             if (note.getStatus() != Note.NoteStatus.VALIDIERT) {
                 throw new IllegalStateException("Nur VALIDIERT-Noten koennen freigegeben werden");
             }
@@ -242,7 +241,7 @@ public class NotenGraphQLController {
     public Boolean deleteNote(@Argument("id") String id) {
         log.info("GraphQL: Deleting note: {}", id);
         
-        return noteRepository.findById(UUID.fromString(id)).map(note -> {
+        return noteRepository.findById(Long.parseLong(id)).map(note -> {
             if (note.getStatus() != Note.NoteStatus.ERFASST) {
                 throw new IllegalStateException("Nur ERFASST-Noten koennen geloescht werden");
             }

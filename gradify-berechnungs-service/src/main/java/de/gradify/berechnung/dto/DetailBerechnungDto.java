@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.math.BigDecimal;
 import java.util.List;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -15,7 +14,7 @@ import java.util.UUID;
 @AllArgsConstructor
 public class DetailBerechnungDto {
     
-    private UUID einschreibungId;
+    private Long einschreibungId;
     private BigDecimal gesamtnote;
     private String berechnungsart;
     private List<ModulBeitrag> module;
@@ -25,7 +24,7 @@ public class DetailBerechnungDto {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class ModulBeitrag {
-        private UUID modulId;
+        private Long modulId;
         private String modulName;
         private String modulNr;
         private BigDecimal note;

@@ -16,7 +16,6 @@ import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
 import java.util.Set;
-import java.util.UUID;
 import java.util.stream.Collectors;
 
 @Service
@@ -35,13 +34,13 @@ public class BenutzerService {
             .collect(Collectors.toList());
     }
 
-    public List<BenutzerDto> findByMandantId(UUID mandantId) {
+    public List<BenutzerDto> findByMandantId(Long mandantId) {
         return benutzerRepository.findByMandantId(mandantId).stream()
             .map(this::toDto)
             .collect(Collectors.toList());
     }
 
-    public Optional<BenutzerDto> findById(UUID id) {
+    public Optional<BenutzerDto> findById(Long id) {
         return benutzerRepository.findById(id).map(this::toDto);
     }
 
@@ -67,7 +66,7 @@ public class BenutzerService {
         
         Set<Rolle> rollen = new HashSet<>();
         if (request.getRollenIds() != null) {
-            for (UUID rolleId : request.getRollenIds()) {
+            for (Long rolleId : request.getRollenIds()) {
                 rolleRepository.findById(rolleId).ifPresent(rollen::add);
             }
         }
@@ -88,7 +87,7 @@ public class BenutzerService {
     }
 
     @Transactional
-    public Optional<BenutzerDto> update(UUID id, CreateBenutzerRequest request) {
+    public Optional<BenutzerDto> update(Long id, CreateBenutzerRequest request) {
         log.info("Updating user: {}", id);
         
         return benutzerRepository.findById(id).map(benutzer -> {
@@ -102,7 +101,7 @@ public class BenutzerService {
             
             if (request.getRollenIds() != null) {
                 Set<Rolle> rollen = new HashSet<>();
-                for (UUID rolleId : request.getRollenIds()) {
+                for (Long rolleId : request.getRollenIds()) {
                     rolleRepository.findById(rolleId).ifPresent(rollen::add);
                 }
                 benutzer.setRollen(rollen);
@@ -113,7 +112,7 @@ public class BenutzerService {
     }
 
     @Transactional
-    public boolean delete(UUID id) {
+    public boolean delete(Long id) {
         log.info("Deleting user: {}", id);
         
         if (benutzerRepository.existsById(id)) {
@@ -124,7 +123,7 @@ public class BenutzerService {
     }
 
     @Transactional
-    public boolean assignRole(UUID userId, UUID roleId) {
+    public boolean assignRole(Long userId, Long roleId) {
         log.info("Assigning role {} to user {}", roleId, userId);
         
         Optional<Benutzer> benutzerOpt = benutzerRepository.findById(userId);
@@ -140,7 +139,7 @@ public class BenutzerService {
     }
 
     @Transactional
-    public boolean removeRole(UUID userId, UUID roleId) {
+    public boolean removeRole(Long userId, Long roleId) {
         log.info("Removing role {} from user {}", roleId, userId);
         
         Optional<Benutzer> benutzerOpt = benutzerRepository.findById(userId);

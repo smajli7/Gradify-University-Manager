@@ -4,6 +4,7 @@ import de.gradify.auth.dto.LoginRequest;
 import de.gradify.auth.dto.LoginResponse;
 import de.gradify.auth.dto.RefreshTokenRequest;
 import de.gradify.auth.dto.TokenResponse;
+import de.gradify.auth.grpc.UserGrpcClient;
 import de.gradify.auth.service.AuthService;
 import de.gradify.shared.dto.ApiResponse;
 import jakarta.validation.Valid;
@@ -12,6 +13,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.Map;
+
 @RestController
 @RequestMapping("/api/auth")
 @RequiredArgsConstructor
@@ -19,6 +22,7 @@ import org.springframework.web.bind.annotation.*;
 public class AuthController {
 
     private final AuthService authService;
+    private final UserGrpcClient userGrpcClient;
 
     @PostMapping("/login")
     public ResponseEntity<ApiResponse<LoginResponse>> login(@Valid @RequestBody LoginRequest request) {
@@ -100,5 +104,22 @@ public class AuthController {
         
         return ResponseEntity.status(401)
             .body(ApiResponse.error("Token konnte nicht dekodiert werden"));
+    }
+    
+    @GetMapping("/grpc-status")
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getGrpcStatus() {
+        var userStatus = userGrpcClient.getLastStatus();
+        
+        Map<String, Object> status = Map.of(
+            "userService", Map.of(
+                "available", userStatus.available(),
+                "message", userStatus.message(),
+                "protocol", "gRPC",
+                "port", 9082
+            ),
+            "allAvailable", userStatus.available()
+        );
+        
+        return ResponseEntity.ok(ApiResponse.success(status));
     }
 }

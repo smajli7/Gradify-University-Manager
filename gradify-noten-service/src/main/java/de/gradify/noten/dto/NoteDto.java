@@ -8,7 +8,6 @@ import lombok.NoArgsConstructor;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Data
 @Builder
@@ -16,18 +15,18 @@ import java.util.UUID;
 @AllArgsConstructor
 public class NoteDto {
     
-    private UUID id;
-    private UUID einschreibungId;
-    private UUID modulId;
+    private Long id;
+    private Long einschreibungId;
+    private Long modulId;
     private BigDecimal noteWert;
     private Boolean bestanden;
     private int versuch;
     private LocalDate pruefungsdatum;
     private String status;
     private String kommentar;
-    private UUID erfasstVon;
+    private Long erfasstVon;
     private LocalDateTime erfasstAm;
-    private UUID validiertVon;
+    private Long validiertVon;
     private LocalDateTime validiertAm;
 }
 

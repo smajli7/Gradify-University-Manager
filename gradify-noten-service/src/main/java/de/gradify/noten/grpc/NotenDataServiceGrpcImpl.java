@@ -3,13 +3,13 @@ package de.gradify.noten.grpc;
 import de.gradify.noten.entity.Note;
 import de.gradify.noten.repository.NoteRepository;
 import de.gradify.shared.grpc.berechnung.*;
+import org.springframework.transaction.annotation.Transactional;
 import io.grpc.stub.StreamObserver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.server.service.GrpcService;
 
 import java.util.List;
-import java.util.UUID;
 
 /**
  * gRPC Server für Noten-Abruf durch Berechnungs-Service.
@@ -17,6 +17,7 @@ import java.util.UUID;
 @GrpcService
 @RequiredArgsConstructor
 @Slf4j
+@Transactional(readOnly = true)
 public class NotenDataServiceGrpcImpl extends NotenDataServiceGrpc.NotenDataServiceImplBase {
 
     private final NoteRepository noteRepository;
@@ -32,7 +33,7 @@ public class NotenDataServiceGrpcImpl extends NotenDataServiceGrpc.NotenDataServ
         log.info("gRPC: Getting Noten for Berechnung, einschreibungId: {}", request.getEinschreibungId());
 
         try {
-            UUID einschreibungId = UUID.fromString(request.getEinschreibungId());
+            Long einschreibungId = request.getEinschreibungId();
             
             // Noten mit Status FREIGEGEBEN oder VALIDIERT für Berechnung verwenden
             List<Note> notenFreigegeben = noteRepository.findByEinschreibungIdAndStatus(
@@ -51,7 +52,7 @@ public class NotenDataServiceGrpcImpl extends NotenDataServiceGrpc.NotenDataServ
 
             for (Note note : noten) {
                 NoteData noteData = NoteData.newBuilder()
-                        .setModulId(note.getModulId().toString())
+                        .setModulId(note.getModulId())
                         .setNoteWert(note.getNoteWert() != null ? note.getNoteWert().doubleValue() : 0.0)
                         .setBestanden(note.getBestanden() != null && note.getBestanden())
                         .setInGesamtnote(true) // Standard: alle Noten in Gesamtnote

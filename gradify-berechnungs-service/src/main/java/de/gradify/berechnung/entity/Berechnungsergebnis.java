@@ -7,7 +7,6 @@ import org.hibernate.annotations.UpdateTimestamp;
 
 import java.math.BigDecimal;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "berechnungsergebnisse")
@@ -19,11 +18,11 @@ import java.util.UUID;
 public class Berechnungsergebnis {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(nullable = false, unique = true)
-    private UUID einschreibungId;
+    private Long einschreibungId;
 
     @Column(precision = 2, scale = 1)
     private BigDecimal gesamtnote;

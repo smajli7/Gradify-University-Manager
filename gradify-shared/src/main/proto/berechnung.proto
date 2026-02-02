@@ -28,12 +28,15 @@ service RegelwerkService {
   
   // Holt Modul-Gewichtungen
   rpc GetModulGewichtungen(ModulGewichtungRequest) returns (ModulGewichtungListResponse);
+  
+  // Holt Einschreibungsdetails (PO-ID, ECTS) für Berechnung
+  rpc GetEinschreibungDetails(EinschreibungDetailsRequest) returns (EinschreibungDetailsResponse);
 }
 
 // Messages
 
 message NeuberechnungRequest {
-  string einschreibung_id = 1;
+  int64 einschreibung_id = 1;
 }
 
 message NeuberechnungResponse {
@@ -44,11 +47,11 @@ message NeuberechnungResponse {
 }
 
 message GesamtnoteRequest {
-  string einschreibung_id = 1;
+  int64 einschreibung_id = 1;
 }
 
 message GesamtnoteResponse {
-  string einschreibung_id = 1;
+  int64 einschreibung_id = 1;
   double gesamtnote = 2;
   double gesamtnote_roh = 3;
   string status = 4;
@@ -58,11 +61,11 @@ message GesamtnoteResponse {
 }
 
 message NotenRequest {
-  string einschreibung_id = 1;
+  int64 einschreibung_id = 1;
 }
 
 message NoteData {
-  string modul_id = 1;
+  int64 modul_id = 1;
   double note_wert = 2;
   double gewichtung = 3;
   bool in_gesamtnote = 4;
@@ -74,22 +77,22 @@ message NotenListResponse {
 }
 
 message RegelwerkRequest {
-  string po_id = 1;
+  int64 po_id = 1;
 }
 
 message RegelwerkResponse {
-  string po_id = 1;
+  int64 po_id = 1;
   string berechnungsart = 2;
   string formel = 3;
   string parameter_json = 4;
 }
 
 message ModulGewichtungRequest {
-  string po_id = 1;
+  int64 po_id = 1;
 }
 
 message ModulGewichtung {
-  string modul_id = 1;
+  int64 modul_id = 1;
   string modul_nr = 2;
   double gewichtung = 3;
   bool in_gesamtnote = 4;
@@ -101,6 +104,15 @@ message ModulGewichtungListResponse {
   repeated ModulGewichtung module = 1;
 }
 
+// Einschreibungsdetails für Berechnung
+message EinschreibungDetailsRequest {
+  int64 einschreibung_id = 1;
+}
 
-
-
+message EinschreibungDetailsResponse {
+  int64 einschreibung_id = 1;
+  int64 po_id = 2;
+  int32 ects_gesamt = 3;
+  string studiengang_name = 4;
+  bool found = 5;
+}

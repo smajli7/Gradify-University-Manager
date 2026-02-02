@@ -7,7 +7,6 @@ import org.hibernate.annotations.CreationTimestamp;
 import java.math.BigDecimal;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
-import java.util.UUID;
 
 @Entity
 @Table(name = "noten")
@@ -19,17 +18,17 @@ import java.util.UUID;
 public class Note {
 
     @Id
-    @GeneratedValue(strategy = GenerationType.UUID)
-    private UUID id;
+    @GeneratedValue(strategy = GenerationType.IDENTITY)
+    private Long id;
 
     @Column(nullable = false)
-    private UUID einschreibungId;
+    private Long einschreibungId;
 
     @Column(nullable = false)
-    private UUID modulId;
+    private Long modulId;
 
     @Column(nullable = false)
-    private UUID erfasstVon;
+    private Long erfasstVon;
 
     @Column(precision = 2, scale = 1)
     private BigDecimal noteWert;
@@ -56,7 +55,7 @@ public class Note {
 
     private LocalDateTime validiertAm;
 
-    private UUID validiertVon;
+    private Long validiertVon;
 
     public enum NoteStatus {
         ERFASST,

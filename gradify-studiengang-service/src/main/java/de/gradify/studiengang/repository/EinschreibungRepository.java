@@ -8,31 +8,33 @@ import org.springframework.stereotype.Repository;
 
 import java.util.List;
 import java.util.Optional;
-import java.util.UUID;
 
 @Repository
-public interface EinschreibungRepository extends JpaRepository<Einschreibung, UUID> {
+public interface EinschreibungRepository extends JpaRepository<Einschreibung, Long> {
 
-    List<Einschreibung> findByStudentId(UUID studentId);
+    List<Einschreibung> findByStudentId(Long studentId);
 
-    Optional<Einschreibung> findByStudentIdAndStudiengangId(UUID studentId, UUID studiengangId);
+    Optional<Einschreibung> findByStudentIdAndStudiengangId(Long studentId, Long studiengangId);
 
-    List<Einschreibung> findByStudiengangId(UUID studiengangId);
+    List<Einschreibung> findByStudiengangId(Long studiengangId);
 
-    List<Einschreibung> findByPruefungsordnungId(UUID poId);
+    List<Einschreibung> findByPruefungsordnungId(Long poId);
 
     List<Einschreibung> findByStatus(Einschreibung.EinschreibungStatus status);
 
     @Query("SELECT e FROM Einschreibung e WHERE e.studentId = :studentId AND e.status = 'AKTIV'")
-    List<Einschreibung> findAktiveByStudentId(@Param("studentId") UUID studentId);
+    List<Einschreibung> findAktiveByStudentId(@Param("studentId") Long studentId);
 
     @Query("SELECT e FROM Einschreibung e WHERE e.studiengang.id = :studiengangId AND e.status = 'AKTIV'")
-    List<Einschreibung> findAktiveByStudiengangId(@Param("studiengangId") UUID studiengangId);
+    List<Einschreibung> findAktiveByStudiengangId(@Param("studiengangId") Long studiengangId);
 
     @Query("SELECT COUNT(e) FROM Einschreibung e WHERE e.studiengang.id = :studiengangId AND e.status = 'AKTIV'")
-    Long countAktiveByStudiengangId(@Param("studiengangId") UUID studiengangId);
+    Long countAktiveByStudiengangId(@Param("studiengangId") Long studiengangId);
 
-    boolean existsByStudentIdAndStudiengangIdAndStatus(UUID studentId, UUID studiengangId, Einschreibung.EinschreibungStatus status);
+    boolean existsByStudentIdAndStudiengangIdAndStatus(Long studentId, Long studiengangId, Einschreibung.EinschreibungStatus status);
+
+    @Query("SELECT e FROM Einschreibung e JOIN FETCH e.studiengang JOIN FETCH e.pruefungsordnung WHERE e.id = :id")
+    Optional<Einschreibung> findByIdWithDetails(@Param("id") Long id);
 }
 
 

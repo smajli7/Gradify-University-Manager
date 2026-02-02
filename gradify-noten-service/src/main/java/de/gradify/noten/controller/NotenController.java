@@ -20,7 +20,7 @@ import org.springframework.web.bind.annotation.*;
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
+import java.util.UUID; // TODO: Review - kept for UUID.randomUUID() in development fallbacks
 
 @RestController
 @RequestMapping("/api/noten")
@@ -35,8 +35,8 @@ public class NotenController {
     @Operation(summary = "Noten abrufen", description = "Liefert Noten, optional gefiltert nach Einschreibung, Modul oder Status")
     @GetMapping
     public ResponseEntity<ApiResponse<List<NoteDto>>> getNoten(
-            @RequestParam(value = "einschreibungId", required = false) UUID einschreibungId,
-            @RequestParam(value = "modulId", required = false) UUID modulId,
+            @RequestParam(value = "einschreibungId", required = false) Long einschreibungId,
+            @RequestParam(value = "modulId", required = false) Long modulId,
             @RequestParam(value = "status", required = false) String status) {
         log.info("Getting Noten - einschreibungId: {}, modulId: {}, status: {}", 
                 einschreibungId, modulId, status);
@@ -59,7 +59,7 @@ public class NotenController {
      * Note nach ID abrufen.
      */
     @GetMapping("/{id}")
-    public ResponseEntity<ApiResponse<NoteDto>> getNoteById(@PathVariable("id") UUID id) {
+    public ResponseEntity<ApiResponse<NoteDto>> getNoteById(@PathVariable("id") Long id) {
         log.info("Getting Note by id: {}", id);
         
         return notenService.getNoteById(id)
@@ -73,7 +73,7 @@ public class NotenController {
      */
     @GetMapping("/einschreibung/{einschreibungId}")
     public ResponseEntity<ApiResponse<List<NoteDto>>> getNotenByEinschreibung(
-            @PathVariable("einschreibungId") UUID einschreibungId) {
+            @PathVariable("einschreibungId") Long einschreibungId) {
         log.info("Getting Noten for einschreibung: {}", einschreibungId);
         
         List<NoteDto> noten = notenService.getNotenByEinschreibung(einschreibungId);
@@ -84,7 +84,7 @@ public class NotenController {
      * Alle Noten eines Moduls abrufen.
      */
     @GetMapping("/modul/{modulId}")
-    public ResponseEntity<ApiResponse<List<NoteDto>>> getNotenByModul(@PathVariable("modulId") UUID modulId) {
+    public ResponseEntity<ApiResponse<List<NoteDto>>> getNotenByModul(@PathVariable("modulId") Long modulId) {
         log.info("Getting Noten for modul: {}", modulId);
         
         List<NoteDto> noten = notenService.getNotenByModul(modulId);
@@ -95,12 +95,13 @@ public class NotenController {
     @PostMapping
     public ResponseEntity<ApiResponse<NoteDto>> createNote(
             @Valid @RequestBody CreateNoteRequest request,
-            @RequestHeader(name = "X-User-Id", required = false) UUID userId) {
+            @RequestHeader(name = "X-User-Id", required = false) Long userId) {
         log.info("Creating Note for einschreibung: {}, modul: {}", 
                 request.getEinschreibungId(), request.getModulId());
         
         // Falls kein User-Header, temporäre ID für Entwicklung
-        UUID erfasstVon = userId != null ? userId : UUID.randomUUID();
+        // TODO: Review - UUID.randomUUID() used for dev fallback, should be replaced with proper user ID logic
+        Long erfasstVon = userId != null ? userId : Math.abs(UUID.randomUUID().getMostSignificantBits());
         
         try {
             NoteDto note = notenService.createNote(request, erfasstVon);
@@ -118,7 +119,7 @@ public class NotenController {
      */
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<NoteDto>> updateNote(
-            @PathVariable("id") UUID id,
+            @PathVariable("id") Long id,
             @Valid @RequestBody UpdateNoteRequest request) {
         log.info("Updating Note: {}", id);
         
@@ -137,12 +138,13 @@ public class NotenController {
     @Operation(summary = "Note validieren", description = "Validiert eine erfasste Note. Benoetigt PRUEFUNGSAMT oder ADMIN Rolle.")
     @PostMapping("/{id}/validate")
     public ResponseEntity<ApiResponse<NoteDto>> validateNote(
-            @PathVariable("id") UUID id,
+            @PathVariable("id") Long id,
             @RequestParam(value = "kommentar", required = false) String kommentar,
-            @RequestHeader(name = "X-User-Id", required = false) UUID userId) {
+            @RequestHeader(name = "X-User-Id", required = false) Long userId) {
         log.info("Validating Note: {}", id);
         
-        UUID validiertVon = userId != null ? userId : UUID.randomUUID();
+        // TODO: Review - UUID.randomUUID() used for dev fallback, should be replaced with proper user ID logic
+        Long validiertVon = userId != null ? userId : Math.abs(UUID.randomUUID().getMostSignificantBits());
         
         try {
             return notenService.validateNote(id, validiertVon, kommentar)
@@ -159,7 +161,7 @@ public class NotenController {
     @Operation(summary = "Note freigeben", description = "Gibt eine validierte Note endgueltig frei. Benoetigt PRUEFUNGSAMT oder ADMIN Rolle.")
     @PostMapping("/{id}/release")
     public ResponseEntity<ApiResponse<NoteDto>> releaseNote(
-            @Parameter(description = "UUID der Note") @PathVariable("id") UUID id) {
+            @Parameter(description = "ID der Note") @PathVariable("id") Long id) {
         log.info("Releasing Note: {}", id);
         
         try {
@@ -178,7 +180,7 @@ public class NotenController {
      * Note löschen (nur ERFASST).
      */
     @DeleteMapping("/{id}")
-    public ResponseEntity<ApiResponse<Void>> deleteNote(@PathVariable("id") UUID id) {
+    public ResponseEntity<ApiResponse<Void>> deleteNote(@PathVariable("id") Long id) {
         log.info("Deleting Note: {}", id);
         
         try {
@@ -203,13 +205,13 @@ public class NotenController {
 
     @Operation(summary = "Noten exportieren", description = "Exportiert alle Noten einer Einschreibung als CSV")
     @GetMapping(value = "/export/{einschreibungId}", produces = "text/csv")
-    public ResponseEntity<String> exportNoten(@PathVariable("einschreibungId") UUID einschreibungId) {
+    public ResponseEntity<String> exportNoten(@PathVariable("einschreibungId") Long einschreibungId) {
         log.info("Exporting Noten for einschreibung: {}", einschreibungId);
         
         List<NoteDto> noten = notenService.getNotenByEinschreibung(einschreibungId);
         
         StringBuilder csv = new StringBuilder();
-        csv.append("Modul_Nr;Modul_Name;Note;Versuch;Pruefungsdatum;Status;Bestanden;ECTS;Kommentar\n");
+        csv.append("Modul_Nr;Modul_Name;Note;Versuch;Pruefungsdatum;Status;Bestanden;Kommentar\n");
         
         for (NoteDto note : noten) {
             String modulNr = note.getModulId() != null ? note.getModulId().toString().substring(0, 8) : "-";
@@ -219,11 +221,10 @@ public class NotenController {
             String datum = note.getPruefungsdatum() != null ? note.getPruefungsdatum().toString() : "-";
             String status = note.getStatus() != null ? note.getStatus() : "-";
             String bestanden = note.getBestanden() != null ? (note.getBestanden() ? "Ja" : "Nein") : "-";
-            String ects = note.getEcts() != null ? String.valueOf(note.getEcts()) : "-";
             String kommentar = note.getKommentar() != null ? note.getKommentar().replace(";", ",") : "";
             
-            csv.append(String.format("%s;%s;%s;%s;%s;%s;%s;%s;%s\n",
-                modulNr, modulName, noteWert, versuch, datum, status, bestanden, ects, kommentar));
+            csv.append(String.format("%s;%s;%s;%s;%s;%s;%s;%s\n",
+                modulNr, modulName, noteWert, versuch, datum, status, bestanden, kommentar));
         }
         
         String filename = String.format("noten_%s.csv", java.time.LocalDate.now().toString());

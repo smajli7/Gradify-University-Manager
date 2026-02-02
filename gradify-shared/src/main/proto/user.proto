@@ -34,18 +34,21 @@ service StudentDataService {
 
 message CredentialsRequest {
   string username = 1;
-  string password_hash = 2;
+  string password = 2;  // Klartext-Passwort (wird serverseitig mit BCrypt verglichen)
 }
 
 message CredentialsResponse {
   bool valid = 1;
-  string user_id = 2;
+  int64 user_id = 2;
   repeated string roles = 3;
-  string mandant_id = 4;
+  int64 mandant_id = 4;
+  string vorname = 5;
+  string nachname = 6;
+  int64 student_id = 7;  // 0 wenn kein Student
 }
 
 message UserIdRequest {
-  string user_id = 1;
+  int64 user_id = 1;
 }
 
 message UsernameRequest {
@@ -53,27 +56,27 @@ message UsernameRequest {
 }
 
 message UserResponse {
-  string id = 1;
+  int64 id = 1;
   string username = 2;
   string email = 3;
   string vorname = 4;
   string nachname = 5;
   repeated string roles = 6;
-  string mandant_id = 7;
+  int64 mandant_id = 7;
   bool active = 8;
 }
 
 message StudentIdRequest {
-  string student_id = 1;
+  int64 student_id = 1;
 }
 
 message StudiengangIdRequest {
-  string studiengang_id = 1;
+  int64 studiengang_id = 1;
 }
 
 message StudentResponse {
-  string id = 1;
-  string user_id = 2;
+  int64 id = 1;
+  int64 user_id = 2;
   string matrikelnummer = 3;
   string vorname = 4;
   string nachname = 5;
@@ -86,8 +89,6 @@ message StudentListResponse {
 
 message StudentExistsResponse {
   bool exists = 1;
-  string student_id = 2;
+  int64 student_id = 2;
   string matrikelnummer = 3;
 }
-
-
