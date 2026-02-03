@@ -155,9 +155,17 @@ public class BerechnungsController {
     
     @Operation(summary = "gRPC Status", description = "Zeigt den Status der gRPC-Verbindungen zu anderen Services")
     @GetMapping("/grpc-status")
-    public ResponseEntity<ApiResponse<Map<String, Object>>> getGrpcStatus() {
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getGrpcStatus(
+            @RequestParam(value = "test", defaultValue = "false") boolean runTest) {
+        // Bei "Nicht initialisiert" oder explizitem test=true: Probe-Call für aktuellen Status
         var notenStatus = notenGrpcClient.getLastStatus();
         var studiengangStatus = studiengangGrpcClient.getLastStatus();
+        if (runTest || "Nicht initialisiert".equals(notenStatus.message()) || "Nicht initialisiert".equals(studiengangStatus.message())) {
+            notenGrpcClient.getNotenFuerBerechnung(1L);
+            studiengangGrpcClient.getRegelwerk(1L);
+            notenStatus = notenGrpcClient.getLastStatus();
+            studiengangStatus = studiengangGrpcClient.getLastStatus();
+        }
         
         Map<String, Object> status = Map.of(
             "notenService", Map.of(

@@ -665,12 +665,12 @@ export class CalculationComponent implements OnInit {
   moduleMitNoten = computed((): ModulMitNote[] => {
     const moduleList = this.module();
     const notenList = this.noten();
-    const notenMap = new Map(notenList.map(n => [n.modulId, n]));
+    const notenMap = new Map(notenList.map(n => [String(n.modulId ?? ''), n]));
     
     return moduleList.map(m => ({
       ...m,
-      noteWert: notenMap.get(m.id)?.noteWert ?? null,
-      bestanden: notenMap.get(m.id)?.bestanden ?? null
+      noteWert: notenMap.get(String(m.id ?? ''))?.noteWert ?? null,
+      bestanden: notenMap.get(String(m.id ?? ''))?.bestanden ?? null
     }));
   });
   

@@ -644,10 +644,12 @@ export class AssignmentsComponent implements OnInit {
         fetchPolicy: 'network-only'
       }));
 
-      const assignedModuleIds = result.data?.dozentenModule.map(m => m.id) || [];
+      const assignedIds = new Set(
+        (result.data?.dozentenModule || []).map(m => String(m.id ?? ''))
+      );
       
       // Filter verfügbare Module (nicht bereits zugewiesen)
-      const available = this.module().filter(m => !assignedModuleIds.includes(m.id));
+      const available = this.module().filter(m => !assignedIds.has(String(m.id ?? '')));
       this.availableModules.set(available);
 
     } catch (error) {

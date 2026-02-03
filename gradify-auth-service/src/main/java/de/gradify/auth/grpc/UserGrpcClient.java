@@ -52,7 +52,7 @@ public class UserGrpcClient {
                     response.getNachname(),
                     response.getRolesList().toArray(new String[0]),
                     response.getMandantId(),
-                    response.getStudentId().isEmpty() ? null : response.getStudentId()
+                    response.getStudentId() == 0 ? null : response.getStudentId()
             );
             
             log.debug("Credentials valid for user: {} (roles: {})", username, response.getRolesList());
@@ -81,7 +81,7 @@ public class UserGrpcClient {
      * @param userId Benutzer-ID
      * @return ValidatedUser wenn gefunden, Optional.empty() sonst
      */
-    public Optional<ValidatedUser> getUserById(String userId) {
+    public Optional<ValidatedUser> getUserById(Long userId) {
         log.debug("Fetching user by ID: {}", userId);
         
         try {
@@ -91,7 +91,7 @@ public class UserGrpcClient {
             
             UserResponse response = userValidationStub.getUserById(request);
             
-            if (response.getId().isEmpty()) {
+            if (response.getId() == 0) {
                 log.debug("User not found by ID: {}", userId);
                 return Optional.empty();
             }
@@ -133,7 +133,7 @@ public class UserGrpcClient {
             
             UserResponse response = userValidationStub.getUserByUsername(request);
             
-            if (response.getId().isEmpty()) {
+            if (response.getId() == 0) {
                 log.debug("User not found by username: {}", username);
                 return Optional.empty();
             }
@@ -163,12 +163,12 @@ public class UserGrpcClient {
      * Repräsentiert einen validierten Benutzer aus dem User-Service.
      */
     public record ValidatedUser(
-            String id,
+            Long id,
             String username,
             String vorname,
             String nachname,
             String[] roles,
-            String mandantId,
-            String studentId  // null wenn kein Student
+            Long mandantId,
+            Long studentId  // null wenn kein Student
     ) {}
 }

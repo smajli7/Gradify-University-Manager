@@ -228,3 +228,7 @@ INSERT INTO studenten (id, benutzer_id, matrikelnummer, geburtsdatum, status) VA
     (34, 134, '2000014', '1999-06-22', 'AKTIV'),
     (35, 135, '2000015', '1998-11-01', 'AKTIV')
 ON CONFLICT (id) DO NOTHING;
+
+-- Sequenzen zurücksetzen (sonst ID-Kollision bei neuen Benutzern)
+SELECT setval(pg_get_serial_sequence('benutzer', 'id'), COALESCE((SELECT MAX(id) FROM benutzer), 1));
+SELECT setval(pg_get_serial_sequence('studenten', 'id'), COALESCE((SELECT MAX(id) FROM studenten), 1));

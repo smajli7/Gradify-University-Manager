@@ -1524,15 +1524,15 @@ export class StudyPlanComponent implements OnInit {
       const notenMap = new Map<string, Note>();
 
       for (const note of noten) {
-        // Keep only the latest (highest versuch) per module
-        const existing = notenMap.get(note.modulId);
+        const key = String(note.modulId ?? '');
+        const existing = notenMap.get(key);
         if (!existing || note.versuch > existing.versuch) {
-          notenMap.set(note.modulId, note);
+          notenMap.set(key, note);
         }
       }
 
       const moduleMitNoten: ModulMitNote[] = moduleList.map((m: Modul) => {
-        const note = notenMap.get(m.id);
+        const note = notenMap.get(String(m.id ?? ''));
         let status: ModulMitNote['status'] = 'offen';
 
         if (note) {

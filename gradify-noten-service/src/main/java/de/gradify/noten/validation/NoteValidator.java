@@ -9,7 +9,6 @@ import java.math.BigDecimal;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID;
 
 /**
  * Validiert Noten nach deutschen Hochschulregeln.
@@ -72,8 +71,9 @@ public class NoteValidator {
             return;
         }
 
-        // Gültige Notenstufe prüfen
-        if (!GUELTIGE_NOTEN.contains(noteWert)) {
+        // Gültige Notenstufe prüfen (compareTo ignoriert Dezimalstellen: 3 = 3.0)
+        boolean gueltig = GUELTIGE_NOTEN.stream().anyMatch(g -> g.compareTo(noteWert) == 0);
+        if (!gueltig) {
             errors.add("Ungültiger Notenwert. Erlaubt: 1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 5.0");
         }
     }
@@ -82,8 +82,8 @@ public class NoteValidator {
      * Prüft ob der Versuch gültig ist.
      */
     private void validateVersuch(CreateNoteRequest request, List<String> errors) {
-        UUID einschreibungId = request.getEinschreibungId();
-        UUID modulId = request.getModulId();
+        Long einschreibungId = request.getEinschreibungId();
+        Long modulId = request.getModulId();
         int versuch = request.getVersuch();
 
         // Wenn Versuch angegeben, prüfen ob gültig
@@ -105,8 +105,8 @@ public class NoteValidator {
      * Prüft ob bereits eine Note für diese Kombination existiert.
      */
     private void validateDuplikat(CreateNoteRequest request, List<String> errors) {
-        UUID einschreibungId = request.getEinschreibungId();
-        UUID modulId = request.getModulId();
+        Long einschreibungId = request.getEinschreibungId();
+        Long modulId = request.getModulId();
         int versuch = request.getVersuch();
 
         if (versuch > 0) {
@@ -123,7 +123,7 @@ public class NoteValidator {
      * Prüft ob ein Notenwert gültig ist (ohne DB-Prüfungen).
      */
     public boolean isValidNoteWert(BigDecimal noteWert) {
-        return noteWert != null && GUELTIGE_NOTEN.contains(noteWert);
+        return noteWert != null && GUELTIGE_NOTEN.stream().anyMatch(g -> g.compareTo(noteWert) == 0);
     }
 
     /**

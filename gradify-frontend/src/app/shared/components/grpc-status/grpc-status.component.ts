@@ -45,8 +45,8 @@ import { SystemStatusService, SystemStatus } from '../../../core/services/system
           </div>
         </div>
         
-        <div class="status-footer">
-          <small>Kein REST-Fallback aktiv</small>
+        <div class="status-footer" title="Noten kommen via GraphQL. gRPC nur für Gesamtnote. Bei gRPC-Ausfall berechnet das Frontend lokal aus den geladenen Noten.">
+          <small>Noten: GraphQL. gRPC: Gesamtnote. Fallback: lokale Berechnung.</small>
         </div>
       </div>
     </div>

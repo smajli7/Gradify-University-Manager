@@ -91,7 +91,7 @@ public class BerechnungsService {
                 .orElse("GEWICHTET");
 
         // 4. Noten und Gewichtungen zusammenführen
-        Map<String, ModulGewichtung> gewichtungMap = gewichtungen.stream()
+        Map<Long, ModulGewichtung> gewichtungMap = gewichtungen.stream()
                 .collect(Collectors.toMap(ModulGewichtung::getModulId, g -> g));
 
         List<ModulBerechnung> modulBerechnungen = new ArrayList<>();
@@ -106,7 +106,7 @@ public class BerechnungsService {
                     : "Modul " + (gew != null ? gew.getModulNr() : note.getModulId());
             
             ModulBerechnung mb = ModulBerechnung.builder()
-                    .modulId(Long.parseLong(note.getModulId()))
+                    .modulId(note.getModulId())
                     .modulNr(gew != null ? gew.getModulNr() : "?")
                     .modulName(modulName)
                     .note(BigDecimal.valueOf(note.getNoteWert()))

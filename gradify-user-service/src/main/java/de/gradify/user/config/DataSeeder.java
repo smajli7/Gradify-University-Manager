@@ -16,7 +16,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.time.LocalDate;
 import java.util.Set;
-import java.util.UUID;
 
 @Component
 @Profile("java-seed") // Deaktiviert - verwende data.sql stattdessen. Aktiviere mit: spring.profiles.active=java-seed
@@ -30,11 +29,11 @@ public class DataSeeder implements CommandLineRunner {
     private final PasswordEncoder passwordEncoder;
 
     // Feste IDs fuer Entwicklung - muessen mit anderen Services uebereinstimmen
-    public static final UUID THM_MANDANT_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
-    public static final UUID DOZENT_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
-    public static final UUID STUDENT_1_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000001");
-    public static final UUID STUDENT_2_ID = UUID.fromString("aaaa2222-0000-0000-0000-000000000002");
-    public static final UUID STUDENT_3_ID = UUID.fromString("aaaa3333-0000-0000-0000-000000000003");
+    public static final Long THM_MANDANT_ID = 1L;
+    public static final Long DOZENT_ID = 10L;
+    public static final Long STUDENT_1_ID = 1L;
+    public static final Long STUDENT_2_ID = 2L;
+    public static final Long STUDENT_3_ID = 3L;
 
     @Override
     @Transactional
@@ -124,7 +123,7 @@ public class DataSeeder implements CommandLineRunner {
         return benutzerRepository.save(benutzer);
     }
 
-    private Benutzer createBenutzerWithId(UUID id, String benutzername, String email, String passwort,
+    private Benutzer createBenutzerWithId(Long id, String benutzername, String email, String passwort,
                                           String vorname, String nachname, Set<Rolle> rollen) {
         Benutzer benutzer = Benutzer.builder()
             .id(id)
@@ -140,7 +139,7 @@ public class DataSeeder implements CommandLineRunner {
         return benutzerRepository.save(benutzer);
     }
 
-    private void createStudentWithId(UUID studentId, String benutzername, String email, String passwort,
+    private void createStudentWithId(Long studentId, String benutzername, String email, String passwort,
                                      String vorname, String nachname, String matrikelnummer,
                                      LocalDate geburtsdatum, Rolle studentRolle) {
         Benutzer benutzer = createBenutzer(benutzername, email, passwort, vorname, nachname, Set.of(studentRolle));

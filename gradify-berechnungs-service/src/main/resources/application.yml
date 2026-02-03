@@ -38,9 +38,13 @@ grpc:
     noten-service:
       address: static://localhost:9084
       negotiationType: PLAINTEXT
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
     studiengang-service:
       address: static://localhost:9083
       negotiationType: PLAINTEXT
+      enableKeepAlive: true
+      keepAliveWithoutCalls: true
 
 # Actuator
 management:

@@ -7,7 +7,6 @@ import lombok.NoArgsConstructor;
 
 import java.io.Serializable;
 import java.time.Instant;
-import java.util.UUID;
 
 /**
  * Event, das bei Notenänderungen über die Message Queue gesendet wird.
@@ -30,17 +29,17 @@ public class NoteEvent implements Serializable {
     /**
      * ID der Note
      */
-    private UUID noteId;
+    private Long noteId;
     
     /**
      * ID der Einschreibung (Student + Studiengang)
      */
-    private UUID einschreibungId;
+    private Long einschreibungId;
     
     /**
      * ID des Moduls
      */
-    private UUID modulId;
+    private Long modulId;
     
     /**
      * Notenwert (1.0 - 5.0)

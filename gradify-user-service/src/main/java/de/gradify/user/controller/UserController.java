@@ -3,6 +3,7 @@ package de.gradify.user.controller;
 import de.gradify.shared.dto.ApiResponse;
 import de.gradify.user.dto.BenutzerDto;
 import de.gradify.user.dto.CreateBenutzerRequest;
+import de.gradify.user.dto.UpdateBenutzerRequest;
 import de.gradify.user.entity.Rolle;
 import de.gradify.user.service.BenutzerService;
 import lombok.RequiredArgsConstructor;
@@ -74,7 +75,7 @@ public class UserController {
     @PutMapping("/{id}")
     public ResponseEntity<ApiResponse<BenutzerDto>> updateUser(
             @PathVariable(value = "id") Long id,
-            @Valid @RequestBody CreateBenutzerRequest request) {
+            @Valid @RequestBody UpdateBenutzerRequest request) {
         log.info("Updating user: {}", id);
         
         return benutzerService.update(id, request)

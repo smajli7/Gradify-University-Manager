@@ -21,12 +21,12 @@ public class LoginResponse {
     @NoArgsConstructor
     @AllArgsConstructor
     public static class UserInfo {
-        private String id;
+        private Long id;
         private String username;
         private String vorname;
         private String nachname;
         private String[] roles;
-        private String studentId;  // null fuer Nicht-Studenten
+        private Long studentId;  // null fuer Nicht-Studenten
     }
 }
 

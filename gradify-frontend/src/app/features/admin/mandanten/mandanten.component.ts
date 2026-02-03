@@ -82,7 +82,7 @@ interface ImportResult {
                   <span class="status-dot" [class.active]="mandant.aktiv"></span>
                 </div>
                 <h3>{{ mandant.name }}</h3>
-                <p class="text-muted">{{ mandant.studiengaenge?.length || 0 }} Studiengänge</p>
+                <p class="text-muted">{{ mandant.studiengaenge.length || 0 }} Studiengänge</p>
               </div>
             }
           </div>

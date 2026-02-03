@@ -856,8 +856,8 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
       
       // Für Dozenten: Nur Noten zu ihren Modulen
       if (isDozent && this.module.length > 0) {
-        const myModulIds = this.module.map(m => m.id);
-        this.noten = allNoten.filter(n => myModulIds.includes(n.modulId));
+        const myModulIds = new Set(this.module.map(m => String(m.id)));
+        this.noten = allNoten.filter(n => myModulIds.has(String(n.modulId ?? '')));
       } else {
         this.noten = allNoten;
       }
@@ -947,11 +947,11 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
 
   private calculateModulStats(): void {
     const statsMap = new Map<string, ModulStats>();
-    const moduleMap = new Map(this.module.map(m => [m.id, m]));
+    const moduleMap = new Map(this.module.map(m => [String(m.id), m]));
 
     for (const note of this.noten) {
-      const modul = moduleMap.get(note.modulId);
-      const key = note.modulId;
+      const key = String(note.modulId ?? '');
+      const modul = moduleMap.get(key);
       const existing = statsMap.get(key);
 
       if (existing) {
@@ -962,7 +962,7 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
           existing.failed++;
         }
         // Recalculate average
-        const allGrades = this.noten.filter(n => n.modulId === key && n.noteWert > 0);
+        const allGrades = this.noten.filter(n => String(n.modulId ?? '') === key && n.noteWert > 0);
         if (allGrades.length > 0) {
           existing.avgGrade = allGrades.reduce((sum, n) => sum + n.noteWert, 0) / allGrades.length;
         }
@@ -1105,13 +1105,15 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
     // Durchschnittsnote pro Studiengang berechnen
     const avgByProgram = stats.map(sg => {
       // Finde alle Einschreibungen für diesen Studiengang
-      const einschreibungIds = this.einschreibungen
-        .filter(e => e.studiengang.kuerzel === sg.kuerzel)
-        .map(e => e.id);
+      const einschreibungIds = new Set(
+        this.einschreibungen
+          .filter(e => e.studiengang.kuerzel === sg.kuerzel)
+          .map(e => String(e.id ?? ''))
+      );
       
       // Finde alle Noten für diese Einschreibungen
       const grades = this.noten.filter(n => 
-        einschreibungIds.includes(n.einschreibungId) && n.noteWert > 0
+        einschreibungIds.has(String(n.einschreibungId ?? '')) && n.noteWert > 0
       );
 
       if (grades.length === 0) return 0;

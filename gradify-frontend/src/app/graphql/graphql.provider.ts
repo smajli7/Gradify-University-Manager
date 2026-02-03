@@ -6,10 +6,11 @@ import { setContext } from '@apollo/client/link/context';
 
 /**
  * Apollo Client Konfiguration für GraphQL
- * 
+ *
  * - Verbindet sich mit dem API Gateway auf /graphql
  * - Fügt automatisch JWT-Token zu Requests hinzu
  * - Cached Responses für Performance
+ * - GraphQL läuft über HttpClient → wird vom Logging-Interceptor erfasst (Debug-Mode)
  */
 
 export function apolloOptionsFactory(httpLink: HttpLink): ApolloClientOptions<unknown> {
@@ -24,13 +25,13 @@ export function apolloOptionsFactory(httpLink: HttpLink): ApolloClientOptions<un
     };
   });
 
+  // GraphQL geht über HttpClient – wird vom Logging-Interceptor erfasst
   // HTTP-Links zu den Service-spezifischen GraphQL-Endpunkten am Gateway
   const studiengangHttp = httpLink.create({ uri: '/graphql/studiengang' });
   const notenHttp = httpLink.create({ uri: '/graphql/noten' });
   const userHttp = httpLink.create({ uri: '/graphql/user' });
 
   // Split-Link: route nach clientName im Kontext
-  // Priorität: 'noten' -> Noten-Service, 'user' -> User-Service, default -> Studiengang-Service
   const routedHttp = ApolloLink.split(
     operation => operation.getContext()['clientName'] === 'noten',
     notenHttp,

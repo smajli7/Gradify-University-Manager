@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.UUID;
 
 /**
  * Seed-Daten fuer Noten in der Entwicklungsumgebung.
@@ -32,37 +31,37 @@ public class DataSeeder implements CommandLineRunner {
     private final NoteRepository noteRepository;
 
     // Dozent-ID (vom User-Service)
-    public static final UUID DOZENT_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    public static final Long DOZENT_ID = 10L;
     
     // Einschreibungs-IDs (vom Studiengang-Service)
-    public static final UUID EINSCHREIBUNG_1 = UUID.fromString("eeee1111-1111-1111-1111-111111111111"); // Max Mustermann
-    public static final UUID EINSCHREIBUNG_2 = UUID.fromString("eeee2222-2222-2222-2222-222222222222"); // Anna Schmidt
-    public static final UUID EINSCHREIBUNG_3 = UUID.fromString("eeee3333-3333-3333-3333-333333333333"); // Leon Weber
+    public static final Long EINSCHREIBUNG_1 = 1L; // Max Mustermann
+    public static final Long EINSCHREIBUNG_2 = 2L; // Anna Schmidt
+    public static final Long EINSCHREIBUNG_3 = 3L; // Leon Weber
     
     // ========================================
     // Bioverfahrenstechnik Module (BVT) - vom Studiengang-Service
     // ========================================
-    public static final UUID BVT_01_EINFUEHRUNG = UUID.fromString("b0100000-0001-0000-0000-000000000001");
-    public static final UUID BVT_02_MECHANIK = UUID.fromString("b0100000-0002-0000-0000-000000000002");
-    public static final UUID BVT_03_KONSTRUKTION = UUID.fromString("b0100000-0003-0000-0000-000000000003");
-    public static final UUID BVT_04_MATHE1 = UUID.fromString("b0100000-0004-0000-0000-000000000004");
-    public static final UUID BVT_05_PHYSIK = UUID.fromString("b0100000-0005-0000-0000-000000000005");
-    public static final UUID BVT_06_ELEKTRO = UUID.fromString("b0100000-0006-0000-0000-000000000006");
-    public static final UUID BVT_07_INFORMATIK = UUID.fromString("b0100000-0007-0000-0000-000000000007");
-    public static final UUID BVT_08_MATHE2 = UUID.fromString("b0100000-0008-0000-0000-000000000008");
-    public static final UUID BVT_09_CHEMIE = UUID.fromString("b0100000-0009-0000-0000-000000000009");
-    public static final UUID BVT_10_MIKROBIO = UUID.fromString("b0100000-0010-0000-0000-000000000010");
-    public static final UUID BVT_11_ENGLISH = UUID.fromString("b0100000-0011-0000-0000-000000000011");
-    public static final UUID BVT_12_THERMO = UUID.fromString("b0100000-0012-0000-0000-000000000012");
+    public static final Long BVT_01_EINFUEHRUNG = 1L;
+    public static final Long BVT_02_MECHANIK = 2L;
+    public static final Long BVT_03_KONSTRUKTION = 3L;
+    public static final Long BVT_04_MATHE1 = 4L;
+    public static final Long BVT_05_PHYSIK = 5L;
+    public static final Long BVT_06_ELEKTRO = 6L;
+    public static final Long BVT_07_INFORMATIK = 7L;
+    public static final Long BVT_08_MATHE2 = 8L;
+    public static final Long BVT_09_CHEMIE = 9L;
+    public static final Long BVT_10_MIKROBIO = 10L;
+    public static final Long BVT_11_ENGLISH = 11L;
+    public static final Long BVT_12_THERMO = 12L;
     
     // ========================================
     // Forschung Soziale Arbeit Module (FSA) - vom Studiengang-Service
     // ========================================
-    public static final UUID FSA_01_PARADIGMEN = UUID.fromString("f0100000-0001-0000-0000-000000000001");
-    public static final UUID FSA_02_QUANT_METHODEN = UUID.fromString("f0100000-0002-0000-0000-000000000002");
-    public static final UUID FSA_03_STATISTIK1 = UUID.fromString("f0100000-0003-0000-0000-000000000003");
-    public static final UUID FSA_04_QUALITATIV = UUID.fromString("f0100000-0004-0000-0000-000000000004");
-    public static final UUID FSA_07_STATISTIK2 = UUID.fromString("f0100000-0007-0000-0000-000000000007");
+    public static final Long FSA_01_PARADIGMEN = 101L;
+    public static final Long FSA_02_QUANT_METHODEN = 102L;
+    public static final Long FSA_03_STATISTIK1 = 103L;
+    public static final Long FSA_04_QUALITATIV = 104L;
+    public static final Long FSA_07_STATISTIK2 = 107L;
 
     @Override
     @Transactional
@@ -167,7 +166,7 @@ public class DataSeeder implements CommandLineRunner {
         log.info("- Leon Weber: 5 Noten (Sem. 1 komplett, Sem. 2 laufend)");
     }
 
-    private void createNote(UUID einschreibungId, UUID modulId, BigDecimal noteWert, 
+    private void createNote(Long einschreibungId, Long modulId, BigDecimal noteWert, 
                            boolean bestanden, int versuch, LocalDate pruefungsdatum,
                            Note.NoteStatus status, String kommentar) {
         Note note = Note.builder()

@@ -50,8 +50,10 @@ public class StudiengangGrpcClient {
             )), lastStatus);
 
         } catch (StatusRuntimeException e) {
-            log.error("gRPC Error getting Regelwerk: {} - {}", e.getStatus().getCode(), e.getMessage());
-            lastStatus = new GrpcStatus(false, "Fehler: " + e.getStatus().getCode());
+            String desc = e.getStatus().getDescription();
+            String msg = (desc != null && !desc.isEmpty()) ? desc : ("Fehler: " + e.getStatus().getCode());
+            log.error("gRPC Error getting Regelwerk: {} - {}", e.getStatus().getCode(), msg);
+            lastStatus = new GrpcStatus(false, msg);
             return new RegelwerkResult(Optional.empty(), lastStatus);
         }
     }
@@ -80,8 +82,10 @@ public class StudiengangGrpcClient {
             return new GewichtungenResult(response.getModuleList(), lastStatus);
 
         } catch (StatusRuntimeException e) {
-            log.error("gRPC Error getting Modul-Gewichtungen: {} - {}", e.getStatus().getCode(), e.getMessage());
-            lastStatus = new GrpcStatus(false, "Fehler: " + e.getStatus().getCode());
+            String desc = e.getStatus().getDescription();
+            String msg = (desc != null && !desc.isEmpty()) ? desc : ("Fehler: " + e.getStatus().getCode());
+            log.error("gRPC Error getting Modul-Gewichtungen: {} - {}", e.getStatus().getCode(), msg);
+            lastStatus = new GrpcStatus(false, msg);
             return new GewichtungenResult(Collections.emptyList(), lastStatus);
         }
     }
@@ -121,8 +125,10 @@ public class StudiengangGrpcClient {
             )), lastStatus);
 
         } catch (StatusRuntimeException e) {
-            log.error("gRPC Error getting Einschreibung details: {} - {}", e.getStatus().getCode(), e.getMessage());
-            lastStatus = new GrpcStatus(false, "Fehler: " + e.getStatus().getCode());
+            String desc = e.getStatus().getDescription();
+            String msg = (desc != null && !desc.isEmpty()) ? desc : ("Fehler: " + e.getStatus().getCode());
+            log.error("gRPC Error getting Einschreibung details: {} - {}", e.getStatus().getCode(), msg);
+            lastStatus = new GrpcStatus(false, msg);
             return new EinschreibungDetailsResult(Optional.empty(), lastStatus);
         }
     }

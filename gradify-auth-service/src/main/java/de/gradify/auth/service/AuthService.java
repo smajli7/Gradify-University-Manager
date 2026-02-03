@@ -106,7 +106,7 @@ public class AuthService {
         }
         
         // Benutzer vom User-Service abrufen
-        String userId = token.getBenutzerId().toString();
+        Long userId = token.getBenutzerId();
         Optional<ValidatedUser> userOpt = userGrpcClient.getUserById(userId);
         
         if (userOpt.isEmpty()) {
@@ -196,7 +196,7 @@ public class AuthService {
         
         // StudentId hinzufügen falls vorhanden
         String studentIdPart = "";
-        if (user.studentId() != null && !user.studentId().isEmpty()) {
+        if (user.studentId() != null) {
             studentIdPart = ",\"studentId\":\"" + user.studentId() + "\"";
         }
         
@@ -222,17 +222,17 @@ public class AuthService {
     /**
      * Generiert einen Refresh-Token.
      */
-    private String generateRefreshToken(String userId) {
-        return UUID.randomUUID().toString() + "-" + userId.substring(0, 8);
+    private String generateRefreshToken(Long userId) {
+        return UUID.randomUUID().toString() + "-" + userId;
     }
 
     /**
      * Speichert einen Refresh-Token in der Datenbank.
      */
     @Transactional
-    private void saveRefreshToken(String userId, String tokenValue) {
+    private void saveRefreshToken(Long userId, String tokenValue) {
         RefreshToken token = RefreshToken.builder()
-                .benutzerId(Long.parseLong(userId))
+                .benutzerId(userId)
                 .token(tokenValue)
                 .gueltigBis(LocalDateTime.now().plusDays(7)) // 7 Tage gültig
                 .build();

@@ -157,11 +157,11 @@ ON CONFLICT (id) DO NOTHING;
 -- =====================================================
 -- PO-REGELWERKE
 -- IDs: 1-2
--- Spalten: id, po_id, regel_typ, min_ects, max_versuche, beschreibung, aktiv
+-- Spalten: id, po_id, regel_name, beschreibung, formel, parameter_json
 -- =====================================================
-INSERT INTO po_regelwerke (id, po_id, regel_typ, min_ects, max_versuche, beschreibung, aktiv) VALUES
-    (1, 1, 'STANDARD', 180, 3, 'Standard-Regelwerk BVT Bachelor', true),
-    (2, 2, 'STANDARD', 120, 3, 'Standard-Regelwerk FSA Master', true)
+INSERT INTO po_regelwerke (id, po_id, regel_name, beschreibung, formel, parameter_json) VALUES
+    (1, 1, 'GEWICHTET', 'Standard-Regelwerk BVT Bachelor mit ECTS-Gewichtung', 'ECTS_GEWICHTET', '{"minEcts": 180, "maxVersuche": 3}'),
+    (2, 2, 'GEWICHTET', 'Standard-Regelwerk FSA Master mit ECTS-Gewichtung', 'ECTS_GEWICHTET', '{"minEcts": 120, "maxVersuche": 3}')
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================

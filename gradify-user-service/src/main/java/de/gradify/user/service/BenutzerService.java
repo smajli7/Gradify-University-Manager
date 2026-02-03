@@ -2,6 +2,7 @@ package de.gradify.user.service;
 
 import de.gradify.user.dto.BenutzerDto;
 import de.gradify.user.dto.CreateBenutzerRequest;
+import de.gradify.user.dto.UpdateBenutzerRequest;
 import de.gradify.user.entity.Benutzer;
 import de.gradify.user.entity.Rolle;
 import de.gradify.user.repository.BenutzerRepository;
@@ -87,10 +88,11 @@ public class BenutzerService {
     }
 
     @Transactional
-    public Optional<BenutzerDto> update(Long id, CreateBenutzerRequest request) {
+    public Optional<BenutzerDto> update(Long id, UpdateBenutzerRequest request) {
         log.info("Updating user: {}", id);
         
         return benutzerRepository.findById(id).map(benutzer -> {
+            benutzer.setBenutzername(request.getBenutzername());
             benutzer.setVorname(request.getVorname());
             benutzer.setNachname(request.getNachname());
             benutzer.setEmail(request.getEmail());

@@ -876,7 +876,7 @@ export class ProgressComponent implements OnInit {
   
   bestandenModulIds = computed(() => {
     return new Set(
-      this.noten().filter(n => n.bestanden === true).map(n => n.modulId)
+      this.noten().filter(n => n.bestanden === true).map(n => String(n.modulId ?? ''))
     );
   });
   
@@ -885,7 +885,7 @@ export class ProgressComponent implements OnInit {
   ectsErreicht = computed(() => {
     const ids = this.bestandenModulIds();
     return this.module()
-      .filter(m => ids.has(m.id))
+      .filter(m => ids.has(String(m.id ?? '')))
       .reduce((sum, m) => sum + m.ects, 0);
   });
   
@@ -916,8 +916,8 @@ export class ProgressComponent implements OnInit {
   });
   
   offenCount = computed(() => {
-    const modulMitNote = new Set(this.noten().map(n => n.modulId));
-    return this.module().filter(m => !modulMitNote.has(m.id)).length;
+    const modulMitNote = new Set(this.noten().map(n => String(n.modulId ?? '')));
+    return this.module().filter(m => !modulMitNote.has(String(m.id ?? ''))).length;
   });
   
   bestandenPercent = computed(() => (this.bestandenCount() / Math.max(this.totalModules(), 1)) * 100);
@@ -927,7 +927,7 @@ export class ProgressComponent implements OnInit {
   
   semesterProgress = computed((): SemesterProgress[] => {
     const moduleList = this.module();
-    const notenMap = new Map(this.noten().map(n => [n.modulId, n]));
+    const notenMap = new Map(this.noten().map(n => [String(n.modulId ?? ''), n]));
     const regelzeit = this.regelstudienzeit();
     
     const result: SemesterProgress[] = [];
@@ -943,12 +943,12 @@ export class ProgressComponent implements OnInit {
       });
       
       const semNoten = semModule
-        .map(m => notenMap.get(m.id))
+        .map(m => notenMap.get(String(m.id ?? '')))
         .filter(n => n?.bestanden === true);
       
       const ectsGesamt = semModule.reduce((sum, m) => sum + m.ects, 0);
       const ectsErreicht = semModule
-        .filter(m => notenMap.get(m.id)?.bestanden === true)
+        .filter(m => notenMap.get(String(m.id ?? ''))?.bestanden === true)
         .reduce((sum, m) => sum + m.ects, 0);
       
       const notenMitWert = semNoten.filter(n => n.noteWert !== null);

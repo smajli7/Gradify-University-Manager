@@ -13,6 +13,7 @@ const GET_ALL_USERS = gql`
       vorname
       nachname
       email
+      mandantId
       aktiv
       rollen {
         id
@@ -33,8 +34,14 @@ interface User {
   vorname: string;
   nachname: string;
   email: string;
+  mandantId?: string;
   aktiv: boolean;
   rollen: Role[];
+}
+
+interface RoleInfo {
+  id: number;
+  name: string;
 }
 
 interface UserFormData {
@@ -915,8 +922,31 @@ export class UsersAdminComponent implements OnInit {
   formData: UserFormData = this.getEmptyFormData();
   editingUserId: string | null = null;
 
+  // Rolle Name -> ID für API-Payload
+  private rolesMap = new Map<string, number>();
+  private readonly DEFAULT_MANDANT_ID = 1;
+
   ngOnInit(): void {
+    this.loadRoles();
     this.loadUsers();
+  }
+
+  private async loadRoles(): Promise<void> {
+    try {
+      const res = await firstValueFrom(this.http.get<{ success: boolean; data: RoleInfo[] }>('/api/users/roles'));
+      const roles = res?.data ?? [];
+      this.rolesMap.clear();
+      for (const r of roles) {
+        this.rolesMap.set(r.name, r.id);
+      }
+    } catch {
+      // Fallback: Standard-IDs aus data.sql
+      this.rolesMap.set('ROLE_STUDENT', 1);
+      this.rolesMap.set('ROLE_LEHRENDER', 2);
+      this.rolesMap.set('ROLE_PRUEFUNGSAMT', 3);
+      this.rolesMap.set('ROLE_STUDIENGANGLEITUNG', 4);
+      this.rolesMap.set('ROLE_ADMIN', 5);
+    }
   }
 
   async loadUsers(): Promise<void> {
@@ -987,19 +1017,39 @@ export class UsersAdminComponent implements OnInit {
     this.editingUserId = null;
   }
 
+  /** Erstellt API-Payload: CreateBenutzerRequest (neu) oder UpdateBenutzerRequest (Update) */
+  private buildUserPayload(isUpdate: boolean): Record<string, unknown> {
+    const roleId = this.formData.rolle ? this.rolesMap.get(this.formData.rolle) : undefined;
+    const payload: Record<string, unknown> = {
+      benutzername: this.formData.username,
+      vorname: this.formData.vorname,
+      nachname: this.formData.nachname,
+      email: this.formData.email,
+      rollenIds: roleId != null ? [roleId] : []
+    };
+    if (!isUpdate) {
+      payload['mandantId'] = this.DEFAULT_MANDANT_ID;
+      payload['passwort'] = this.formData.password ?? '';
+    } else if (this.formData.password && this.formData.password.length >= 8) {
+      payload['passwort'] = this.formData.password;
+    }
+    return payload;
+  }
+
   async saveUser(): Promise<void> {
     if (!this.isFormValid()) return;
 
+    const isUpdate = this.editMode() && !!this.editingUserId;
+    const payload = this.buildUserPayload(isUpdate);
+
     try {
-      if (this.editMode() && this.editingUserId) {
-        // Update user
+      if (isUpdate) {
         await firstValueFrom(
-          this.http.put<ApiResponse<User>>(`/api/users/${this.editingUserId}`, this.formData)
+          this.http.put<ApiResponse<User>>(`/api/users/${this.editingUserId}`, payload)
         );
       } else {
-        // Create user
         await firstValueFrom(
-          this.http.post<ApiResponse<User>>('/api/users', this.formData)
+          this.http.post<ApiResponse<User>>('/api/users', payload)
         );
       }
 
@@ -1008,7 +1058,8 @@ export class UsersAdminComponent implements OnInit {
 
     } catch (error: any) {
       console.error('Error saving user:', error);
-      alert('Fehler beim Speichern: ' + (error.error?.message || error.message));
+      const msg = this.extractErrorMessage(error);
+      alert('Fehler beim Speichern: ' + msg);
     }
   }
 
@@ -1033,6 +1084,23 @@ export class UsersAdminComponent implements OnInit {
       return false;
     }
     return true;
+  }
+
+  /** Extrahiert lesbare Fehlermeldung aus HttpErrorResponse / ApiResponse / Spring Validation */
+  private extractErrorMessage(error: unknown): string {
+    if (!error || typeof error !== 'object') return 'Unbekannter Fehler';
+    const e = error as { error?: unknown; status?: number; message?: string };
+    const body = e.error;
+    if (body && typeof body === 'object') {
+      const b = body as { message?: string; errors?: Array<{ field?: string; defaultMessage?: string }> };
+      if (b.message) return b.message;
+      if (Array.isArray(b.errors) && b.errors.length > 0) {
+        return b.errors.map((x: { field?: string; defaultMessage?: string }) =>
+          (x.field ? x.field + ': ' : '') + (x.defaultMessage ?? '')).join('; ');
+      }
+    }
+    if (e.status === 0) return 'Verbindung fehlgeschlagen. Sind alle Services gestartet?';
+    return e.message ?? 'Unbekannter Fehler';
   }
 
   private getEmptyFormData(): UserFormData {

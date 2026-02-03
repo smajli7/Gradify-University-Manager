@@ -1,12 +1,13 @@
-import { Component, Input, Output, EventEmitter } from '@angular/core';
+import { Component, Input, Output, EventEmitter, inject, ViewChild, AfterViewInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterLink } from '@angular/router';
-import { GrpcStatusComponent } from '../grpc-status/grpc-status.component';
+import { DebugService } from '../../../core/services/debug.service';
+import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
 
 @Component({
   selector: 'app-header',
   standalone: true,
-  imports: [CommonModule, RouterLink, GrpcStatusComponent],
+  imports: [CommonModule, RouterLink, DebugPanelComponent],
   template: `
     <header class="header">
       <div class="header-container">
@@ -50,8 +51,15 @@ import { GrpcStatusComponent } from '../grpc-status/grpc-status.component';
         <!-- Spacer -->
         <div class="spacer"></div>
 
-        <!-- gRPC Status Indicator -->
-        <app-grpc-status class="hide-mobile"></app-grpc-status>
+        <!-- Debug Toggle -->
+        <button
+          class="debug-btn"
+          [class.active]="isDebugActive()"
+          (click)="toggleDebug()"
+          [title]="isDebugActive() ? 'Debug aus' : 'Debug an'">
+          <span class="material-icons-outlined">bug_report</span>
+          <span class="debug-label hide-mobile">Debug</span>
+        </button>
 
         <!-- User Menu -->
         <div class="user-menu">
@@ -95,6 +103,9 @@ import { GrpcStatusComponent } from '../grpc-status/grpc-status.component';
         </div>
       </div>
     </header>
+
+    <!-- Debug Panel -->
+    <app-debug-panel></app-debug-panel>
   `,
   styles: [`
     .header {
@@ -298,6 +309,41 @@ import { GrpcStatusComponent } from '../grpc-status/grpc-status.component';
       margin: var(--spacing-xs) 0;
     }
 
+    /* Debug Toggle */
+    .debug-btn {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(255,255,255,0.08);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      font-size: 12px;
+      cursor: pointer;
+      transition: all 0.2s;
+    }
+
+    .debug-btn:hover {
+      background: rgba(255,255,255,0.12);
+      color: var(--text-primary);
+      border-color: var(--color-primary);
+    }
+
+    .debug-btn.active {
+      background: rgba(var(--color-primary-rgb), 0.15);
+      color: var(--color-primary);
+      border-color: var(--color-primary);
+    }
+
+    .debug-btn .material-icons-outlined {
+      font-size: 18px;
+    }
+
+    .debug-label {
+      font-weight: 500;
+    }
+
     /* Responsive */
     @media (max-width: 768px) {
       .header-container {
@@ -310,7 +356,11 @@ import { GrpcStatusComponent } from '../grpc-status/grpc-status.component';
     }
   `]
 })
-export class HeaderComponent {
+export class HeaderComponent implements AfterViewInit {
+  private readonly debugService = inject(DebugService);
+
+  @ViewChild(DebugPanelComponent) debugPanel!: DebugPanelComponent;
+
   @Input() userName: string = 'Benutzer';
   @Input() userRole: string = 'STUDENT';
   @Input() userAvatar: string | null = null;
@@ -320,6 +370,27 @@ export class HeaderComponent {
   @Output() menuToggle = new EventEmitter<void>();
   @Output() userMenuToggle = new EventEmitter<void>();
   @Output() logout = new EventEmitter<void>();
+  @Output() debugPanelOpen = new EventEmitter<boolean>();
+
+  ngAfterViewInit(): void {
+    if (this.debugService.debugMode() && this.debugPanel) {
+      this.debugPanel.open();
+    }
+  }
+
+  isDebugActive(): boolean {
+    return this.debugService.debugMode();
+  }
+
+  toggleDebug(): void {
+    this.debugService.toggle();
+    const on = this.debugService.debugMode();
+    if (this.debugPanel) {
+      if (on) this.debugPanel.open();
+      else this.debugPanel.close();
+    }
+    this.debugPanelOpen.emit(on);
+  }
 
   get userInitials(): string {
     return this.userName

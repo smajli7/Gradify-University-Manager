@@ -11,7 +11,6 @@ import org.springframework.transaction.annotation.Transactional;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.util.UUID;
 
 /**
  * Seed-Daten fuer die Entwicklungsumgebung.
@@ -35,45 +34,45 @@ public class DataSeeder implements CommandLineRunner {
     private final ModulZuweisungRepository modulZuweisungRepository;
 
     // Feste IDs fuer Entwicklung - muessen mit anderen Services uebereinstimmen
-    public static final UUID THM_MANDANT_ID = UUID.fromString("11111111-1111-1111-1111-111111111111");
+    public static final Long THM_MANDANT_ID = 1L;
     
     // Student-IDs (werden vom User-Service generiert)
-    public static final UUID STUDENT_1_ID = UUID.fromString("aaaa1111-0000-0000-0000-000000000001");
-    public static final UUID STUDENT_2_ID = UUID.fromString("aaaa2222-0000-0000-0000-000000000002");
-    public static final UUID STUDENT_3_ID = UUID.fromString("aaaa3333-0000-0000-0000-000000000003");
+    public static final Long STUDENT_1_ID = 1L;
+    public static final Long STUDENT_2_ID = 2L;
+    public static final Long STUDENT_3_ID = 3L;
     
     // Dozenten-ID (Prof. Dr. Max Mueller aus User-Service)
-    public static final UUID DOZENT_1_ID = UUID.fromString("22222222-2222-2222-2222-222222222222");
+    public static final Long DOZENT_1_ID = 10L;
     
     // Einschreibungs-IDs (fuer Noten-Service)
-    public static final UUID EINSCHREIBUNG_1 = UUID.fromString("eeee1111-1111-1111-1111-111111111111");
-    public static final UUID EINSCHREIBUNG_2 = UUID.fromString("eeee2222-2222-2222-2222-222222222222");
-    public static final UUID EINSCHREIBUNG_3 = UUID.fromString("eeee3333-3333-3333-3333-333333333333");
+    public static final Long EINSCHREIBUNG_1 = 1L;
+    public static final Long EINSCHREIBUNG_2 = 2L;
+    public static final Long EINSCHREIBUNG_3 = 3L;
     
     // ========================================
     // Feste Modul-IDs fuer Bioverfahrenstechnik (BVT)
     // ========================================
-    public static final UUID BVT_MODUL_01 = UUID.fromString("b0100000-0001-0000-0000-000000000001"); // Einfuehrung BVT
-    public static final UUID BVT_MODUL_02 = UUID.fromString("b0100000-0002-0000-0000-000000000002"); // Technische Mechanik
-    public static final UUID BVT_MODUL_03 = UUID.fromString("b0100000-0003-0000-0000-000000000003"); // Konstruktion
-    public static final UUID BVT_MODUL_04 = UUID.fromString("b0100000-0004-0000-0000-000000000004"); // Mathematik 1
-    public static final UUID BVT_MODUL_05 = UUID.fromString("b0100000-0005-0000-0000-000000000005"); // Physik
-    public static final UUID BVT_MODUL_06 = UUID.fromString("b0100000-0006-0000-0000-000000000006"); // Elektrotechnik
-    public static final UUID BVT_MODUL_07 = UUID.fromString("b0100000-0007-0000-0000-000000000007"); // Informatik
-    public static final UUID BVT_MODUL_08 = UUID.fromString("b0100000-0008-0000-0000-000000000008"); // Mathematik 2
-    public static final UUID BVT_MODUL_09 = UUID.fromString("b0100000-0009-0000-0000-000000000009"); // Allg. Chemie
-    public static final UUID BVT_MODUL_10 = UUID.fromString("b0100000-0010-0000-0000-000000000010"); // Mikrobiologie
-    public static final UUID BVT_MODUL_11 = UUID.fromString("b0100000-0011-0000-0000-000000000011"); // English
-    public static final UUID BVT_MODUL_12 = UUID.fromString("b0100000-0012-0000-0000-000000000012"); // Thermodynamik
+    public static final Long BVT_MODUL_01 = 1L;  // Einfuehrung BVT
+    public static final Long BVT_MODUL_02 = 2L;  // Technische Mechanik
+    public static final Long BVT_MODUL_03 = 3L;  // Konstruktion
+    public static final Long BVT_MODUL_04 = 4L;  // Mathematik 1
+    public static final Long BVT_MODUL_05 = 5L;  // Physik
+    public static final Long BVT_MODUL_06 = 6L;  // Elektrotechnik
+    public static final Long BVT_MODUL_07 = 7L;  // Informatik
+    public static final Long BVT_MODUL_08 = 8L;  // Mathematik 2
+    public static final Long BVT_MODUL_09 = 9L;  // Allg. Chemie
+    public static final Long BVT_MODUL_10 = 10L; // Mikrobiologie
+    public static final Long BVT_MODUL_11 = 11L; // English
+    public static final Long BVT_MODUL_12 = 12L; // Thermodynamik
     
     // ========================================
     // Feste Modul-IDs fuer Forschung Soziale Arbeit (FSA)
     // ========================================
-    public static final UUID FSA_MODUL_01 = UUID.fromString("f0100000-0001-0000-0000-000000000001"); // Paradigmatische Grundlegung
-    public static final UUID FSA_MODUL_02 = UUID.fromString("f0100000-0002-0000-0000-000000000002"); // Quant. Forschungsmethoden
-    public static final UUID FSA_MODUL_03 = UUID.fromString("f0100000-0003-0000-0000-000000000003"); // Statistik I
-    public static final UUID FSA_MODUL_04 = UUID.fromString("f0100000-0004-0000-0000-000000000004"); // Qualitativ-rekonstruktive
-    public static final UUID FSA_MODUL_07 = UUID.fromString("f0100000-0007-0000-0000-000000000007"); // Statistik II
+    public static final Long FSA_MODUL_01 = 101L; // Paradigmatische Grundlegung
+    public static final Long FSA_MODUL_02 = 102L; // Quant. Forschungsmethoden
+    public static final Long FSA_MODUL_03 = 103L; // Statistik I
+    public static final Long FSA_MODUL_04 = 104L; // Qualitativ-rekonstruktive
+    public static final Long FSA_MODUL_07 = 107L; // Statistik II
 
     @Override
     @Transactional
@@ -462,7 +461,7 @@ public class DataSeeder implements CommandLineRunner {
             gewichtung, inGesamtnote, vorleistung, wahlpflichtGruppe);
     }
 
-    private void createModulWithId(UUID id, Pruefungsordnung po, String modulNr, String name, String nameEn,
+    private void createModulWithId(Long id, Pruefungsordnung po, String modulNr, String name, String nameEn,
                                    int ects, String semester, int dauerSemester,
                                    Modul.Pruefungsform pruefungsform, String pruefungsdauer,
                                    Modul.Sprache sprache, Modul.Modultyp modultyp, Modul.Bewertungsart bewertungsart,
@@ -503,7 +502,7 @@ public class DataSeeder implements CommandLineRunner {
         poRegelwerkRepository.save(regelwerk);
     }
 
-    private void createEinschreibung(UUID id, UUID studentId, Studiengang studiengang,
+    private void createEinschreibung(Long id, Long studentId, Studiengang studiengang,
                                      Pruefungsordnung po, int semester) {
         Einschreibung einschreibung = Einschreibung.builder()
             .id(id)
@@ -517,7 +516,7 @@ public class DataSeeder implements CommandLineRunner {
         einschreibungRepository.save(einschreibung);
     }
 
-    private void createModulZuweisung(UUID dozentId, UUID modulId, String bemerkung) {
+    private void createModulZuweisung(Long dozentId, Long modulId, String bemerkung) {
         ModulZuweisung zuweisung = ModulZuweisung.builder()
             .dozentId(dozentId)
             .modulId(modulId)

@@ -211,6 +211,7 @@ interface StudentWithGrade extends StudentInfo {
                               max="5.0"
                               [(ngModel)]="student.noteWert"
                               (change)="onGradeChange(student)"
+                              (blur)="normalizeNoteValue(student)"
                               placeholder="--">
                           </td>
                           <td class="col-center">
@@ -657,10 +658,10 @@ export class GradeEntryComponent implements OnInit {
       const einschreibungen = einschreibungenResult.data?.einschreibungen || [];
       const existingNotes = notenResponse?.data || [];
 
-      // Maps erstellen
-      allStudents.forEach(s => this.allStudents.set(s.id, s));
-      einschreibungen.forEach(e => this.einschreibungenMap.set(e.id, e));
-      existingNotes.forEach(n => this.existingNotes.set(`${n.einschreibungId}-${n.modulId}`, n));
+      // Maps erstellen (String-Keys für GraphQL/REST-Kompatibilität)
+      allStudents.forEach(s => this.allStudents.set(String(s.id), s));
+      einschreibungen.forEach(e => this.einschreibungenMap.set(String(e.id), e));
+      existingNotes.forEach(n => this.existingNotes.set(`${String(n.einschreibungId ?? '')}-${String(n.modulId ?? '')}`, n));
 
       // Studierende mit Einschreibungen für dieses Modul
       const studentsWithGrades: StudentWithGrade[] = [];
@@ -668,10 +669,10 @@ export class GradeEntryComponent implements OnInit {
       for (const e of einschreibungen) {
         if (!e.studentId) continue;
         
-        const student = this.allStudents.get(e.studentId);
+        const student = this.allStudents.get(String(e.studentId));
         if (!student) continue;
 
-        const noteKey = `${e.id}-${modul.id}`;
+        const noteKey = `${String(e.id ?? '')}-${String(modul.id ?? '')}`;
         const existingNote = this.existingNotes.get(noteKey);
 
         studentsWithGrades.push({
@@ -706,6 +707,30 @@ export class GradeEntryComponent implements OnInit {
     this.updateChangedCount();
   }
 
+  private static readonly VALID_NOTEN = [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 5.0];
+
+  /** Normalisiert Eingaben wie 3 → 3.0, 1 → 1.0 für Anzeige und Backend-Kompatibilität */
+  normalizeNoteValue(student: any): void {
+    if (student.noteWert == null) return;
+    const n = Number(student.noteWert);
+    if (Number.isNaN(n)) return;
+    const match = GradeEntryComponent.VALID_NOTEN.find(v => Math.abs(v - n) < 0.01);
+    if (match !== undefined) {
+      student.noteWert = match;
+    } else {
+      const rounded = Math.round(n * 10) / 10;
+      student.noteWert = (rounded >= 1 && rounded <= 5) ? rounded : n;
+    }
+  }
+
+  /** Liefert einen gültigen Notenwert (3 → 3.0) für das Backend */
+  private toValidNoteValue(val: number | null): number | null {
+    if (val == null) return null;
+    const n = Number(val);
+    const match = GradeEntryComponent.VALID_NOTEN.find(v => Math.abs(v - n) < 0.01);
+    return match ?? (n >= 1 && n <= 5 ? Math.round(n * 10) / 10 : n);
+  }
+
   private updateChangedCount(): void {
     const count = this.students().filter(s => s.changed).length;
     this.changedCount.set(count);
@@ -714,13 +739,15 @@ export class GradeEntryComponent implements OnInit {
   async saveGrade(student: any): Promise<void> {
     if (!student.noteWert) return;
 
+    this.normalizeNoteValue(student);
+
     student.saving = true;
 
     try {
       const payload = {
         einschreibungId: student.einschreibungId,
         modulId: student.modulId,
-        noteWert: student.noteWert,
+        noteWert: this.toValidNoteValue(student.noteWert),
         bestanden: student.bestanden,
         versuch: student.versuch,
         pruefungsdatum: student.pruefungsdatum,

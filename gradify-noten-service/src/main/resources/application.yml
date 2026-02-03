@@ -82,6 +82,7 @@ spring:
   sql:
     init:
       mode: always
+      encoding: UTF-8
 
 ---
 # Profil für Produktion (Supabase)

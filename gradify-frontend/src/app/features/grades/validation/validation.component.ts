@@ -7,6 +7,8 @@ import { HttpClient } from '@angular/common/http';
 import { Apollo, gql } from 'apollo-angular';
 import { AuthService } from '../../../core/services/auth.service';
 
+const LOAD_TIMEOUT_MS = 15000;
+
 // GraphQL Queries
 const GET_ALL_STUDENTS = gql`
   query GetAllStudents {
@@ -1001,11 +1003,12 @@ export class ValidationComponent implements OnInit {
     // Search filter
     const search = this.searchTerm().toLowerCase();
     if (search) {
+      const safeStr = (v: unknown) => (v != null ? String(v) : '');
       result = result.filter(n => 
         (n.studentName?.toLowerCase().includes(search)) ||
         (n.modulName?.toLowerCase().includes(search)) ||
-        n.einschreibungId.toLowerCase().includes(search) ||
-        n.modulId.toLowerCase().includes(search)
+        safeStr(n.einschreibungId).toLowerCase().includes(search) ||
+        safeStr(n.modulId).toLowerCase().includes(search)
       );
     }
     
@@ -1038,96 +1041,100 @@ export class ValidationComponent implements OnInit {
     this.loading.set(true);
     this.error.set(null);
 
-    try {
-      // Load students, einschreibungen, module, users in parallel
-      const [studentsResult, einschreibungenResult, moduleResult, usersResult, notenResponse] = await Promise.all([
-        firstValueFrom(this.apollo.query<{ students: StudentInfo[] }>({
-          query: GET_ALL_STUDENTS,
-          context: { clientName: 'user' },
-          fetchPolicy: 'network-only'
-        })),
-        firstValueFrom(this.apollo.query<{ einschreibungen: EinschreibungInfo[] }>({
-          query: GET_ALL_EINSCHREIBUNGEN,
-          fetchPolicy: 'network-only'
-        })).catch(() => ({ data: { einschreibungen: [] } })),
-        firstValueFrom(this.apollo.query<{ module: ModulInfo[] }>({
-          query: GET_ALL_MODULE,
-          fetchPolicy: 'network-only'
-        })),
-        firstValueFrom(this.apollo.query<{ users: UserInfo[] }>({
-          query: GET_ALL_USERS,
-          context: { clientName: 'user' },
-          fetchPolicy: 'network-only'
-        })).catch(() => ({ data: { users: [] } })),
-        firstValueFrom(this.http.get<ApiResponse<Note[]>>('/api/noten'))
+    const withTimeout = <T>(p: Promise<T>, label: string): Promise<T> =>
+      Promise.race([
+        p,
+        new Promise<never>((_, rej) =>
+          setTimeout(() => rej(new Error(`${label} Zeitüberschreitung (${LOAD_TIMEOUT_MS / 1000}s)`)), LOAD_TIMEOUT_MS)
+        )
       ]);
 
-      // Build lookup maps
-      this.studentenMap.clear();
-      (studentsResult.data?.students || []).forEach(s => {
-        this.studentenMap.set(s.id, s);
-      });
+    try {
+      // Lade Noten zuerst (Hauptdaten) – Rest sind Lookups
+      const notenResponse = await withTimeout(
+        firstValueFrom(this.http.get<ApiResponse<Note[]>>('/api/noten')),
+        'Noten'
+      );
+      const rawNoten = notenResponse?.data ?? [];
 
+      // Lookups parallel, einzeln abfangen – bei Fehler leere Listen
+      const [studentsResult, einschreibungenResult, moduleResult, usersResult] = await Promise.all([
+        withTimeout(
+          firstValueFrom(this.apollo.query<{ students: StudentInfo[] }>({
+            query: GET_ALL_STUDENTS,
+            context: { clientName: 'user' },
+            fetchPolicy: 'network-only'
+          })),
+          'Studenten'
+        ).catch(() => ({ data: { students: [] } })),
+        withTimeout(
+          firstValueFrom(this.apollo.query<{ einschreibungen: EinschreibungInfo[] }>({
+            query: GET_ALL_EINSCHREIBUNGEN,
+            fetchPolicy: 'network-only'
+          })),
+          'Einschreibungen'
+        ).catch(() => ({ data: { einschreibungen: [] } })),
+        withTimeout(
+          firstValueFrom(this.apollo.query<{ module: ModulInfo[] }>({
+            query: GET_ALL_MODULE,
+            fetchPolicy: 'network-only'
+          })),
+          'Module'
+        ).catch(() => ({ data: { module: [] } })),
+        withTimeout(
+          firstValueFrom(this.apollo.query<{ users: UserInfo[] }>({
+            query: GET_ALL_USERS,
+            context: { clientName: 'user' },
+            fetchPolicy: 'network-only'
+          })),
+          'Benutzer'
+        ).catch(() => ({ data: { users: [] } }))
+      ]);
+
+      // Lookup-Maps aufbauen (IDs als String für einheitlichen Zugriff)
+      this.studentenMap.clear();
+      (studentsResult.data?.students || []).forEach(s => this.studentenMap.set(String(s.id), s));
       this.einschreibungToStudentMap.clear();
       (einschreibungenResult.data?.einschreibungen || []).forEach(e => {
-        this.einschreibungToStudentMap.set(e.id, e.studentId);
+        this.einschreibungToStudentMap.set(String(e.id), String(e.studentId));
       });
-
       this.moduleMap.clear();
-      (moduleResult.data?.module || []).forEach(m => {
-        this.moduleMap.set(m.id, m);
-      });
-
+      (moduleResult.data?.module || []).forEach(m => this.moduleMap.set(String(m.id), m));
       this.usersMap.clear();
-      (usersResult.data?.users || []).forEach(u => {
-        this.usersMap.set(u.id, u);
-      });
+      (usersResult.data?.users || []).forEach(u => this.usersMap.set(String(u.id), u));
 
-      // Enrich notes with names
-      const noten = notenResponse.data || [];
-      const enrichedNoten = noten.map(n => {
-        // Find student name via einschreibung -> student
-        const studentId = this.einschreibungToStudentMap.get(n.einschreibungId);
-        const student = studentId ? this.studentenMap.get(studentId) : null;
-        const studentName = student 
-          ? `${student.vorname} ${student.nachname}` 
-          : null;
-
-        // Find modul name
-        const modul = this.moduleMap.get(n.modulId);
-        const modulName = modul 
-          ? `${modul.modulNr} - ${modul.name}` 
-          : null;
-
-        // Find erfasstVon / validiertVon names
-        const erfasstVonUser = n.erfasstVon ? this.usersMap.get(n.erfasstVon) : null;
-        const erfasstVonName = erfasstVonUser 
-          ? `${erfasstVonUser.vorname} ${erfasstVonUser.nachname}` 
-          : null;
-
-        const validiertVonUser = n.validiertVon ? this.usersMap.get(n.validiertVon) : null;
-        const validiertVonName = validiertVonUser 
-          ? `${validiertVonUser.vorname} ${validiertVonUser.nachname}` 
-          : null;
-
-        return { 
-          ...n, 
-          selected: false,
-          studentName: studentName || undefined,
-          modulName: modulName || undefined,
-          erfasstVonName: erfasstVonName || undefined,
-          validiertVonName: validiertVonName || undefined
-        };
-      });
-
+      const enrichedNoten = rawNoten.map(n => this.enrichNote(n));
       this.noten.set(enrichedNoten);
-
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const e = err as { error?: { message?: string }; message?: string };
       console.error('Error loading validation data:', err);
-      this.error.set('Fehler beim Laden der Daten: ' + (err.error?.message || err.message || 'Unbekannter Fehler'));
+      this.error.set('Fehler beim Laden: ' + (e?.error?.message ?? e?.message ?? 'Unbekannter Fehler'));
     } finally {
       this.loading.set(false);
     }
+  }
+
+  private enrichNote(n: Note): Note {
+    const eid = String(n.einschreibungId ?? '');
+    const mid = String(n.modulId ?? '');
+    const studentId = this.einschreibungToStudentMap.get(eid);
+    const student = studentId ? this.studentenMap.get(String(studentId)) : null;
+    const modul = this.moduleMap.get(mid);
+    const erfasstVonUser = n.erfasstVon ? this.usersMap.get(String(n.erfasstVon)) : null;
+    const validiertVonUser = n.validiertVon ? this.usersMap.get(String(n.validiertVon)) : null;
+    return {
+      ...n,
+      id: String(n.id),
+      einschreibungId: eid,
+      modulId: mid,
+      erfasstVon: String(n.erfasstVon ?? ''),
+      validiertVon: n.validiertVon != null ? String(n.validiertVon) : null,
+      selected: false,
+      studentName: student ? `${student.vorname} ${student.nachname}` : undefined,
+      modulName: modul ? `${modul.modulNr} - ${modul.name}` : undefined,
+      erfasstVonName: erfasstVonUser ? `${erfasstVonUser.vorname} ${erfasstVonUser.nachname}` : undefined,
+      validiertVonName: validiertVonUser ? `${validiertVonUser.vorname} ${validiertVonUser.nachname}` : undefined
+    };
   }
 
   applyFilters(): void {

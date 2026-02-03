@@ -7,6 +7,7 @@ import { Apollo, gql } from 'apollo-angular';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { CalculationService, BerechnungDto, FortschrittDto } from '../../core/services/calculation.service';
+import { SystemStatusService } from '../../core/services/system-status.service';
 
 // Query für alle Studenten (User-Service)
 const GET_STUDENTS_QUERY = gql`
@@ -254,6 +255,7 @@ interface EinschreibungOption {
                                       max="5.0"
                                       [(ngModel)]="student.noteWert"
                                       (change)="markChanged(student)"
+                                      (blur)="normalizeNoteValue(student)"
                                       placeholder="--">
                                   </td>
                                   <td class="col-center">
@@ -384,13 +386,13 @@ interface EinschreibungOption {
                     -
                   }
                 </span>
-                @if (gesamtnote() !== null && gesamtnoteVomService()) {
+                @if (gesamtnote() !== null && (gesamtnoteVomService() || grpcBerechnungOk())) {
                   <span class="stat-verified-icon stat-verified-icon--service tooltip-container">
                     <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                       <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
                       <polyline points="22 4 12 14.01 9 11.01"/>
                     </svg>
-                    <span class="tooltip-text">Berechnet durch Berechnungs-Service nach Prüfungsordnung</span>
+                    <span class="tooltip-text">Via gRPC berechnet – Berechnungs-Service nach Prüfungsordnung</span>
                   </span>
                 } @else if (gesamtnote() !== null && berechnungServiceErreichbar()) {
                   <span class="stat-verified-icon stat-verified-icon--pending tooltip-container">
@@ -398,7 +400,7 @@ interface EinschreibungOption {
                       <circle cx="12" cy="12" r="10"/>
                       <polyline points="12 6 12 12 16 14"/>
                     </svg>
-                    <span class="tooltip-text">Durchschnitt - Service erreichbar, Berechnung ausstehend (gRPC-Verbindung prüfen)</span>
+                    <span class="tooltip-text">Service erreichbar – gRPC-Berechnung ausstehend</span>
                   </span>
                 } @else if (gesamtnote() !== null) {
                   <span class="stat-verified-icon stat-verified-icon--fallback tooltip-container">
@@ -407,7 +409,7 @@ interface EinschreibungOption {
                       <line x1="12" y1="8" x2="12" y2="12"/>
                       <line x1="12" y1="16" x2="12.01" y2="16"/>
                     </svg>
-                    <span class="tooltip-text">Durchschnitt (vorläufig) - Berechnungs-Service nicht verfügbar</span>
+                    <span class="tooltip-text">Lokaler Durchschnitt – gRPC/Berechnungs-Service nicht verfügbar</span>
                   </span>
                 }
               </div>
@@ -1389,6 +1391,9 @@ export class DashboardComponent implements OnInit {
     const vomService = berechnung?.gesamtnote !== null && berechnung?.gesamtnote !== undefined;
     return vomService;
   });
+
+  // gRPC für Berechnung OK (Noten + Studiengang) – zeigt grünen Haken wenn Gesamtnote existiert
+  grpcBerechnungOk = signal(false);
   
   bestandenCount = computed(() => {
     const f = this.fortschritt();
@@ -1451,7 +1456,7 @@ export class DashboardComponent implements OnInit {
   });
 
   private readonly calculationService = inject(CalculationService);
-
+  private readonly systemStatusService = inject(SystemStatusService);
   private readonly http = inject(HttpClient);
   
   constructor(private readonly apollo: Apollo) {}
@@ -1678,6 +1683,10 @@ export class DashboardComponent implements OnInit {
       
       // Lade Berechnungsdaten vom Berechnungs-Service (optional - im Hintergrund)
       this.loadBerechnungsdaten(einschreibungData);
+      // gRPC-Status prüfen (für grünen Haken bei Gesamtnote)
+      this.systemStatusService.getBerechnungGrpcStatus().subscribe(res => {
+        this.grpcBerechnungOk.set(res?.data?.allAvailable ?? false);
+      });
       
       this.dataLoaded.set(true);
       this.loading.set(false);
@@ -1748,45 +1757,26 @@ export class DashboardComponent implements OnInit {
    * Das Dashboard funktioniert auch ohne diese Daten.
    */
   private loadBerechnungsdaten(einschreibungData: any): void {
-    const poId = einschreibungData.poId;
+    // poId aus Einschreibung oder Prüfungsordnung – erforderlich für gRPC-Berechnung
+    const poId = String(einschreibungData.poId ?? einschreibungData.pruefungsordnung?.id ?? '');
     const ectsGesamt = einschreibungData.studiengang?.gesamtEcts || 180;
     
     console.log('loadBerechnungsdaten - poId:', poId, 'ectsGesamt:', ectsGesamt);
     
-    // Lade Gesamtnote
-    this.calculationService.getGesamtnote(this.selectedEinschreibung).subscribe({
-      next: (result) => {
-        console.log('getGesamtnote result:', result);
-        if (result.success && result.data) {
-          console.log('Loaded berechnung:', result.data);
-          this.berechnung.set(result.data);
-          
-          // Wenn Berechnung existiert aber keine Gesamtnote hat, triggere Neuberechnung
-          if (result.data.gesamtnote === null && poId) {
-            console.log('Berechnung ohne Gesamtnote, starte Neuberechnung...');
-            this.triggerNeuberechnung(poId, ectsGesamt);
+    // Mit poId: Immer Neuberechnung per gRPC triggern – so kommt Gesamtnote direkt vom Service
+    if (poId) {
+      this.triggerNeuberechnung(poId, ectsGesamt);
+    } else {
+      // Ohne poId: nur vorhandene Berechnung laden
+      this.calculationService.getGesamtnote(this.selectedEinschreibung).subscribe({
+        next: (result) => {
+          if (result.success && result.data) {
+            this.berechnung.set(result.data);
           }
-        } else {
-          // Keine Berechnung vorhanden, triggere Neuberechnung
-          console.log('Keine Berechnung vorhanden, starte Neuberechnung... poId:', poId);
-          if (poId) {
-            this.triggerNeuberechnung(poId, ectsGesamt);
-          } else {
-            console.warn('Keine poId vorhanden - kann keine Neuberechnung triggern');
-          }
-        }
-      },
-      error: (err) => {
-        console.warn('Berechnung Service Fehler:', err.status, err.message);
-        // 404 = keine Berechnung vorhanden, versuche Neuberechnung
-        console.log('Versuche Neuberechnung... poId:', poId);
-        if (poId) {
-          this.triggerNeuberechnung(poId, ectsGesamt);
-        } else {
-          console.warn('Keine poId vorhanden - kann keine Neuberechnung triggern');
-        }
-      }
-    });
+        },
+        error: () => {}
+      });
+    }
 
     // Lade Fortschritt
     this.calculationService.getFortschritt(this.selectedEinschreibung).subscribe({
@@ -1888,19 +1878,19 @@ export class DashboardComponent implements OnInit {
       const allEinschreibungen = einschreibungenResult.data?.einschreibungen || [];
       const existingNotes = notenResponse?.data || [];
 
-      // Maps erstellen
-      const studentMap = new Map(allStudents.map((s: any) => [s.id, s]));
-      const einschreibungMap = new Map(allEinschreibungen.map((e: any) => [e.id, e]));
-      const noteMap = new Map(existingNotes.map((n: any) => [`${n.einschreibungId}`, n]));
+      // Maps erstellen (String-Keys für GraphQL/REST-Kompatibilität)
+      const studentMap = new Map(allStudents.map((s: any) => [String(s.id), s]));
+      const einschreibungMap = new Map(allEinschreibungen.map((e: any) => [String(e.id), e]));
+      const noteMap = new Map(existingNotes.map((n: any) => [String(n.einschreibungId ?? ''), n]));
 
       // Alle Einschreibungen durchgehen
       const studentsWithGrades = allEinschreibungen
         .filter((e: any) => e.studentId)
         .map((e: any) => {
-          const student = studentMap.get(e.studentId);
+          const student = studentMap.get(String(e.studentId ?? ''));
           if (!student) return null;
 
-          const existingNote: any = noteMap.get(e.id);
+          const existingNote: any = noteMap.get(String(e.id ?? ''));
 
           return {
             ...student,
@@ -1935,8 +1925,32 @@ export class DashboardComponent implements OnInit {
     this.studentsForModul.set([...this.studentsForModul()]);
   }
 
+  private static readonly VALID_NOTEN = [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 5.0];
+
+  normalizeNoteValue(student: any): void {
+    if (student.noteWert == null) return;
+    const n = Number(student.noteWert);
+    if (Number.isNaN(n)) return;
+    const match = DashboardComponent.VALID_NOTEN.find((v: number) => Math.abs(v - n) < 0.01);
+    if (match !== undefined) {
+      student.noteWert = match;
+    } else {
+      const rounded = Math.round(n * 10) / 10;
+      student.noteWert = (rounded >= 1 && rounded <= 5) ? rounded : n;
+    }
+  }
+
+  private toValidNoteValue(val: number | null): number | null {
+    if (val == null) return null;
+    const n = Number(val);
+    const match = DashboardComponent.VALID_NOTEN.find((v: number) => Math.abs(v - n) < 0.01);
+    return match ?? (n >= 1 && n <= 5 ? Math.round(n * 10) / 10 : n);
+  }
+
   async saveGradeForStudent(student: any): Promise<void> {
     if (!student.noteWert) return;
+
+    this.normalizeNoteValue(student);
 
     student.saving = true;
     this.studentsForModul.set([...this.studentsForModul()]);
@@ -1945,7 +1959,7 @@ export class DashboardComponent implements OnInit {
       const payload = {
         einschreibungId: student.einschreibungId,
         modulId: student.modulId,
-        noteWert: student.noteWert,
+        noteWert: this.toValidNoteValue(student.noteWert),
         bestanden: student.bestanden,
         versuch: student.versuch,
         pruefungsdatum: student.pruefungsdatum,

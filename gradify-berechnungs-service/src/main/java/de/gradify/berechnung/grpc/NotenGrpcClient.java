@@ -45,8 +45,10 @@ public class NotenGrpcClient {
             return new NotenResult(response.getNotenList(), lastStatus);
 
         } catch (StatusRuntimeException e) {
-            log.error("gRPC Error getting Noten: {} - {}", e.getStatus().getCode(), e.getMessage());
-            lastStatus = new GrpcStatus(false, "Fehler: " + e.getStatus().getCode());
+            String desc = e.getStatus().getDescription();
+            String msg = (desc != null && !desc.isEmpty()) ? desc : ("Fehler: " + e.getStatus().getCode());
+            log.error("gRPC Error getting Noten: {} - {}", e.getStatus().getCode(), msg);
+            lastStatus = new GrpcStatus(false, msg);
             return new NotenResult(Collections.emptyList(), lastStatus);
         }
     }

@@ -49,10 +49,17 @@ Write-Host ""
 Write-Host "5. Warte auf Dateisystem (3 Sekunden)..." -ForegroundColor Yellow
 Start-Sleep -Seconds 3
 
-# Pruefe ob Dateien existieren
-$generatedPath = "target\generated-sources\protobuf\grpc-java"
-if (Test-Path $generatedPath) {
-    $fileCount = (Get-ChildItem -Path $generatedPath -Recurse -Filter "*.java" | Measure-Object).Count
+# Pruefe ob Dateien existieren (Proto in java/, gRPC ggf. in grpc-java/)
+$javaPath = "target\generated-sources\protobuf\java"
+$grpcPath = "target\generated-sources\protobuf\grpc-java"
+$fileCount = 0
+if (Test-Path $javaPath) {
+    $fileCount += (Get-ChildItem -Path $javaPath -Recurse -Filter "*.java" | Measure-Object).Count
+}
+if (Test-Path $grpcPath) {
+    $fileCount += (Get-ChildItem -Path $grpcPath -Recurse -Filter "*.java" | Measure-Object).Count
+}
+if ($fileCount -gt 0) {
     Write-Host "   $fileCount Java-Dateien generiert." -ForegroundColor Green
 } else {
     Write-Host "FEHLER: Keine generierten Dateien gefunden!" -ForegroundColor Red
