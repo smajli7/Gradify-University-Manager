@@ -5,6 +5,7 @@ import { HeaderComponent } from '../header/header.component';
 import { DockComponent, DockItem } from '../dock/dock.component';
 import { MobileMenuComponent } from '../mobile-menu/mobile-menu.component';
 import { AuthService } from '../../../core/services/auth.service';
+import { OverlayService } from '../../../core/services/overlay.service';
 
 @Component({
   selector: 'app-shell',
@@ -33,10 +34,11 @@ import { AuthService } from '../../../core/services/auth.service';
         <router-outlet></router-outlet>
       </main>
 
-      <!-- Floating Dock (Desktop) -->
+      <!-- Floating Dock (Desktop) - ausgeblendet wenn Notenbescheinigung/Overlay offen -->
       <app-dock
         [items]="dockItems"
-        [userRole]="userRole()">
+        [userRole]="userRole()"
+        [isHidden]="overlayService.overlayOpen()">
       </app-dock>
 
       <!-- Mobile Menu -->
@@ -78,6 +80,7 @@ import { AuthService } from '../../../core/services/auth.service';
 export class ShellComponent {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
+  readonly overlayService = inject(OverlayService);
 
   // User State from AuthService
   userName = computed(() => this.authService.userFullName());

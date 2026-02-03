@@ -39,7 +39,7 @@ $services = @(
 
 foreach ($svc in $services) {
     Write-Host "  - $($svc.Name) (Port $($svc.Port))" -ForegroundColor Yellow
-    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\$($svc.Path)'; mvn spring-boot:run"
+    Start-Process powershell -ArgumentList "-NoExit", "-Command", "cd '$PSScriptRoot\$($svc.Path)'; mvn clean spring-boot:run"
 }
 
 Write-Host ""

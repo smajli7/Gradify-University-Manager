@@ -2,7 +2,6 @@ package de.gradify.berechnung.config;
 
 import org.springframework.context.annotation.Bean;
 import org.springframework.context.annotation.Configuration;
-import org.springframework.context.annotation.Profile;
 import org.springframework.http.HttpMethod;
 import org.springframework.security.config.annotation.method.configuration.EnableMethodSecurity;
 import org.springframework.security.config.annotation.web.builders.HttpSecurity;
@@ -10,6 +9,7 @@ import org.springframework.security.config.annotation.web.configuration.EnableWe
 import org.springframework.security.config.annotation.web.configurers.AbstractHttpConfigurer;
 import org.springframework.security.config.http.SessionCreationPolicy;
 import org.springframework.security.web.SecurityFilterChain;
+import org.springframework.security.web.authentication.UsernamePasswordAuthenticationFilter;
 
 @Configuration
 @EnableWebSecurity
@@ -17,24 +17,7 @@ import org.springframework.security.web.SecurityFilterChain;
 public class SecurityConfig {
 
     /**
-     * Security-Konfiguration fuer Entwicklung - alle Endpoints offen.
-     */
-    @Bean
-    @Profile("dev")
-    public SecurityFilterChain devSecurityFilterChain(HttpSecurity http) throws Exception {
-        http
-            .csrf(AbstractHttpConfigurer::disable)
-            .httpBasic(AbstractHttpConfigurer::disable)
-            .formLogin(AbstractHttpConfigurer::disable)
-            .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
-            .authorizeHttpRequests(auth -> auth
-                .anyRequest().permitAll()
-            );
-        return http.build();
-    }
-
-    /**
-     * Security-Konfiguration fuer Produktion - mit Rollen-basierter Zugriffskontrolle.
+     * Security-Konfiguration mit Rollen-basierter Zugriffskontrolle (für dev und prod).
      * 
      * Rollen und Berechtigungen:
      * - ADMIN: Voller Zugriff auf alle Berechnungs-Operationen
@@ -43,10 +26,10 @@ public class SecurityConfig {
      * - STUDENT: Kann nur eigene Berechnungen lesen
      */
     @Bean
-    @Profile("prod")
-    public SecurityFilterChain prodSecurityFilterChain(HttpSecurity http) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
         http
             .csrf(AbstractHttpConfigurer::disable)
+            .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
             .sessionManagement(session -> session.sessionCreationPolicy(SessionCreationPolicy.STATELESS))
             .authorizeHttpRequests(auth -> auth
                 // Swagger/OpenAPI immer erlauben
@@ -60,7 +43,7 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/berechnungen/**").authenticated()
                 
                 // Statistiken: DOZENT, PRUEFUNGSAMT, ADMIN
-                .requestMatchers("/api/berechnungen/statistik/**").hasAnyRole("DOZENT", "PRUEFUNGSAMT", "ADMIN")
+                .requestMatchers("/api/berechnungen/statistik/**").hasAnyRole("LEHRENDER", "PRUEFUNGSAMT", "ADMIN")
                 
                 .anyRequest().authenticated()
             );

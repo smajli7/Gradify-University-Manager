@@ -221,8 +221,9 @@ public class BerechnungsService {
             return null;
         }
 
+        // Nur bestandene Module (Note ≤ 4.0) in die Berechnung
         List<ModulBerechnung> benoteteModule = module.stream()
-                .filter(m -> m.isInGesamtnote() && m.getNote() != null)
+                .filter(m -> m.isInGesamtnote() && m.getNote() != null && m.isBestanden())
                 .collect(Collectors.toList());
 
         if (benoteteModule.isEmpty()) {
@@ -260,41 +261,46 @@ public class BerechnungsService {
 
     /**
      * Berechnet Master-Note: (2 × Thesis + Modulmittel) / 3
+     * Modulmittel = arithmetisches Mittel der übrigen benoteten Module (Gewicht 1 je Modul).
      */
     private BigDecimal berechneMasterNote(List<ModulBerechnung> module) {
-        // Thesis finden (modulNr enthält "TH" oder "MTH")
+        // Thesis erkennen: modulNr enthält "TH"/"12" oder Modulname enthält "Thesis"/"Masterarbeit"
         Optional<ModulBerechnung> thesis = module.stream()
-                .filter(m -> m.getModulNr().contains("TH"))
+                .filter(m -> isThesisModul(m))
                 .findFirst();
 
         if (thesis.isEmpty()) {
-            // Fallback: gewichteter Durchschnitt wenn keine Thesis
             return berechneGewichteterDurchschnitt(module);
         }
 
-        // Restliche Module ohne Thesis
         List<ModulBerechnung> ohneThesis = module.stream()
-                .filter(m -> !m.getModulNr().contains("TH"))
+                .filter(m -> !isThesisModul(m))
                 .collect(Collectors.toList());
 
         BigDecimal thesisNote = thesis.get().getNote();
-        
+
         if (ohneThesis.isEmpty()) {
             return thesisNote;
         }
 
-        // Durchschnitt der anderen Module
-        BigDecimal modulDurchschnitt = berechneGewichteterDurchschnitt(ohneThesis);
-        if (modulDurchschnitt == null) {
-            return thesisNote;
-        }
+        // Modulmittel = arithmetisches Mittel (alle Module gleiches Gewicht 1)
+        BigDecimal modulSumme = ohneThesis.stream()
+                .map(ModulBerechnung::getNote)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        BigDecimal modulDurchschnitt = modulSumme.divide(
+                BigDecimal.valueOf(ohneThesis.size()), 5, RoundingMode.HALF_UP);
 
-        // (2 × Thesis + Modulmittel) / 3
-        BigDecimal ergebnis = thesisNote.multiply(new BigDecimal("2"))
+        // (2 × Thesis + 1 × Modulmittel) / 3
+        return thesisNote.multiply(new BigDecimal("2"))
                 .add(modulDurchschnitt)
                 .divide(new BigDecimal("3"), 3, RoundingMode.HALF_UP);
+    }
 
-        return ergebnis;
+    private static boolean isThesisModul(ModulBerechnung m) {
+        String nr = m.getModulNr() != null ? m.getModulNr().toUpperCase() : "";
+        String name = m.getModulName() != null ? m.getModulName().toLowerCase() : "";
+        return nr.contains("TH") || nr.endsWith("-12") || nr.equals("12")
+                || name.contains("thesis") || name.contains("masterarbeit");
     }
 
     /**

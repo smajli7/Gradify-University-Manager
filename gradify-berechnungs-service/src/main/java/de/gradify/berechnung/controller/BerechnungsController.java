@@ -58,6 +58,8 @@ public class BerechnungsController {
 
     /**
      * Holt den Studienfortschritt (ECTS, bestandene Module).
+     * Gibt 200 mit data=null zurück wenn noch keine Berechnung existiert
+     * (statt 404, damit das Frontend keine Http-Fehler behandeln muss).
      */
     @GetMapping("/einschreibung/{einschreibungId}/fortschritt")
     public ResponseEntity<ApiResponse<FortschrittDto>> getFortschritt(
@@ -66,8 +68,7 @@ public class BerechnungsController {
         
         return berechnungsService.getFortschritt(einschreibungId)
                 .map(dto -> ResponseEntity.ok(ApiResponse.success(dto)))
-                .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
-                        .body(ApiResponse.error("Kein Fortschritt gefunden")));
+                .orElse(ResponseEntity.ok(ApiResponse.success(null, "Kein Fortschritt gefunden")));
     }
 
     /**

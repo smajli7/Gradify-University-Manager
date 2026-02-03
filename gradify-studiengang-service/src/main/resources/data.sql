@@ -31,72 +31,74 @@ ON CONFLICT (id) DO NOTHING;
 -- =====================================================
 INSERT INTO pruefungsordnungen (id, studiengang_id, version, gueltig_ab, gueltig_bis, berechnungsart) VALUES
     (1, 1, 'PO 2023', '2023-10-01', NULL, 'GEWICHTET'),
-    (2, 2, 'PO 2023', '2023-10-01', NULL, 'GEWICHTET')
+    (2, 2, 'PO 2023', '2023-10-01', NULL, 'ARITHMETISCH_GEMISCHT')
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================
 -- MODULE - BIOVERFAHRENSTECHNIK (BVT)
 -- IDs: 1-25
 -- Spalten: id, po_id, modul_nr, name, ects, semester, dauer_semester, pruefungsform, sprache, modultyp, bewertungsart, gewichtung, in_gesamtnote
+-- Gewichtung laut PO §11 BVT: Mathe1=2, Bachelorarbeit=9, Rest=1. Modul 1 (Einführung) nicht in data.sql.
 -- =====================================================
 INSERT INTO module (id, po_id, modul_nr, name, ects, semester, dauer_semester, pruefungsform, sprache, modultyp, bewertungsart, gewichtung, in_gesamtnote) VALUES
-    -- Semester 1
-    (1, 1, 'BVT-01', 'Mathematik I', 6, '1', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (2, 1, 'BVT-02', 'Physik', 6, '1', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (3, 1, 'BVT-03', 'Allgemeine Chemie', 6, '1', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (4, 1, 'BVT-04', 'Biologie I', 6, '1', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (5, 1, 'BVT-05', 'Technisches Englisch', 6, '1', 1, 'KLAUSUR', 'ENGLISCH', 'PFLICHT', 'NOTE', 6.0, true),
+    -- Semester 1 (Mathematik I = 2 laut PO)
+    (1, 1, 'BVT-01', 'Mathematik I', 6, '1', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 2.0, true),
+    (2, 1, 'BVT-02', 'Physik', 6, '1', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (3, 1, 'BVT-03', 'Allgemeine Chemie', 6, '1', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (4, 1, 'BVT-04', 'Biologie I', 6, '1', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (5, 1, 'BVT-05', 'Technisches Englisch', 6, '1', 1, 'KLAUSUR', 'ENGLISCH', 'PFLICHT', 'NOTE', 1.0, true),
     -- Semester 2
-    (6, 1, 'BVT-06', 'Mathematik II', 6, '2', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (7, 1, 'BVT-07', 'Organische Chemie', 6, '2', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (8, 1, 'BVT-08', 'Biologie II', 6, '2', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (9, 1, 'BVT-09', 'Thermodynamik', 6, '2', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (10, 1, 'BVT-10', 'Stroemungsmechanik', 6, '2', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
+    (6, 1, 'BVT-06', 'Mathematik II', 6, '2', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (7, 1, 'BVT-07', 'Organische Chemie', 6, '2', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (8, 1, 'BVT-08', 'Biologie II', 6, '2', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (9, 1, 'BVT-09', 'Thermodynamik', 6, '2', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (10, 1, 'BVT-10', 'Stroemungsmechanik', 6, '2', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
     -- Semester 3
-    (11, 1, 'BVT-11', 'Biochemie', 6, '3', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (12, 1, 'BVT-12', 'Mikrobiologie', 6, '3', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (13, 1, 'BVT-13', 'Verfahrenstechnik I', 6, '3', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (14, 1, 'BVT-14', 'Mess- und Regelungstechnik', 6, '3', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
+    (11, 1, 'BVT-11', 'Biochemie', 6, '3', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (12, 1, 'BVT-12', 'Mikrobiologie', 6, '3', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (13, 1, 'BVT-13', 'Verfahrenstechnik I', 6, '3', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (14, 1, 'BVT-14', 'Mess- und Regelungstechnik', 6, '3', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
     (15, 1, 'BVT-15', 'Laborpraktikum I', 6, '3', 1, 'PRAXISBERICHT', 'DEUTSCH', 'PFLICHT', 'BESTANDEN_NICHT_BESTANDEN', 0.0, false),
     -- Semester 4
-    (16, 1, 'BVT-16', 'Bioverfahrenstechnik I', 6, '4', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (17, 1, 'BVT-17', 'Verfahrenstechnik II', 6, '4', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (18, 1, 'BVT-18', 'Anlagentechnik', 6, '4', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
+    (16, 1, 'BVT-16', 'Bioverfahrenstechnik I', 6, '4', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (17, 1, 'BVT-17', 'Verfahrenstechnik II', 6, '4', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (18, 1, 'BVT-18', 'Anlagentechnik', 6, '4', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
     (19, 1, 'BVT-19', 'Laborpraktikum II', 6, '4', 1, 'PRAXISBERICHT', 'DEUTSCH', 'PFLICHT', 'BESTANDEN_NICHT_BESTANDEN', 0.0, false),
-    (20, 1, 'BVT-20', 'Wahlpflicht I', 6, '4', 1, 'KLAUSUR', 'DEUTSCH', 'WAHLPFLICHT', 'NOTE', 6.0, true),
+    (20, 1, 'BVT-20', 'Wahlpflicht I', 6, '4', 1, 'KLAUSUR', 'DEUTSCH', 'WAHLPFLICHT', 'NOTE', 1.0, true),
     -- Semester 5
     (21, 1, 'BVT-21', 'Praxissemester', 30, '5', 1, 'PRAXISBERICHT', 'DEUTSCH', 'PFLICHT', 'BESTANDEN_NICHT_BESTANDEN', 0.0, false),
     -- Semester 6
-    (22, 1, 'BVT-22', 'Bioverfahrenstechnik II', 6, '6', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (23, 1, 'BVT-23', 'Qualitaetsmanagement', 6, '6', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (24, 1, 'BVT-24', 'Wahlpflicht II', 6, '6', 1, 'KLAUSUR', 'DEUTSCH', 'WAHLPFLICHT', 'NOTE', 6.0, true),
-    (25, 1, 'BVT-25', 'Bachelorarbeit', 12, '6', 1, 'HAUSARBEIT', 'DEUTSCH', 'PFLICHT', 'NOTE', 12.0, true)
+    (22, 1, 'BVT-22', 'Bioverfahrenstechnik II', 6, '6', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (23, 1, 'BVT-23', 'Qualitaetsmanagement', 6, '6', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (24, 1, 'BVT-24', 'Wahlpflicht II', 6, '6', 1, 'KLAUSUR', 'DEUTSCH', 'WAHLPFLICHT', 'NOTE', 1.0, true),
+    (25, 1, 'BVT-25', 'Bachelorarbeit', 12, '6', 1, 'HAUSARBEIT', 'DEUTSCH', 'PFLICHT', 'NOTE', 9.0, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================
 -- MODULE - FORSCHUNG SOZIALE ARBEIT (FSA)
--- IDs: 101-115
+-- IDs: 101-115. Berechnung: (2×Thesis + Modulmittel)/3, Modulmittel = arithm. Mittel
+-- Gewichtung 2 für Thesis, 1 für Modulmittel-Module (nur zur Anzeige)
 -- =====================================================
 INSERT INTO module (id, po_id, modul_nr, name, ects, semester, dauer_semester, pruefungsform, sprache, modultyp, bewertungsart, gewichtung, in_gesamtnote) VALUES
     -- Semester 1
-    (101, 2, 'FSA-01', 'Forschungsmethoden I', 6, '1', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (102, 2, 'FSA-02', 'Wissenschaftstheorie', 6, '1', 1, 'HAUSARBEIT', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (103, 2, 'FSA-03', 'Sozialarbeitsforschung', 6, '1', 1, 'HAUSARBEIT', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (104, 2, 'FSA-04', 'Statistik', 6, '1', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (105, 2, 'FSA-05', 'Forschungsethik', 6, '1', 1, 'HAUSARBEIT', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
+    (101, 2, 'FSA-01', 'Forschungsmethoden I', 6, '1', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (102, 2, 'FSA-02', 'Wissenschaftstheorie', 6, '1', 1, 'HAUSARBEIT', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (103, 2, 'FSA-03', 'Sozialarbeitsforschung', 6, '1', 1, 'HAUSARBEIT', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (104, 2, 'FSA-04', 'Statistik', 6, '1', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (105, 2, 'FSA-05', 'Forschungsethik', 6, '1', 1, 'HAUSARBEIT', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
     -- Semester 2
-    (106, 2, 'FSA-06', 'Forschungsmethoden II', 6, '2', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (107, 2, 'FSA-07', 'Qualitative Forschung', 6, '2', 1, 'PROJEKT', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (108, 2, 'FSA-08', 'Quantitative Forschung', 6, '2', 1, 'PROJEKT', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (109, 2, 'FSA-09', 'Forschungsprojekt I', 6, '2', 1, 'PROJEKT', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (110, 2, 'FSA-10', 'Wahlmodul I', 6, '2', 1, 'PRAESENTATION', 'DEUTSCH', 'WAHLPFLICHT', 'NOTE', 6.0, true),
+    (106, 2, 'FSA-06', 'Forschungsmethoden II', 6, '2', 1, 'KLAUSUR', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (107, 2, 'FSA-07', 'Qualitative Forschung', 6, '2', 1, 'PROJEKT', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (108, 2, 'FSA-08', 'Quantitative Forschung', 6, '2', 1, 'PROJEKT', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (109, 2, 'FSA-09', 'Forschungsprojekt I', 6, '2', 1, 'PROJEKT', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (110, 2, 'FSA-10', 'Wahlmodul I', 6, '2', 1, 'PRAESENTATION', 'DEUTSCH', 'WAHLPFLICHT', 'NOTE', 1.0, true),
     -- Semester 3
-    (111, 2, 'FSA-11', 'Forschungsprojekt II', 12, '3', 1, 'PROJEKT', 'DEUTSCH', 'PFLICHT', 'NOTE', 12.0, true),
-    (112, 2, 'FSA-12', 'Praxisforschung', 6, '3', 1, 'PRAXISBERICHT', 'DEUTSCH', 'PFLICHT', 'NOTE', 6.0, true),
-    (113, 2, 'FSA-13', 'Wahlmodul II', 6, '3', 1, 'PRAESENTATION', 'DEUTSCH', 'WAHLPFLICHT', 'NOTE', 6.0, true),
-    (114, 2, 'FSA-14', 'Wahlmodul III', 6, '3', 1, 'PRAESENTATION', 'DEUTSCH', 'WAHLPFLICHT', 'NOTE', 6.0, true),
-    -- Semester 4
-    (115, 2, 'FSA-15', 'Masterarbeit', 30, '4', 1, 'HAUSARBEIT', 'DEUTSCH', 'PFLICHT', 'NOTE', 30.0, true)
+    (111, 2, 'FSA-11', 'Forschungsprojekt II', 12, '3', 1, 'PROJEKT', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (112, 2, 'FSA-12', 'Praxisforschung', 6, '3', 1, 'PRAXISBERICHT', 'DEUTSCH', 'PFLICHT', 'NOTE', 1.0, true),
+    (113, 2, 'FSA-13', 'Wahlmodul II', 6, '3', 1, 'PRAESENTATION', 'DEUTSCH', 'WAHLPFLICHT', 'NOTE', 1.0, true),
+    (114, 2, 'FSA-14', 'Wahlmodul III', 6, '3', 1, 'PRAESENTATION', 'DEUTSCH', 'WAHLPFLICHT', 'NOTE', 1.0, true),
+    -- Semester 4 (Masterarbeit = 2-fach in Formel)
+    (115, 2, 'FSA-15', 'Masterarbeit', 30, '4', 1, 'HAUSARBEIT', 'DEUTSCH', 'PFLICHT', 'NOTE', 2.0, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================

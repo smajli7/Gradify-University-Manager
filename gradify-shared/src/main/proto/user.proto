@@ -26,8 +26,11 @@ service StudentDataService {
   // Holt Student anhand ID
   rpc GetStudent(StudentIdRequest) returns (StudentResponse);
   
-  // Holt alle Studenten eines Studiengangs
+  // Holt alle Studenten eines Studiengangs (via Studiengang-Service: IDs aus Einschreibungen)
   rpc GetStudentsByStudiengang(StudiengangIdRequest) returns (StudentListResponse);
+  
+  // Holt Studenten anhand einer Liste von IDs (fuer gefilterte Abfrage)
+  rpc GetStudentsByIds(StudentIdsRequest) returns (StudentListResponse);
 }
 
 // Request/Response Messages
@@ -72,6 +75,10 @@ message StudentIdRequest {
 
 message StudiengangIdRequest {
   int64 studiengang_id = 1;
+}
+
+message StudentIdsRequest {
+  repeated int64 student_ids = 1;
 }
 
 message StudentResponse {

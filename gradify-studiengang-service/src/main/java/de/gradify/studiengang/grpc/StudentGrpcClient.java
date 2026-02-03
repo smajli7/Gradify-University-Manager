@@ -1,7 +1,10 @@
 package de.gradify.studiengang.grpc;
 
 import de.gradify.shared.grpc.user.*;
+import de.gradify.studiengang.entity.Einschreibung;
+import de.gradify.studiengang.repository.EinschreibungRepository;
 import io.grpc.StatusRuntimeException;
+import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import net.devh.boot.grpc.client.inject.GrpcClient;
 import org.springframework.context.annotation.Lazy;
@@ -21,7 +24,10 @@ import java.util.Optional;
 @Service
 @Lazy
 @Slf4j
+@RequiredArgsConstructor
 public class StudentGrpcClient {
+
+    private final EinschreibungRepository einschreibungRepository;
 
     @GrpcClient("user-service")
     private StudentDataServiceGrpc.StudentDataServiceBlockingStub studentStub;
@@ -115,7 +121,8 @@ public class StudentGrpcClient {
 
     /**
      * Holt alle Studenten eines Studiengangs.
-     * 
+     * Ermittelt zuerst die Student-IDs aus den Einschreibungen, dann User-Service per GetStudentsByIds.
+     *
      * @param studiengangId Die Studiengang-ID
      * @return Liste der Studenten (leer wenn keine gefunden oder Fehler)
      */
@@ -127,13 +134,31 @@ public class StudentGrpcClient {
             return Collections.emptyList();
         }
         
+        List<Long> studentIds = einschreibungRepository.findAktiveByStudiengangId(studiengangId).stream()
+                .map(Einschreibung::getStudentId)
+                .distinct()
+                .toList();
+        
+        if (studentIds.isEmpty()) {
+            log.info("gRPC: No enrollments for studiengang: {}", studiengangId);
+            return Collections.emptyList();
+        }
+        
+        return getStudentsByIds(studentIds);
+    }
+
+    /**
+     * Holt Studenten anhand einer Liste von IDs.
+     */
+    public List<StudentInfo> getStudentsByIds(List<Long> studentIds) {
+        if (studentStub == null || studentIds == null || studentIds.isEmpty()) {
+            return Collections.emptyList();
+        }
         try {
-            StudiengangIdRequest request = StudiengangIdRequest.newBuilder()
-                    .setStudiengangId(studiengangId)
+            StudentIdsRequest request = StudentIdsRequest.newBuilder()
+                    .addAllStudentIds(studentIds)
                     .build();
-            
-            StudentListResponse response = studentStub.getStudentsByStudiengang(request);
-            
+            StudentListResponse response = studentStub.getStudentsByIds(request);
             List<StudentInfo> students = new ArrayList<>();
             for (StudentResponse sr : response.getStudentsList()) {
                 if (sr.getId() != 0) {
@@ -146,15 +171,12 @@ public class StudentGrpcClient {
                     ));
                 }
             }
-            
-            log.info("gRPC: Found {} students for studiengang: {}", students.size(), studiengangId);
             return students;
-            
         } catch (StatusRuntimeException e) {
-            log.warn("gRPC error getting students (User-Service down?): {}", e.getMessage());
+            log.warn("gRPC error getting students by IDs: {}", e.getMessage());
             return Collections.emptyList();
         } catch (Exception e) {
-            log.warn("Error getting students: {}", e.getMessage());
+            log.warn("Error getting students by IDs: {}", e.getMessage());
             return Collections.emptyList();
         }
     }

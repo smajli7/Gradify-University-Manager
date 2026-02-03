@@ -77,16 +77,31 @@ public class StudentDataServiceGrpcImpl extends StudentDataServiceGrpc.StudentDa
 
     /**
      * Holt alle Studenten eines Studiengangs.
-     * Hinweis: Da Studenten keine direkte Beziehung zum Studiengang haben,
-     * muss der Studiengang-Service die Einschreibungen verwalten.
-     * Diese Methode gibt derzeit alle Studenten zurück (TODO: Filter implementieren).
+     * Delegiert an getStudentsByIds – der Aufrufer (Studiengang-Service) sollte
+     * bevorzugt GetStudentsByIds mit den aus Einschreibungen ermittelten IDs verwenden.
+     * Falls direkt aufgerufen: liefert leere Liste (User-Service hat keine Studiengang-Daten).
      */
     @Override
     public void getStudentsByStudiengang(StudiengangIdRequest request, StreamObserver<StudentListResponse> responseObserver) {
-        log.info("gRPC: GetStudentsByStudiengang called for id: {}", request.getStudiengangId());
+        log.info("gRPC: GetStudentsByStudiengang called for id: {} (User-Service hat keine Studiengang-Daten, leere Liste)", request.getStudiengangId());
+        responseObserver.onNext(StudentListResponse.getDefaultInstance());
+        responseObserver.onCompleted();
+    }
+
+    /**
+     * Holt Studenten anhand einer Liste von IDs (gefiltert).
+     * Wird vom Studiengang-Service nach Auflösung der Einschreibungen verwendet.
+     */
+    @Override
+    public void getStudentsByIds(StudentIdsRequest request, StreamObserver<StudentListResponse> responseObserver) {
+        log.info("gRPC: GetStudentsByIds called for {} id(s)", request.getStudentIdsCount());
         
-        // Alle Studenten zurückgeben - Filterung passiert im Studiengang-Service
-        List<Student> students = studentRepository.findAllAktive();
+        List<Long> ids = request.getStudentIdsList().stream()
+                .filter(id -> id > 0)
+                .distinct()
+                .toList();
+        
+        List<Student> students = ids.isEmpty() ? List.of() : studentRepository.findAllById(ids);
         
         StudentListResponse.Builder responseBuilder = StudentListResponse.newBuilder();
         for (Student student : students) {

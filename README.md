@@ -217,6 +217,16 @@ Alle Endpunkte sind über das API-Gateway erreichbar:
 | `/api/noten/**` | Noten-Service |
 | `/api/berechnungen/**` | Berechnungs-Service |
 
+### Konsolen-Nutzung (ohne Frontend)
+
+Das System kann vollständig ohne Angular genutzt werden – siehe [Konsolen-Nutzung](documentation/konsolen-nutzung.md):
+
+- **REST API** via curl / PowerShell
+- **GraphQL** via curl oder GraphiQL (Browser)
+- **Swagger UI** für interaktive API-Dokumentation
+- **gRPC** via grpcurl (Service-zu-Service)
+- **CSV Import/Export** für Massendaten
+
 ### Health Checks
 
 Jeder Service bietet Actuator-Endpunkte:

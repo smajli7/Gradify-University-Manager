@@ -1763,11 +1763,13 @@ export class DashboardComponent implements OnInit {
     
     console.log('loadBerechnungsdaten - poId:', poId, 'ectsGesamt:', ectsGesamt);
     
-    // Mit poId: Immer Neuberechnung per gRPC triggern – so kommt Gesamtnote direkt vom Service
-    if (poId) {
+    // POST berechnen ist nur für PRUEFUNGSAMT und ADMIN erlaubt
+    const canTriggerBerechnung = this.authService.hasRole('PRUEFUNGSAMT') || this.authService.hasRole('ADMIN');
+    
+    if (poId && canTriggerBerechnung) {
       this.triggerNeuberechnung(poId, ectsGesamt);
     } else {
-      // Ohne poId: nur vorhandene Berechnung laden
+      // Ohne poId oder ohne Berechtigung: nur vorhandene Berechnung laden (GET)
       this.calculationService.getGesamtnote(this.selectedEinschreibung).subscribe({
         next: (result) => {
           if (result.success && result.data) {

@@ -149,11 +149,17 @@ export class AuthService {
     return user.roles.includes(normalizedRole);
   }
 
-  // Get the student ID for the current user (for filtering data)
+  /**
+   * Liefert die Student-ID für Student-spezifische Abfragen.
+   * Bevorzugt studentId; Fallback auf user.id für Abwärtskompatibilität (z. B. gespeicherte Sessions).
+   */
   getStudentId(): string | null {
     const user = this.currentUser();
     if (!user || !this.isStudent()) return null;
-    return user.studentId || user.id; // studentId if available, otherwise user.id
+    const u = user as { studentId?: string | number; id?: string | number };
+    const sid = u.studentId ?? (u as Record<string, unknown>)['student_id'];
+    if (sid != null && sid !== 0) return String(sid);
+    return user.id != null ? String(user.id) : null;
   }
 }
 

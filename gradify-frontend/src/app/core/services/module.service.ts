@@ -24,10 +24,10 @@ export class ModuleService {
   readonly loading = computed(() => this.loadingSignal());
   readonly error = computed(() => this.errorSignal());
 
-  // Module als Map für schnellen Zugriff
+  // Module als Map für schnellen Zugriff (String-Keys für sicheren Lookup)
   readonly moduleMap = computed(() => {
     const map = new Map<string, Modul>();
-    this.moduleSignal().forEach(m => map.set(m.id, m));
+    this.moduleSignal().forEach(m => map.set(String(m?.id ?? ''), m));
     return map;
   });
 
@@ -43,6 +43,7 @@ export class ModuleService {
     return this.apollo.watchQuery<{ module: Modul[] }>({
       query: GET_MODULE,
       variables: { studiengangId, poId },
+      context: { clientName: 'studiengang' },
       fetchPolicy: 'cache-and-network'
     }).valueChanges.pipe(
       map(result => result.data.module),
@@ -82,18 +83,20 @@ export class ModuleService {
   }
 
   /**
-   * Holt Modul-Name aus Cache
+   * Holt Modul-Name aus Cache (id kann string oder number sein)
    */
-  getModulName(id: string): string {
-    const modul = this.moduleMap().get(id);
+  getModulName(id: string | number | null | undefined): string {
+    const key = id != null ? String(id) : '';
+    const modul = this.moduleMap().get(key);
     return modul?.name || 'Unbekanntes Modul';
   }
 
   /**
-   * Holt Modul-Nr aus Cache
+   * Holt Modul-Nr aus Cache (id kann string oder number sein)
    */
-  getModulNr(id: string): string {
-    const modul = this.moduleMap().get(id);
+  getModulNr(id: string | number | null | undefined): string {
+    const key = id != null ? String(id) : '';
+    const modul = this.moduleMap().get(key);
     return modul?.modulNr || '';
   }
 

@@ -1,4 +1,4 @@
-import { Component, OnInit, signal, computed, inject, ElementRef, ViewChild } from '@angular/core';
+import { Component, OnInit, OnDestroy, signal, computed, inject, ElementRef, ViewChild } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -6,9 +6,9 @@ import { Apollo, gql } from 'apollo-angular';
 import { GradeService } from '../../core/services/grade.service';
 import { ModuleService } from '../../core/services/module.service';
 import { AuthService } from '../../core/services/auth.service';
+import { OverlayService } from '../../core/services/overlay.service';
 import { Note } from '../../types';
 import jsPDF from 'jspdf';
-import html2canvas from 'html2canvas';
 
 // Query für Einschreibungen eines Studenten
 const GET_EINSCHREIBUNGEN_QUERY = gql`
@@ -16,11 +16,22 @@ const GET_EINSCHREIBUNGEN_QUERY = gql`
     einschreibungen(studentId: $studentId) {
       id
       aktuellesSemester
+      poId
       studiengang {
         id
         name
         kuerzel
+        gesamtEcts
       }
+    }
+  }
+`;
+
+const GET_STUDENT_QUERY = gql`
+  query GetStudent($id: ID!) {
+    student(id: $id) {
+      id
+      matrikelnummer
     }
   }
 `;
@@ -28,8 +39,11 @@ const GET_EINSCHREIBUNGEN_QUERY = gql`
 interface EinschreibungOption {
   id: string;
   studiengang: string;
+  studiengangId?: string;
   kuerzel: string;
   semester: number;
+  poId?: string;
+  gesamtEcts?: number;
 }
 
 @Component({
@@ -82,7 +96,7 @@ interface EinschreibungOption {
                 </svg>
                 CSV
               </button>
-              <button class="btn btn--primary btn-export" (click)="showTranscript()">
+              <button class="btn btn--secondary btn-export" (click)="showTranscript()">
                 <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                   <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
                   <polyline points="14 2 14 8 20 8"/>
@@ -307,6 +321,10 @@ interface EinschreibungOption {
             </div>
 
             <div class="transcript-document" #transcriptDocument>
+              <!-- Test-Hinweis oben -->
+              <div class="test-banner">
+                TEST – Dieses Dokument hat keine gesetzliche Wirkung.
+              </div>
               <!-- Offizieller Header mit Wappen-Style -->
               <header class="transcript-header">
                 <div class="header-top">
@@ -411,7 +429,7 @@ interface EinschreibungOption {
                 <div class="summary-row">
                   <div class="summary-cell summary-cell--highlight">
                     <label>Gesamtdurchschnitt</label>
-                    <span class="big-number">{{ gradeService.durchschnitt() | number:'1.2-2' }}</span>
+                    <span class="big-number">{{ (gradeService.durchschnitt() ?? 0) | number:'1.2-2' }}</span>
                   </div>
                   <div class="summary-cell">
                     <label>Erreichte ECTS</label>
@@ -517,20 +535,31 @@ interface EinschreibungOption {
       gap: var(--spacing-xs);
     }
 
-    /* Transcript Modal Styles */
+    /* Transcript Modal Styles - Full Viewport, vorne über allem (über Dock 9999) */
     .transcript-overlay {
-      background: rgba(0, 0, 0, 0.9);
-      overflow-y: auto;
-      padding: var(--spacing-lg);
+      position: fixed !important;
+      inset: 0;
+      z-index: 99999 !important;
+      background: rgba(0, 0, 0, 0.85);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: 16px;
+      overflow: hidden;
     }
 
     .transcript-modal {
-      background: #f5f5f5;
-      max-width: 850px;
-      margin: 0 auto;
-      border-radius: var(--radius-lg);
+      background: #f8fafc;
+      width: 100%;
+      max-width: min(800px, calc(100vw - 32px));
+      max-height: calc(100vh - 32px);
+      margin: auto;
+      border-radius: 8px;
       overflow: hidden;
-      box-shadow: 0 25px 50px rgba(0,0,0,0.5);
+      box-shadow: 0 20px 60px rgba(0,0,0,0.5);
+      display: flex;
+      flex-direction: column;
+      flex: 0 1 auto;
     }
 
     .transcript-actions {
@@ -541,6 +570,7 @@ interface EinschreibungOption {
       padding: var(--spacing-md) var(--spacing-lg);
       background: var(--bg-surface);
       border-bottom: 1px solid var(--border-color);
+      flex-shrink: 0;
     }
 
     .btn--ghost {
@@ -568,12 +598,15 @@ interface EinschreibungOption {
     }
 
     .transcript-document {
-      padding: 50px;
-      background: white;
-      color: #1a1a1a;
-      font-family: 'Georgia', 'Times New Roman', serif;
-      min-height: 1100px;
+      padding: 40px 48px;
+      background: #fff;
+      color: #1e293b;
+      font-family: 'Segoe UI', 'Source Sans Pro', system-ui, sans-serif;
       position: relative;
+      box-shadow: inset 0 0 0 1px rgba(30, 58, 95, 0.08);
+      overflow-y: auto;
+      flex: 1;
+      min-height: 0;
     }
 
     /* Header */
@@ -603,18 +636,18 @@ interface EinschreibungOption {
     }
 
     .uni-text h1 {
-      font-size: 1.1rem;
-      font-weight: 700;
+      font-size: 1.05rem;
+      font-weight: 600;
       margin: 0;
       color: #1e3a5f;
-      letter-spacing: 0.5px;
+      letter-spacing: 0.3px;
     }
 
     .uni-type {
-      font-size: 0.7rem;
-      color: #666;
+      font-size: 0.68rem;
+      color: #64748b;
       text-transform: uppercase;
-      letter-spacing: 1px;
+      letter-spacing: 1.2px;
     }
 
     .document-id {
@@ -638,36 +671,38 @@ interface EinschreibungOption {
 
     .document-title-bar {
       text-align: center;
-      padding: 15px 0;
+      padding: 16px 0;
       border-top: 3px solid #1e3a5f;
-      border-bottom: 1px solid #1e3a5f;
-      margin-bottom: 25px;
+      border-bottom: 1px solid #cbd5e1;
+      margin-bottom: 24px;
     }
 
     .document-title-bar h2 {
-      font-size: 1.4rem;
-      font-weight: 700;
+      font-size: 1.25rem;
+      font-weight: 600;
       margin: 0;
       color: #1e3a5f;
-      letter-spacing: 3px;
+      letter-spacing: 2px;
     }
 
     .document-title-bar p {
-      font-size: 0.8rem;
-      color: #666;
-      margin: 5px 0 0 0;
+      font-size: 0.75rem;
+      color: #64748b;
+      margin: 4px 0 0 0;
       font-style: italic;
     }
 
     /* Student Info Box */
     .student-info-box {
-      border: 1px solid #ccc;
-      margin-bottom: 25px;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
+      margin-bottom: 24px;
+      overflow: hidden;
     }
 
     .info-row {
       display: flex;
-      border-bottom: 1px solid #ccc;
+      border-bottom: 1px solid #e2e8f0;
     }
 
     .info-row:last-child {
@@ -676,8 +711,8 @@ interface EinschreibungOption {
 
     .info-cell {
       flex: 1;
-      padding: 12px 15px;
-      border-right: 1px solid #ccc;
+      padding: 10px 16px;
+      border-right: 1px solid #e2e8f0;
     }
 
     .info-cell:last-child {
@@ -690,17 +725,17 @@ interface EinschreibungOption {
 
     .info-cell label {
       display: block;
-      font-size: 0.65rem;
+      font-size: 0.6rem;
       text-transform: uppercase;
-      color: #888;
-      letter-spacing: 0.5px;
-      margin-bottom: 3px;
+      color: #64748b;
+      letter-spacing: 0.6px;
+      margin-bottom: 2px;
     }
 
     .info-cell span {
       font-size: 0.9rem;
       font-weight: 600;
-      color: #1a1a1a;
+      color: #1e293b;
     }
 
     /* Grades Table */
@@ -712,32 +747,34 @@ interface EinschreibungOption {
       width: 100%;
       border-collapse: collapse;
       font-size: 0.8rem;
-      border: 1px solid #1e3a5f;
+      border: 1px solid #cbd5e1;
+      border-radius: 4px;
+      overflow: hidden;
     }
 
     .transcript-table th {
       background: #1e3a5f;
       color: white;
-      padding: 10px 8px;
+      padding: 10px 10px;
       text-align: left;
       font-weight: 600;
-      font-size: 0.7rem;
+      font-size: 0.68rem;
       text-transform: uppercase;
       letter-spacing: 0.5px;
     }
 
     .transcript-table td {
-      padding: 8px;
-      border-bottom: 1px solid #ddd;
+      padding: 8px 10px;
+      border-bottom: 1px solid #e2e8f0;
       vertical-align: middle;
     }
 
     .transcript-table tbody tr:nth-child(even) {
-      background: #f9f9f9;
+      background: #f8fafc;
     }
 
     .transcript-table tbody tr:hover {
-      background: #f0f4f8;
+      background: #f1f5f9;
     }
 
     .transcript-table .row-failed {
@@ -896,29 +933,37 @@ interface EinschreibungOption {
     }
 
     .page-footer {
-      position: absolute;
-      bottom: 20px;
-      left: 50px;
-      right: 50px;
+      margin-top: 24px;
       display: flex;
       justify-content: space-between;
       font-size: 0.65rem;
-      color: #aaa;
-      border-top: 1px solid #eee;
+      color: #94a3b8;
+      border-top: 1px solid #e2e8f0;
       padding-top: 10px;
     }
 
+    .test-banner {
+      text-align: center;
+      padding: 8px 16px;
+      margin: 0 0 24px 0;
+      font-size: 0.85rem;
+      font-weight: 600;
+      color: #dc2626;
+      background: rgba(220, 38, 38, 0.08);
+      border: 1px solid rgba(220, 38, 38, 0.3);
+      border-radius: 6px;
+    }
+
     .test-notice {
-      position: absolute;
-      bottom: 50px;
-      right: 50px;
-      font-size: 0.7rem;
-      color: #c00;
+      margin-top: 16px;
+      display: inline-block;
+      font-size: 0.65rem;
+      color: #dc2626;
       font-style: italic;
-      background: rgba(255, 200, 200, 0.5);
-      padding: 5px 10px;
-      border: 1px dashed #c00;
-      border-radius: 3px;
+      background: #f8fafc;
+      padding: 4px 8px;
+      border: 1px solid #e2e8f0;
+      border-radius: 4px;
     }
 
     /* Print Styles */
@@ -1423,7 +1468,7 @@ interface EinschreibungOption {
     }
   `]
 })
-export class GradesComponent implements OnInit {
+export class GradesComponent implements OnInit, OnDestroy {
   private readonly authService = inject(AuthService);
   private readonly apollo = inject(Apollo);
   private readonly http = inject(HttpClient);
@@ -1464,20 +1509,43 @@ export class GradesComponent implements OnInit {
     this.moduleService.loadModule().subscribe();
   }
 
+  ngOnDestroy(): void {
+    if (this.showTranscriptModal()) {
+      this.overlayService.setOverlayOpen(false);
+    }
+  }
+
   loadOwnData(): void {
     const studentId = this.authService.getStudentId();
     if (!studentId) {
+      this.loadingEinschreibungen.set(false);
       this.gradeService.setError('Keine Student-ID gefunden. Bitte erneut einloggen.');
       return;
     }
 
     this.loadingEinschreibungen.set(true);
     this.gradeService.setError(null);
+    this.matrikelnummer.set('-');
+
+    // Matrikelnummer laden (User-Service)
+    this.apollo.query<{ student: { matrikelnummer: string } }>({
+      query: GET_STUDENT_QUERY,
+      variables: { id: studentId },
+      context: { clientName: 'user' },
+      fetchPolicy: 'network-only'
+    }).subscribe({
+      next: (r) => {
+        if (r.data?.student?.matrikelnummer) {
+          this.matrikelnummer.set(r.data.student.matrikelnummer);
+        }
+      }
+    });
 
     // Lade Einschreibungen für den eingeloggten Studenten
     this.apollo.query<{ einschreibungen: any[] }>({
       query: GET_EINSCHREIBUNGEN_QUERY,
       variables: { studentId },
+      context: { clientName: 'studiengang' },
       fetchPolicy: 'network-only',
       errorPolicy: 'all'
     }).subscribe({
@@ -1493,14 +1561,24 @@ export class GradesComponent implements OnInit {
         this.einschreibungen.set(einschreibungList.map(e => ({
           id: e.id,
           studiengang: e.studiengang?.name || 'Unbekannt',
+          studiengangId: e.studiengang?.id,
           kuerzel: e.studiengang?.kuerzel || '?',
-          semester: e.aktuellesSemester
+          semester: e.aktuellesSemester,
+          poId: e.poId,
+          gesamtEcts: e.studiengang?.gesamtEcts
         })));
         this.loadingEinschreibungen.set(false);
 
         // Automatisch erste Einschreibung auswählen und Noten laden
         if (einschreibungList.length > 0) {
           this.selectedEinschreibung = einschreibungList[0].id;
+          const first = einschreibungList[0];
+          const sg = first.studiengang;
+          if (first.poId) {
+            this.moduleService.loadModule(undefined, first.poId).subscribe();
+          } else if (sg?.id) {
+            this.moduleService.loadModule(sg.id).subscribe();
+          }
           this.loadNoten();
         } else {
           this.gradeService.setError('Keine Einschreibungen gefunden');
@@ -1516,6 +1594,12 @@ export class GradesComponent implements OnInit {
 
   loadNoten(): void {
     if (!this.selectedEinschreibung) return;
+    const e = this.getSelectedEinschreibung();
+    if (e?.poId) {
+      this.moduleService.loadModule(undefined, e.poId).subscribe();
+    } else if (e?.studiengangId) {
+      this.moduleService.loadModule(e.studiengangId).subscribe();
+    }
     this.gradeService.loadNotenByStudent(this.selectedEinschreibung).subscribe();
   }
 
@@ -1542,12 +1626,16 @@ export class GradesComponent implements OnInit {
   }
 
   // ========== TRANSCRIPT ==========
+  private readonly overlayService = inject(OverlayService);
+
   showTranscript(): void {
     this.showTranscriptModal.set(true);
+    this.overlayService.setOverlayOpen(true);
   }
 
   closeTranscript(): void {
     this.showTranscriptModal.set(false);
+    this.overlayService.setOverlayOpen(false);
   }
 
   printTranscript(): void {
@@ -1555,41 +1643,165 @@ export class GradesComponent implements OnInit {
   }
 
   async exportPdf(): Promise<void> {
-    if (!this.transcriptDocument) return;
-    
     this.generatingPdf.set(true);
-    
     try {
-      const element = this.transcriptDocument.nativeElement;
-      
-      // HTML zu Canvas konvertieren
-      const canvas = await html2canvas(element, {
-        scale: 2,
-        useCORS: true,
-        logging: false,
-        backgroundColor: '#ffffff'
+      const pdf = new jsPDF({ orientation: 'portrait', unit: 'mm', format: 'a4' });
+      const pageW = 210;
+      const margin = 18;
+      let y = 20;
+
+      const drawLine = (yy: number) => {
+        pdf.setDrawColor(30, 58, 95);
+        pdf.setLineWidth(0.3);
+        pdf.line(margin, yy, pageW - margin, yy);
+      };
+
+      // Test-Hinweis oben (rot)
+      pdf.setFillColor(255, 230, 230);
+      pdf.rect(0, 0, pageW, 10, 'F');
+      pdf.setTextColor(220, 38, 38);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('TEST – Dieses Dokument hat keine gesetzliche Wirkung.', pageW / 2, 7, { align: 'center' });
+      pdf.setTextColor(0, 0, 0);
+
+      // Header
+      pdf.setFillColor(30, 58, 95);
+      pdf.rect(0, 10, pageW, 28, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(14);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(this.getUniversityName(), margin, 24);
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('University of Applied Sciences', margin, 31);
+      pdf.text(this.getDocumentNumber(), pageW - margin, 24, { align: 'right' });
+      pdf.setTextColor(0, 0, 0);
+      y = 48;
+
+      pdf.setFontSize(12);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text('NOTENBESCHEINIGUNG', margin, y);
+      y += 6;
+      pdf.setFontSize(9);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Transcript of Records', margin, y);
+      y += 10;
+      drawLine(y);
+      y += 12;
+
+      // Student Info
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Name, Vorname', margin, y);
+      pdf.text('Matrikelnummer', margin + 70, y);
+      y += 5;
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(this.getStudentNameReverse(), margin, y);
+      pdf.text(this.getMatrikelnummer(), margin + 70, y);
+      y += 8;
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text('Studiengang', margin, y);
+      pdf.text('Fachsemester', margin + 70, y);
+      pdf.text('Abschluss', margin + 110, y);
+      y += 5;
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(this.getCurrentStudiengangFull(), margin, y);
+      pdf.text(this.getCurrentSemesterNumber(), margin + 70, y);
+      pdf.text('Bachelor of Science', margin + 110, y);
+      y += 14;
+
+      // Table Header
+      const colW = [8, 22, 75, 15, 18, 18, 22];
+      const headers = ['#', 'Modul-Nr.', 'Modulbezeichnung', 'Sem.', 'ECTS', 'Note', 'Erg.'];
+      pdf.setFillColor(30, 58, 95);
+      pdf.rect(margin, y - 5, pageW - 2 * margin, 8, 'F');
+      pdf.setTextColor(255, 255, 255);
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'bold');
+      let x = margin + 2;
+      headers.forEach((h, i) => {
+        pdf.text(h, x, y);
+        x += colW[i];
       });
-      
-      // PDF erstellen (A4 Format)
-      const pdf = new jsPDF({
-        orientation: 'portrait',
-        unit: 'mm',
-        format: 'a4'
+      pdf.setTextColor(0, 0, 0);
+      y += 6;
+
+      // Table Rows
+      const noten = this.filteredNoten();
+      pdf.setFont('helvetica', 'normal');
+      pdf.setFontSize(9);
+      noten.forEach((note, i) => {
+        if (y > 270) {
+          pdf.addPage();
+          y = 20;
+        }
+        const modulNr = this.moduleService.getModulNr(note.modulId) || '-';
+        const modulName = (this.moduleService.getModulName(note.modulId) || 'Unbekanntes Modul').substring(0, 45);
+        const ects = this.getEctsForNote(note);
+        const noteStr = note.noteWert != null ? this.gradeService.formatNote(note.noteWert) : 'BE';
+        const erg = note.bestanden === true ? 'BE' : note.bestanden === false ? 'NB' : '-';
+        if (i % 2 === 1) {
+          pdf.setFillColor(248, 249, 250);
+          pdf.rect(margin, y - 4, pageW - 2 * margin, 6, 'F');
+        }
+        x = margin + 2;
+        pdf.text(String(i + 1), x, y);
+        x += colW[0];
+        pdf.text(modulNr, x, y);
+        x += colW[1];
+        pdf.text(modulName, x, y);
+        x += colW[2];
+        pdf.text(this.getSemesterForNote(note), x, y);
+        x += colW[3];
+        pdf.text(ects, x, y);
+        x += colW[4];
+        pdf.text(noteStr, x, y);
+        x += colW[5];
+        pdf.text(erg, x, y);
+        y += 6;
       });
-      
-      const imgWidth = 210; // A4 Breite in mm
-      const imgHeight = (canvas.height * imgWidth) / canvas.width;
-      
-      const imgData = canvas.toDataURL('image/png');
-      pdf.addImage(imgData, 'PNG', 0, 0, imgWidth, imgHeight);
-      
-      // Dateiname generieren
-      const einschreibung = this.einschreibungen().find(e => e.id === this.selectedEinschreibung);
+      y += 6;
+
+      // Summary
+      drawLine(y);
+      y += 8;
+      pdf.setFontSize(8);
+      pdf.setTextColor(100, 100, 100);
+      pdf.text('Gesamtdurchschnitt', margin, y);
+      pdf.text('Erreichte ECTS', margin + 50, y);
+      pdf.text('Bestanden', margin + 100, y);
+      pdf.text('Offen', margin + 130, y);
+      y += 5;
+      pdf.setFontSize(10);
+      pdf.setTextColor(0, 0, 0);
+      pdf.setFont('helvetica', 'bold');
+      pdf.text(String((this.gradeService.durchschnitt() ?? 0).toFixed(2)), margin, y);
+      pdf.text(`${this.calculateTotalEcts()} von ${this.getTotalRequiredEcts()}`, margin + 50, y);
+      pdf.text(String(this.gradeService.bestandenCount()), margin + 100, y);
+      pdf.text(String(this.gradeService.offenCount()), margin + 130, y);
+      y += 12;
+
+      pdf.setFontSize(8);
+      pdf.setFont('helvetica', 'normal');
+      pdf.text(`BE = Bestanden, NB = Nicht bestanden`, margin, y);
+      y += 8;
+      pdf.text(`Ausstellungsdatum: ${this.getCurrentDateFull()} | Ausstellungsort: ${this.getUniversityCity()}`, margin, y);
+      y += 6;
+      pdf.setFontSize(7);
+      pdf.setTextColor(120, 120, 120);
+      pdf.text('Diese Bescheinigung wurde maschinell erstellt. Sie ist ohne Unterschrift und Siegel gültig.', margin, y);
+
+      const einschreibung = this.getSelectedEinschreibung();
       const kuerzel = einschreibung?.kuerzel || 'Noten';
       const datum = new Date().toISOString().split('T')[0];
-      const filename = `Notenbescheinigung_${kuerzel}_${datum}.pdf`;
-      
-      pdf.save(filename);
+      pdf.save(`Notenbescheinigung_${kuerzel}_${datum}.pdf`);
     } catch (error) {
       console.error('PDF generation failed:', error);
       alert('PDF-Erstellung fehlgeschlagen');
@@ -1611,7 +1823,8 @@ export class GradesComponent implements OnInit {
     const date = new Date();
     const year = date.getFullYear();
     const month = String(date.getMonth() + 1).padStart(2, '0');
-    const id = user?.studentId?.substring(0, 4).toUpperCase() || 'XXXX';
+    const sid = (user as { studentId?: string | number })?.studentId;
+    const id = sid != null ? String(sid).substring(0, 4).toUpperCase() : 'XXXX';
     return `NB-${year}${month}-${id}`;
   }
 
@@ -1625,29 +1838,34 @@ export class GradesComponent implements OnInit {
     return user ? `${user.nachname}, ${user.vorname}` : '-';
   }
 
+  matrikelnummer = signal<string>('-');
+
   getMatrikelnummer(): string {
-    const user = this.authService.currentUser();
-    return user?.studentId?.substring(0, 8).toUpperCase() || '-';
+    return this.matrikelnummer() || '-';
+  }
+
+  private getSelectedEinschreibung() {
+    return this.einschreibungen().find(e => String(e.id) === String(this.selectedEinschreibung));
   }
 
   getCurrentStudiengang(): string {
-    const einschreibung = this.einschreibungen().find(e => e.id === this.selectedEinschreibung);
-    return einschreibung ? `${einschreibung.studiengang} (${einschreibung.kuerzel})` : '-';
+    const e = this.getSelectedEinschreibung();
+    return e ? `${e.studiengang} (${e.kuerzel})` : '-';
   }
 
   getCurrentStudiengangFull(): string {
-    const einschreibung = this.einschreibungen().find(e => e.id === this.selectedEinschreibung);
-    return einschreibung ? einschreibung.studiengang : '-';
+    const e = this.getSelectedEinschreibung();
+    return e ? e.studiengang : '-';
   }
 
   getCurrentSemester(): string {
-    const einschreibung = this.einschreibungen().find(e => e.id === this.selectedEinschreibung);
-    return einschreibung ? `${einschreibung.semester}. Semester` : '-';
+    const e = this.getSelectedEinschreibung();
+    return e ? `${e.semester}. Semester` : '-';
   }
 
   getCurrentSemesterNumber(): string {
-    const einschreibung = this.einschreibungen().find(e => e.id === this.selectedEinschreibung);
-    return einschreibung ? String(einschreibung.semester) : '-';
+    const e = this.getSelectedEinschreibung();
+    return e ? String(e.semester) : '-';
   }
 
   getCurrentDate(): string {
@@ -1669,12 +1887,15 @@ export class GradesComponent implements OnInit {
   calculateTotalEcts(): number {
     return this.filteredNoten()
       .filter(n => n.bestanden === true)
-      .reduce((sum, n) => sum + (n.ects || 5), 0); // Default 5 ECTS wenn nicht gesetzt
+      .reduce((sum, n) => {
+        const ects = n.ects ?? this.moduleService.moduleMap().get(this.toStr(n.modulId))?.ects ?? 5;
+        return sum + ects;
+      }, 0);
   }
 
   getTotalRequiredEcts(): number {
-    // In einer echten App aus dem Studiengang laden
-    return 180;
+    const e = this.getSelectedEinschreibung();
+    return e?.gesamtEcts ?? 180;
   }
 
   getSemesterForNote(note: Note): string {
@@ -1682,8 +1903,14 @@ export class GradesComponent implements OnInit {
     return '-';
   }
 
+  toStr(val: any): string {
+    return val != null ? String(val) : '';
+  }
+
   getEctsForNote(note: Note): string {
-    return note.ects ? String(note.ects) : '5';
+    if (note.ects != null) return String(note.ects);
+    const modul = this.moduleService.moduleMap().get(this.toStr(note.modulId));
+    return modul?.ects != null ? String(modul.ects) : '5';
   }
 
   isExcellent(noteWert: number | undefined): boolean {
@@ -1732,7 +1959,7 @@ export class GradesComponent implements OnInit {
       link.href = url;
       
       // Dateiname mit Studiengang-Info
-      const einschreibung = this.einschreibungen().find(e => e.id === this.selectedEinschreibung);
+      const einschreibung = this.getSelectedEinschreibung();
       const kuerzel = einschreibung?.kuerzel || 'noten';
       link.download = `noten_${kuerzel}_${new Date().toISOString().split('T')[0]}.csv`;
       

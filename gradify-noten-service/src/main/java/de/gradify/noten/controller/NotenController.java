@@ -17,10 +17,12 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
+
 import java.math.BigDecimal;
 import java.util.List;
 import java.util.Set;
-import java.util.UUID; // TODO: Review - kept for UUID.randomUUID() in development fallbacks
 
 @RestController
 @RequestMapping("/api/noten")
@@ -95,13 +97,15 @@ public class NotenController {
     @PostMapping
     public ResponseEntity<ApiResponse<NoteDto>> createNote(
             @Valid @RequestBody CreateNoteRequest request,
-            @RequestHeader(name = "X-User-Id", required = false) Long userId) {
+            @RequestHeader(name = "X-User-Id", required = false) Long headerUserId) {
         log.info("Creating Note for einschreibung: {}, modul: {}", 
                 request.getEinschreibungId(), request.getModulId());
         
-        // Falls kein User-Header, temporäre ID für Entwicklung
-        // TODO: Review - UUID.randomUUID() used for dev fallback, should be replaced with proper user ID logic
-        Long erfasstVon = userId != null ? userId : Math.abs(UUID.randomUUID().getMostSignificantBits());
+        Long erfasstVon = resolveUserId(headerUserId);
+        if (erfasstVon == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentifizierung erforderlich für Notenerfassung"));
+        }
         
         try {
             NoteDto note = notenService.createNote(request, erfasstVon);
@@ -140,11 +144,14 @@ public class NotenController {
     public ResponseEntity<ApiResponse<NoteDto>> validateNote(
             @PathVariable("id") Long id,
             @RequestParam(value = "kommentar", required = false) String kommentar,
-            @RequestHeader(name = "X-User-Id", required = false) Long userId) {
+            @RequestHeader(name = "X-User-Id", required = false) Long headerUserId) {
         log.info("Validating Note: {}", id);
         
-        // TODO: Review - UUID.randomUUID() used for dev fallback, should be replaced with proper user ID logic
-        Long validiertVon = userId != null ? userId : Math.abs(UUID.randomUUID().getMostSignificantBits());
+        Long validiertVon = resolveUserId(headerUserId);
+        if (validiertVon == null) {
+            return ResponseEntity.status(HttpStatus.UNAUTHORIZED)
+                    .body(ApiResponse.error("Authentifizierung erforderlich für Notenvalidierung"));
+        }
         
         try {
             return notenService.validateNote(id, validiertVon, kommentar)
@@ -235,5 +242,26 @@ public class NotenController {
             .header("Content-Disposition", "attachment; filename=" + filename)
             .header("Content-Type", "text/csv; charset=UTF-8")
             .body(csv.toString());
+    }
+
+    /**
+     * Ermittelt die User-ID aus SecurityContext (JWT) oder optional aus dem X-User-Id Header.
+     * Kein UUID-Fallback mehr – bei fehlender Auth wird null zurückgegeben.
+     */
+    private Long resolveUserId(Long headerUserId) {
+        if (headerUserId != null) {
+            return headerUserId;
+        }
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getPrincipal() == null || !auth.isAuthenticated()
+                || "anonymousUser".equals(auth.getPrincipal())) {
+            return null;
+        }
+        try {
+            return Long.parseLong(auth.getPrincipal().toString());
+        } catch (NumberFormatException e) {
+            log.warn("Could not parse user ID from principal: {}", auth.getPrincipal());
+            return null;
+        }
     }
 }

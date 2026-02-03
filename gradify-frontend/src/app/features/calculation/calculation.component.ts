@@ -674,26 +674,25 @@ export class CalculationComponent implements OnInit {
     }));
   });
   
-  bewertetCount = computed(() => 
-    this.moduleMitNoten().filter(m => m.inGesamtnote && m.noteWert !== null).length
+  /** Nur bestandene Module (Note ≤ 4.0) in die Berechnung */
+  private bestandeneInNote = () =>
+    this.moduleMitNoten().filter(m =>
+      m.inGesamtnote && m.noteWert != null &&
+      (m.bestanden === true || (m.bestanden !== false && m.noteWert <= 4.0))
+    );
+
+  bewertetCount = computed(() => this.bestandeneInNote().length);
+
+  gewichtungsSumme = computed(() =>
+    this.bestandeneInNote().reduce((sum, m) => sum + m.gewichtung, 0)
   );
-  
-  gewichtungsSumme = computed(() => 
-    this.moduleMitNoten()
-      .filter(m => m.inGesamtnote && m.noteWert !== null)
-      .reduce((sum, m) => sum + m.gewichtung, 0)
+
+  notenSumme = computed(() =>
+    this.bestandeneInNote().reduce((sum, m) => sum + (m.noteWert! * m.gewichtung), 0)
   );
-  
-  notenSumme = computed(() => 
-    this.moduleMitNoten()
-      .filter(m => m.inGesamtnote && m.noteWert !== null)
-      .reduce((sum, m) => sum + (m.noteWert! * m.gewichtung), 0)
-  );
-  
-  ectsInNote = computed(() => 
-    this.moduleMitNoten()
-      .filter(m => m.inGesamtnote && m.noteWert !== null)
-      .reduce((sum, m) => sum + m.ects, 0)
+
+  ectsInNote = computed(() =>
+    this.bestandeneInNote().reduce((sum, m) => sum + m.ects, 0)
   );
   
   gesamtnote = computed(() => {
