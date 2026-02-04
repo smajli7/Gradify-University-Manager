@@ -17,6 +17,8 @@ export const roleRedirectGuard = () => {
   switch (role) {
     case 'ROLE_ADMIN':
       return router.parseUrl('/admin');
+    case 'ROLE_HOCHSCHUL_VERWALTER':
+      return router.parseUrl('/admin/mandanten');
     case 'ROLE_LEHRENDER':
       return router.parseUrl('/dashboard');
     case 'ROLE_PRUEFUNGSAMT':

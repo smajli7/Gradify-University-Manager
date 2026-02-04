@@ -1,9 +1,13 @@
 package de.gradify.studiengang.service;
 
+import de.gradify.shared.tenant.TenantContext;
+import de.gradify.shared.tenant.TenantRegistryClient;
 import de.gradify.studiengang.dto.MandantDto;
 import de.gradify.studiengang.entity.Mandant;
 import de.gradify.studiengang.repository.MandantRepository;
+import de.gradify.shared.tenant.TenantSuffixResolver;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
@@ -18,31 +22,75 @@ import java.util.stream.Collectors;
 public class MandantService {
 
     private final MandantRepository mandantRepository;
+    private final TenantDatabaseProvisioningService tenantDatabaseProvisioning;
+    @Autowired(required = false)
+    private MandantAggregationService mandantAggregationService;
+    @Autowired(required = false)
+    private TenantSuffixResolver tenantSuffixResolver;
+    @Autowired(required = false)
+    private TenantRegistryClient tenantRegistryClient;
 
     /**
      * Holt alle aktiven Mandanten.
      */
     @Transactional(readOnly = true)
     public List<MandantDto> getAktiveMandanten() {
-        return mandantRepository.findByAktivTrue().stream()
-                .map(this::toDto)
-                .collect(Collectors.toList());
+        List<Mandant> list = mandantAggregationService != null
+                ? mandantAggregationService.findAllMandanten()
+                : mandantRepository.findByAktivTrue();
+        return list.stream().filter(Mandant::isAktiv).map(this::toDto).collect(Collectors.toList());
     }
 
-    /**
-     * Holt einen Mandanten nach ID.
-     */
     @Transactional(readOnly = true)
     public Optional<MandantDto> getMandantById(Long id) {
-        return mandantRepository.findById(id).map(this::toDto);
+        return (mandantAggregationService != null ? mandantAggregationService.findById(id) : mandantRepository.findById(id))
+                .map(this::toDto);
+    }
+
+    @Transactional(readOnly = true)
+    public Optional<String> getMandantKuerzel(Long mandantId) {
+        return (mandantAggregationService != null ? mandantAggregationService.findById(mandantId) : mandantRepository.findById(mandantId))
+                .map(Mandant::getKuerzel);
     }
 
     /**
-     * Holt das Kürzel eines Mandanten.
+     * Erstellt einen neuen Mandanten (Hochschule).
+     * Legt synchron die zugehörigen Tenant-Datenbanken an (DB-per-Tenant).
      */
-    @Transactional(readOnly = true)
-    public Optional<String> getMandantKuerzel(Long mandantId) {
-        return mandantRepository.findById(mandantId).map(Mandant::getKuerzel);
+    @Transactional
+    public MandantDto createMandant(de.gradify.studiengang.dto.CreateMandantRequest request) {
+        String kuerzelUpper = request.getKuerzel().trim().toUpperCase();
+        if ((mandantAggregationService != null ? mandantAggregationService.findByKuerzel(kuerzelUpper) : mandantRepository.findByKuerzel(kuerzelUpper)).isPresent()) {
+            throw new IllegalArgumentException("Eine Hochschule mit dem Kürzel '" + request.getKuerzel() + "' existiert bereits.");
+        }
+        String kuerzel = kuerzelUpper;
+
+        // Suffix für die neue Hochschule berechnen
+        String suffix = kuerzel.trim().toLowerCase().replaceAll("[^a-z0-9_]", "_");
+        
+        // 1. Datenbanken erstellen und Schemas initialisieren
+        tenantDatabaseProvisioning.provisionDatabasesForNewMandant(kuerzel);
+
+        // 2. Mandant in der NEUEN Tenant-DB speichern (nicht in THM!)
+        Mandant mandant = Mandant.builder()
+                .name(request.getName().trim())
+                .kuerzel(kuerzel)
+                .aktiv(true)
+                .build();
+        TenantContext.setTenantSuffix(suffix);
+        try {
+            mandant = mandantRepository.save(mandant);
+        } finally {
+            TenantContext.clear();
+        }
+        
+        // 3. In zentrale Tenant-Registry eintragen (für dynamisches Routing)
+        if (tenantRegistryClient != null) {
+            tenantRegistryClient.register(mandant.getId(), suffix, kuerzel, mandant.getName());
+            log.info("Mandant in zentrale Registry eingetragen: {} -> {}", mandant.getId(), suffix);
+        }
+        log.info("Mandant erstellt: {} ({}) mit Tenant-Datenbanken", mandant.getName(), mandant.getKuerzel());
+        return toDto(mandant);
     }
 
     /**

@@ -1,0 +1,41 @@
+Studiengang_Kuerzel;Studiengang_Name;Abschlussart;Regelstudienzeit;GesamtECTS;PO_Version;Modul_Nr;Modul_Name;ECTS;Semester;Pruefungsform;Modultyp;Gewichtung;In_Gesamtnote
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-01;Algebra;5;1;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-02;Wirtschaftsinformatik;5;1;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-03;Objektorientierte Programmierung;10;1;KLAUSUR;PFLICHT;2.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-04;Betriebswirtschaftslehre;5;1;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-05;Rechnungswesen;5;1;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-06;Analysis;5;2;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-07;Betriebssysteme und Rechnernetze;5;2;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-08;Datenbanken;5;2;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-09;Schluesselkompetenzen;5;2;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-10;Wirtschaftsprivatrecht;5;2;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-11;Business English (C1);5;2;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-12;Statistik;5;3;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-13;Software Engineering;5;3;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-14;Logistik und Produktion;5;3;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-15;Geschaeftsprozessmanagement;5;3;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-16;Datenschutz und Internetrecht;5;3;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-17;Web-basierte Anwendungssysteme;5;3;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-18;Enterprise Resource Planning;5;4;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-19;Data Warehousing;5;4;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-20;Digital Business and E-Commerce;5;4;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-21;IS Project Management;5;4;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-22;Seminar Business Analytics;5;4;PRAESENTATION;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-23;Seminar Information Systems Architecture;5;4;PRAESENTATION;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-24;Seminar Digital Management;5;4;PRAESENTATION;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-25;Programming Lab;5;4;PROJEKT;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-26;Architecture and Integration;5;4;KLAUSUR;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-27;Service Integration und Management;5;4;KLAUSUR;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-28;Informationssicherheit;5;5;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-29;Usability Engineering;5;5;KLAUSUR;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-30;Wahlpflichtmodul;5;5;KLAUSUR;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-31;Interdisziplinaeres Studium Generale;5;5;PROJEKT;PFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-32;Business Analytics;5;5;KLAUSUR;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-33;Intelligente Anwendungssysteme;5;5;KLAUSUR;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-34;Modellierung betrieblicher Informationssysteme;5;5;KLAUSUR;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-35;IS-Management;5;5;KLAUSUR;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-36;Digitale Nachhaltigkeit und Design Thinking;5;5;KLAUSUR;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-37;Digital Innovation und Transformation;5;5;KLAUSUR;WAHLPFLICHT;1.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-38;Praxisphase;30;6;PRAXISBERICHT;PFLICHT;1.0;false
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-39;Projekt;18;7;PROJEKT;PFLICHT;4.0;true
+WI;Wirtschaftsinformatik;BACHELOR;7;210;2024;WI-40;Bachelor-Arbeit mit Kolloquium;12;7;HAUSARBEIT;PFLICHT;6.0;true

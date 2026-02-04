@@ -1,6 +1,9 @@
 package de.gradify.studiengang.controller;
 
 import de.gradify.shared.dto.ApiResponse;
+import de.gradify.shared.tenant.TenantContext;
+import de.gradify.shared.tenant.TenantSuffixResolver;
+import de.gradify.studiengang.config.SecurityUtils;
 import de.gradify.studiengang.entity.*;
 import de.gradify.studiengang.repository.*;
 import lombok.RequiredArgsConstructor;
@@ -8,6 +11,7 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.transaction.annotation.Transactional;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.web.bind.annotation.*;
 import org.springframework.web.multipart.MultipartFile;
 
@@ -36,6 +40,8 @@ import java.util.Set;
 public class ImportController {
 
     private final MandantRepository mandantRepository;
+    @Autowired(required = false)
+    private TenantSuffixResolver tenantSuffixResolver;
     private final StudiengangRepository studiengangRepository;
     private final PruefungsordnungRepository pruefungsordnungRepository;
     private final ModulRepository modulRepository;
@@ -55,14 +61,22 @@ public class ImportController {
         
         log.info("CSV Import started for mandant: {}", mandantId);
 
-        // Mandant prüfen
-        Mandant mandant = mandantRepository.findById(mandantId).orElse(null);
-        if (mandant == null) {
-            return ResponseEntity.badRequest()
-                .body(ApiResponse.error("Mandant nicht gefunden: " + mandantId));
+        if (!SecurityUtils.ensureMandantAccess(mandantId)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("Kein Zugriff auf diese Hochschule"));
         }
 
+        String suffix = tenantSuffixResolver != null ? tenantSuffixResolver.resolve(mandantId) : null;
+        if (suffix != null) {
+            TenantContext.setTenantSuffix(suffix);
+        }
         try {
+            Mandant mandant = mandantRepository.findById(mandantId).orElse(null);
+            if (mandant == null) {
+                return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Mandant nicht gefunden: " + mandantId));
+            }
+
             List<CsvRow> rows = parseCsv(file);
             if (rows.isEmpty()) {
                 return ResponseEntity.badRequest()
@@ -82,6 +96,10 @@ public class ImportController {
             log.error("CSV Import failed", e);
             return ResponseEntity.badRequest()
                 .body(ApiResponse.error("Import fehlgeschlagen: " + e.getMessage()));
+        } finally {
+            if (suffix != null) {
+                TenantContext.clear();
+            }
         }
     }
 
@@ -115,12 +133,21 @@ public class ImportController {
         
         log.info("CSV Export started for mandant: {}", mandantId);
 
-        Mandant mandant = mandantRepository.findById(mandantId).orElse(null);
-        if (mandant == null) {
-            return ResponseEntity.notFound().build();
+        if (!SecurityUtils.ensureMandantAccess(mandantId)) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN).build();
         }
 
-        StringBuilder csv = new StringBuilder();
+        String suffix = tenantSuffixResolver != null ? tenantSuffixResolver.resolve(mandantId) : null;
+        if (suffix != null) {
+            TenantContext.setTenantSuffix(suffix);
+        }
+        try {
+            Mandant mandant = mandantRepository.findById(mandantId).orElse(null);
+            if (mandant == null) {
+                return ResponseEntity.notFound().build();
+            }
+
+            StringBuilder csv = new StringBuilder();
         csv.append("Studiengang_Kuerzel;Studiengang_Name;Abschlussart;Regelstudienzeit;GesamtECTS;PO_Version;Modul_Nr;Modul_Name;ECTS;Semester;Pruefungsform;Modultyp;Gewichtung;In_Gesamtnote\n");
 
         List<Studiengang> studiengaenge = studiengangRepository.findByMandantId(mandantId);
@@ -182,6 +209,11 @@ public class ImportController {
             .header("Content-Disposition", "attachment; filename=" + filename)
             .header("Content-Type", "text/csv; charset=UTF-8")
             .body(csv.toString());
+        } finally {
+            if (suffix != null) {
+                TenantContext.clear();
+            }
+        }
     }
 
     private List<CsvRow> parseCsv(MultipartFile file) throws Exception {

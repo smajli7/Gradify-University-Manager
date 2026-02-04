@@ -3,6 +3,8 @@ package de.gradify.berechnung.messaging;
 import de.gradify.berechnung.config.RabbitMQConfig;
 import de.gradify.berechnung.service.BerechnungsService;
 import de.gradify.shared.event.NoteEvent;
+import de.gradify.shared.tenant.TenantContext;
+import de.gradify.shared.tenant.TenantSuffixResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.annotation.RabbitListener;
@@ -25,6 +27,7 @@ import org.springframework.stereotype.Component;
 public class NoteEventConsumer {
 
     private final BerechnungsService berechnungsService;
+    private final TenantSuffixResolver tenantSuffixResolver;
 
     /**
      * Listener für alle Noten-Events.
@@ -73,10 +76,12 @@ public class NoteEventConsumer {
             log.warn("Keine Einschreibungs-ID im Event, überspringe Neuberechnung");
             return;
         }
-
-        log.info("Starte automatische Neuberechnung für Einschreibung: {}", 
-                event.getEinschreibungId());
-        
+        if (tenantSuffixResolver != null && event.getMandantId() != null) {
+            String suffix = tenantSuffixResolver.resolve(event.getMandantId());
+            if (suffix != null) {
+                TenantContext.setTenantSuffix(suffix);
+            }
+        }
         try {
             var ergebnis = berechnungsService.berechneGesamtnote(
                     event.getEinschreibungId()
@@ -90,7 +95,8 @@ public class NoteEventConsumer {
         } catch (Exception e) {
             log.error("Fehler bei Neuberechnung für Einschreibung {}: {}", 
                     event.getEinschreibungId(), e.getMessage());
-            // Nicht erneut werfen - Berechnung kann später manuell getriggert werden
+        } finally {
+            TenantContext.clear();
         }
     }
 }

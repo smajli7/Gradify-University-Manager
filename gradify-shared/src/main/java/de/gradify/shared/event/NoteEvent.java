@@ -60,4 +60,9 @@ public class NoteEvent implements Serializable {
      * Benutzer, der die Änderung durchgeführt hat
      */
     private String ausgeloestVon;
+    
+    /**
+     * Mandant-ID für DB-per-Tenant-Routing
+     */
+    private Long mandantId;
 }

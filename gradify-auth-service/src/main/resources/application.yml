@@ -12,6 +12,10 @@ spring:
     password: gradify123
     driver-class-name: org.postgresql.Driver
   
+  sql:
+    init:
+      mode: always
+      schema-locations: classpath:schema-tenant-registry.sql
   jpa:
     hibernate:
       ddl-auto: update

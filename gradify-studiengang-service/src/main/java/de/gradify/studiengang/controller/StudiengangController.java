@@ -1,6 +1,10 @@
 package de.gradify.studiengang.controller;
 
 import de.gradify.shared.dto.ApiResponse;
+import de.gradify.shared.tenant.TenantContext;
+import de.gradify.shared.tenant.TenantSuffixResolver;
+import de.gradify.studiengang.config.AuthPrincipal;
+import de.gradify.studiengang.config.SecurityUtils;
 import de.gradify.studiengang.dto.CreateStudiengangRequest;
 import de.gradify.studiengang.dto.ModulDto;
 import de.gradify.studiengang.dto.StudiengangDto;
@@ -12,6 +16,7 @@ import de.gradify.studiengang.service.StudiengangService;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
@@ -26,12 +31,17 @@ public class StudiengangController {
 
     private final StudiengangService studiengangService;
     private final MandantRepository mandantRepository;
+    @Autowired(required = false)
+    private TenantSuffixResolver tenantSuffixResolver;
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<StudiengangDto>>> getAllStudiengaenge(
             @RequestParam(value = "mandantId", required = false) Long mandantId) {
         log.info("Getting all Studiengaenge, mandantId={}", mandantId);
-        
+        AuthPrincipal ap = SecurityUtils.getAuthPrincipal();
+        if (ap != null && ap.isHochschulVerwalter() && ap.getMandantId() != null) {
+            mandantId = ap.getMandantId();
+        }
         List<Studiengang> studiengaenge;
         if (mandantId != null) {
             studiengaenge = studiengangService.findByMandantId(mandantId);
@@ -60,18 +70,26 @@ public class StudiengangController {
     public ResponseEntity<ApiResponse<StudiengangDto>> createStudiengang(
             @Valid @RequestBody CreateStudiengangRequest request) {
         log.info("Creating Studiengang: {} ({})", request.getName(), request.getKuerzel());
-
-        // Mandant laden
-        Mandant mandant = mandantRepository.findById(request.getMandantId())
-            .orElse(null);
-        
-        if (mandant == null) {
-            return ResponseEntity.badRequest()
-                .body(ApiResponse.error("Mandant nicht gefunden: " + request.getMandantId()));
+        if (!SecurityUtils.ensureMandantAccess(request.getMandantId())) {
+            return ResponseEntity.status(org.springframework.http.HttpStatus.FORBIDDEN)
+                .body(ApiResponse.error("Kein Zugriff auf diese Hochschule"));
         }
+        // TenantContext aus Mandant-ID setzen, damit Mandant und Studiengang in der richtigen DB landen
+        String suffix = tenantSuffixResolver != null ? tenantSuffixResolver.resolve(request.getMandantId()) : null;
+        if (suffix != null) {
+            TenantContext.setTenantSuffix(suffix);
+        }
+        try {
+            Mandant mandant = mandantRepository.findById(request.getMandantId())
+                .orElse(null);
+            
+            if (mandant == null) {
+                return ResponseEntity.badRequest()
+                    .body(ApiResponse.error("Mandant nicht gefunden: " + request.getMandantId()));
+            }
 
-        // Studiengang erstellen
-        Studiengang studiengang = Studiengang.builder()
+            // Studiengang erstellen
+            Studiengang studiengang = Studiengang.builder()
             .mandant(mandant)
             .name(request.getName())
             .kuerzel(request.getKuerzel())
@@ -84,10 +102,15 @@ public class StudiengangController {
             .aktiv(request.isAktiv())
             .build();
 
-        Studiengang saved = studiengangService.save(studiengang);
-        log.info("Created Studiengang with id: {}", saved.getId());
+            Studiengang saved = studiengangService.save(studiengang);
+            log.info("Created Studiengang with id: {}", saved.getId());
 
-        return ResponseEntity.ok(ApiResponse.success(toDto(saved), "Studiengang erfolgreich erstellt"));
+            return ResponseEntity.ok(ApiResponse.success(toDto(saved), "Studiengang erfolgreich erstellt"));
+        } finally {
+            if (suffix != null) {
+                TenantContext.clear();
+            }
+        }
     }
 
     @GetMapping("/kuerzel/{kuerzel}")

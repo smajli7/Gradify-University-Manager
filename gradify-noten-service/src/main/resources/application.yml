@@ -68,6 +68,13 @@ logging:
   level:
     de.gradify: DEBUG
 
+gradify:
+  tenant-routing:
+    enabled: true
+  tenant-registry:
+    enabled: true
+  tenants: "1:thm,2:gu"
+
 ---
 # Profil für Entwicklung (lokale Datenbank mit Seed-Daten)
 spring:
@@ -94,5 +101,8 @@ spring:
     url: ${SUPABASE_DB_URL}
     username: ${SUPABASE_DB_USER}
     password: ${SUPABASE_DB_PASSWORD}
+gradify:
+  tenant-routing:
+    enabled: false
 
 

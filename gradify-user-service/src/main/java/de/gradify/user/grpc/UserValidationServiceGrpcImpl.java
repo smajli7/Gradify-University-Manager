@@ -17,6 +17,7 @@ import java.util.Optional;
 /**
  * gRPC Server für User-Authentifizierung und -Validierung.
  * Wird vom Auth-Service aufgerufen um Credentials zu prüfen.
+ * Nutzt zentrale gradify_user DB (alle Mandanten in einer Tabelle).
  */
 @GrpcService
 @RequiredArgsConstructor
@@ -82,7 +83,7 @@ public class UserValidationServiceGrpcImpl extends UserValidationServiceGrpc.Use
             CredentialsResponse.Builder responseBuilder = CredentialsResponse.newBuilder()
                     .setValid(true)
                     .setUserId(benutzer.getId())
-                    .setMandantId(benutzer.getMandantId())
+                    .setMandantId(benutzer.getMandantId() != null ? benutzer.getMandantId() : 0)
                     .setVorname(benutzer.getVorname())
                     .setNachname(benutzer.getNachname());
             
@@ -155,7 +156,7 @@ public class UserValidationServiceGrpcImpl extends UserValidationServiceGrpc.Use
                 .setEmail(benutzer.getEmail())
                 .setVorname(benutzer.getVorname())
                 .setNachname(benutzer.getNachname())
-                .setMandantId(benutzer.getMandantId())
+                .setMandantId(benutzer.getMandantId() != null ? benutzer.getMandantId() : 0)
                 .setActive(benutzer.isAktiv());
         
         for (Rolle rolle : benutzer.getRollen()) {

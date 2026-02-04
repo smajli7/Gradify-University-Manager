@@ -1,4 +1,5 @@
 import { Component, OnInit, inject, signal } from '@angular/core';
+import { AuthService } from '../../../core/services/auth.service';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -57,7 +58,7 @@ interface ImportResult {
       <header class="page-header">
         <div class="header-content">
           <h1>Hochschul-Verwaltung</h1>
-          <p class="subtitle">Mandanten und Studiengänge</p>
+          <p class="subtitle">Hochschulen und Studiengänge</p>
         </div>
       </header>
 
@@ -69,9 +70,20 @@ interface ImportResult {
       }
 
       @if (!loading()) {
-        <!-- Mandanten -->
+        <!-- Hochschulen -->
         <div class="section">
-          <h2 class="section-title">Hochschulen / Mandanten</h2>
+          <div class="section-header-row">
+            <h2 class="section-title">Hochschulen</h2>
+            @if (authService.isAdmin()) {
+              <button class="btn btn--primary" (click)="openAddHochschuleModal()">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="12" y1="5" x2="12" y2="19"/>
+                  <line x1="5" y1="12" x2="19" y2="12"/>
+                </svg>
+                Neue Hochschule
+              </button>
+            }
+          </div>
           <div class="mandanten-grid">
             @for (mandant of mandanten(); track mandant.id) {
               <div class="mandant-card card" 
@@ -160,6 +172,56 @@ interface ImportResult {
             }
           </div>
         }
+      }
+
+      <!-- Modal: Neue Hochschule -->
+      @if (showAddHochschuleModal()) {
+        <div class="modal-overlay" (click)="closeAddHochschuleModal()">
+          <div class="modal-content" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <h2>Neue Hochschule anlegen</h2>
+              <button class="close-btn" (click)="closeAddHochschuleModal()">
+                <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                  <line x1="18" y1="6" x2="6" y2="18"/>
+                  <line x1="6" y1="6" x2="18" y2="18"/>
+                </svg>
+              </button>
+            </div>
+            <form (ngSubmit)="createHochschule()">
+              <div class="modal-body">
+                <div class="form-group">
+                  <label for="hochschule-name">Name</label>
+                  <input id="hochschule-name" type="text" class="form-input" 
+                         [(ngModel)]="newHochschuleName" name="name"
+                         placeholder="z.B. Frankfurt University of Applied Sciences" required>
+                </div>
+                <div class="form-group">
+                  <label for="hochschule-kuerzel">Kürzel</label>
+                  <input id="hochschule-kuerzel" type="text" class="form-input" 
+                         [(ngModel)]="newHochschuleKuerzel" name="kuerzel"
+                         placeholder="z.B. FRA-UAS" maxlength="10" required>
+                  <small class="form-hint">Kurzbezeichnung, max. 10 Zeichen (wird automatisch großgeschrieben)</small>
+                </div>
+                @if (addHochschuleError()) {
+                  <div class="form-error">{{ addHochschuleError() }}</div>
+                }
+              </div>
+              <div class="modal-footer">
+                <button type="button" class="btn btn--secondary" (click)="closeAddHochschuleModal()">
+                  Abbrechen
+                </button>
+                <button type="submit" class="btn btn--primary" [disabled]="savingHochschule() || !newHochschuleName?.trim() || !newHochschuleKuerzel?.trim()">
+                  @if (savingHochschule()) {
+                    <span class="spinner-btn"></span>
+                    Wird angelegt...
+                  } @else {
+                    Hochschule anlegen
+                  }
+                </button>
+              </div>
+            </form>
+          </div>
+        </div>
       }
 
       <!-- Modal: CSV Import -->
@@ -484,6 +546,17 @@ interface ImportResult {
       opacity: 0.5;
     }
 
+    .section-header-row {
+      display: flex;
+      justify-content: space-between;
+      align-items: center;
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .section-header-row .section-title {
+      margin: 0;
+    }
+
     .section-header {
       display: flex;
       justify-content: space-between;
@@ -493,6 +566,23 @@ interface ImportResult {
 
     .section-header .section-title {
       margin: 0;
+    }
+
+    .form-hint {
+      display: block;
+      margin-top: var(--spacing-xs);
+      font-size: var(--font-size-sm);
+      color: var(--text-muted);
+    }
+
+    .form-error {
+      margin-top: var(--spacing-md);
+      padding: var(--spacing-sm);
+      background: rgba(255, 0, 85, 0.1);
+      border: 1px solid rgba(255, 0, 85, 0.3);
+      color: var(--color-danger);
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-sm);
     }
 
     .btn-group {
@@ -852,12 +942,20 @@ interface ImportResult {
 export class MandantenComponent implements OnInit {
   private readonly apollo = inject(Apollo);
   private readonly http = inject(HttpClient);
+  readonly authService = inject(AuthService);
 
   // State
   loading = signal(false);
   saving = signal(false);
+  savingHochschule = signal(false);
   showImportModal = signal(false);
+  showAddHochschuleModal = signal(false);
+  addHochschuleError = signal<string | null>(null);
   isDragover = false;
+
+  // Form für neue Hochschule
+  newHochschuleName = '';
+  newHochschuleKuerzel = '';
 
   // Data
   mandanten = signal<Mandant[]>([]);
@@ -876,18 +974,21 @@ export class MandantenComponent implements OnInit {
     try {
       const result = await firstValueFrom(this.apollo.query<{ mandanten: Mandant[] }>({
         query: GET_ALL_MANDANTEN_WITH_STUDIENGAENGE,
+        context: { clientName: 'studiengang' },
         fetchPolicy: 'network-only'
       }));
 
-      this.mandanten.set(result.data?.mandanten || []);
+      const list = result.data?.mandanten || [];
+      this.mandanten.set(list);
 
-      // Wenn ein Mandant ausgewählt war, aktualisieren
       const current = this.selectedMandant();
       if (current) {
-        const updated = this.mandanten().find(m => m.id === current.id);
+        const updated = list.find(m => m.id === current.id);
         if (updated) {
           this.selectedMandant.set(updated);
         }
+      } else if (this.authService.isHochschulVerwalter() && list.length === 1) {
+        this.selectedMandant.set(list[0]);
       }
 
     } catch (error) {
@@ -899,6 +1000,50 @@ export class MandantenComponent implements OnInit {
 
   selectMandant(mandant: Mandant): void {
     this.selectedMandant.set(mandant);
+  }
+
+  // Neue Hochschule
+  openAddHochschuleModal(): void {
+    this.newHochschuleName = '';
+    this.newHochschuleKuerzel = '';
+    this.addHochschuleError.set(null);
+    this.showAddHochschuleModal.set(true);
+  }
+
+  closeAddHochschuleModal(): void {
+    this.showAddHochschuleModal.set(false);
+    this.addHochschuleError.set(null);
+  }
+
+  async createHochschule(): Promise<void> {
+    const name = this.newHochschuleName?.trim();
+    const kuerzel = this.newHochschuleKuerzel?.trim();
+    if (!name || !kuerzel) return;
+
+    this.savingHochschule.set(true);
+    this.addHochschuleError.set(null);
+    try {
+      const response = await firstValueFrom(
+        this.http.post<{ success: boolean; data: Mandant; message?: string; error?: string }>(
+          '/api/mandanten',
+          { name, kuerzel }
+        )
+      );
+      if (response.success && response.data) {
+        this.closeAddHochschuleModal();
+        await this.loadMandanten();
+        // Optional: neu erstellte Hochschule auswählen
+        const created = this.mandanten().find(m => m.id === String(response.data!.id));
+        if (created) this.selectedMandant.set(created);
+      } else {
+        this.addHochschuleError.set(response.error || 'Fehler beim Anlegen.');
+      }
+    } catch (err: any) {
+      const msg = err.error?.message ?? err.error?.error ?? err.message ?? 'Unbekannter Fehler';
+      this.addHochschuleError.set(msg);
+    } finally {
+      this.savingHochschule.set(false);
+    }
   }
 
   formatAbschlussart(art: string): string {

@@ -66,6 +66,17 @@ public class StudentService {
     }
 
     /**
+     * Holt einen Studenten nach ID, nur wenn er zum Mandanten gehoert (fuer Verwalter-Zugriffskontrolle).
+     * @param effectiveMandantId null = Admin (alle sehen), sonst nur Studenten dieses Mandanten
+     */
+    @Transactional(readOnly = true)
+    public Optional<StudentDto> getStudentByIdIfAccessible(Long id, Long effectiveMandantId) {
+        return studentRepository.findById(id)
+                .filter(s -> effectiveMandantId == null || (s.getBenutzer() != null && effectiveMandantId.equals(s.getBenutzer().getMandantId())))
+                .map(this::toDto);
+    }
+
+    /**
      * Holt einen Studenten nach Matrikelnummer.
      */
     @Transactional(readOnly = true)
@@ -74,11 +85,32 @@ public class StudentService {
     }
 
     /**
+     * Holt Student nach Matrikelnummer, nur wenn zum Mandanten gehoerig (Verwalter-Zugriffskontrolle).
+     */
+    @Transactional(readOnly = true)
+    public Optional<StudentDto> getStudentByMatrikelnummerIfAccessible(String matrikelnummer, Long effectiveMandantId) {
+        return studentRepository.findByMatrikelnummer(matrikelnummer)
+                .filter(s -> effectiveMandantId == null || (s.getBenutzer() != null && effectiveMandantId.equals(s.getBenutzer().getMandantId())))
+                .map(this::toDto);
+    }
+
+    /**
      * Prüft ob ein Student existiert.
      */
     @Transactional(readOnly = true)
     public boolean existsById(Long id) {
         return studentRepository.existsById(id);
+    }
+
+    /**
+     * Prüft ob ein Student existiert und zum Mandanten gehoert (Verwalter-Zugriffskontrolle).
+     */
+    @Transactional(readOnly = true)
+    public boolean existsByIdIfAccessible(Long id, Long effectiveMandantId) {
+        if (effectiveMandantId == null) return studentRepository.existsById(id);
+        return studentRepository.findById(id)
+                .filter(s -> s.getBenutzer() != null && effectiveMandantId.equals(s.getBenutzer().getMandantId()))
+                .isPresent();
     }
 
     /**
@@ -172,6 +204,20 @@ public class StudentService {
     }
 
     /**
+     * Aktualisiert Student nur wenn Zugriff erlaubt (Verwalter nur eigene Hochschule).
+     */
+    @Transactional
+    public Optional<StudentDto> updateStudentIfAccessible(Long id, UpdateStudentRequest request, Long effectiveMandantId) {
+        Optional<Student> opt = studentRepository.findById(id);
+        if (opt.isEmpty()) return Optional.empty();
+        Student s = opt.get();
+        if (effectiveMandantId != null && (s.getBenutzer() == null || !effectiveMandantId.equals(s.getBenutzer().getMandantId()))) {
+            return Optional.empty();
+        }
+        return updateStudent(id, request);
+    }
+
+    /**
      * Löscht einen Studenten (setzt Status auf EXMATRIKULIERT).
      */
     @Transactional
@@ -187,15 +233,42 @@ public class StudentService {
     }
 
     /**
-     * Ermittelt die MandantId aus dem Kürzel.
-     * TODO: In Produktion über gRPC vom Studiengang-Service abrufen.
+     * Loescht Student nur wenn Zugriff erlaubt (Verwalter nur eigene Hochschule).
+     */
+    @Transactional
+    public boolean deleteStudentIfAccessible(Long id, Long effectiveMandantId) {
+        return studentRepository.findById(id)
+                .filter(s -> effectiveMandantId == null || (s.getBenutzer() != null && effectiveMandantId.equals(s.getBenutzer().getMandantId())))
+                .map(student -> {
+                    student.setStatus(Student.StudentStatus.EXMATRIKULIERT);
+                    student.getBenutzer().setAktiv(false);
+                    studentRepository.save(student);
+                    benutzerRepository.save(student.getBenutzer());
+                    log.info("Student deactivated: {}", id);
+                    return true;
+                })
+                .orElse(false);
+    }
+
+    /**
+     * Prueft ob das Mandant-Kuerzel zur gegebenen Mandant-ID passt (fuer Verwalter-Zugriffskontrolle).
+     */
+    public boolean mandantKuerzelMatchesMandantId(String kuerzel, Long mandantId) {
+        try {
+            return getMandantIdFromKuerzel(kuerzel).equals(mandantId);
+        } catch (IllegalArgumentException e) {
+            return false;
+        }
+    }
+
+    /**
+     * Ermittelt die MandantId aus dem Kuerzel.
+     * TODO: In Produktion ueber gRPC vom Studiengang-Service abrufen.
      */
     private Long getMandantIdFromKuerzel(String kuerzel) {
-        // Feste Mapping für Entwicklung (gleiche IDs wie in DataSeeder)
-        if ("THM".equalsIgnoreCase(kuerzel)) {
-            return 1L;
-        }
-        throw new IllegalArgumentException("Unbekanntes Mandant-Kürzel: " + kuerzel);
+        if ("THM".equalsIgnoreCase(kuerzel)) return 1L;
+        if ("GU".equalsIgnoreCase(kuerzel)) return 2L;
+        throw new IllegalArgumentException("Unbekanntes Mandant-Kuerzel: " + kuerzel);
     }
 
     /**

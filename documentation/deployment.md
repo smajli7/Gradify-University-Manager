@@ -90,6 +90,31 @@ EXPOSE 80
 CMD ["nginx", "-g", "daemon off;"]
 ```
 
+### DB-per-Tenant: Neue Hochschule anlegen
+
+Beim Anlegen einer neuen Hochschule (Admin → „Neue Hochschule“) werden **synchrom** drei Tenant-Datenbanken erstellt (User zentral in gradify_user):
+
+- `gradify_studiengang_<kuerzel>`
+- `gradify_noten_<kuerzel>`
+- `gradify_berechnung_<kuerzel>`
+
+Dafür benötigt der DB-Benutzer `gradify` das Recht `CREATEDB` (wird in `docker/init-databases.sql` gesetzt). Falls PostgreSQL bereits vor dieser Änderung gestartet wurde, einmal Volumes zurücksetzen:
+
+```bash
+docker compose down -v
+docker compose up -d
+```
+
+Oder manuell: `docker exec -it gradify-postgres psql -U postgres -c "ALTER USER gradify CREATEDB;"`
+
+In Produktion (Supabase etc.) ist das Provisioning deaktiviert (`gradify.tenant-provisioning.enabled: false`).
+
+**Zentrale Tenant-Registry (gradify_auth.tenant_registry):**
+- Beim Anlegen einer neuen Hochschule werden neben den 3 Datenbanken auch die Tabellen (Schema) automatisch erstellt.
+- Der neue Mandant wird in der zentralen Registry eingetragen; alle Services (User, Studiengang, Noten, Berechnung) lesen von dort.
+- Kein Neustart nötig: Neue Tenants sind sofort routbar (`gradify.tenant-registry.enabled: true`).
+- Der Auth-Service muss vor den anderen Services starten, damit `tenant_registry` existiert.
+
 ### Docker Compose (Entwicklung)
 
 ```yaml

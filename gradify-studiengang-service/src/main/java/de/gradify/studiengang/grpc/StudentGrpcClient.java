@@ -44,6 +44,10 @@ public class StudentGrpcClient {
      * @return StudentValidationResult mit Status und gRPC-Verfügbarkeit
      */
     public StudentValidationResult studentExists(Long studentId) {
+        return studentExists(studentId, null);
+    }
+
+    public StudentValidationResult studentExists(Long studentId, Long mandantId) {
         log.debug("Checking if student exists: {}", studentId);
         
         if (studentStub == null) {
@@ -54,6 +58,7 @@ public class StudentGrpcClient {
         try {
             StudentIdRequest request = StudentIdRequest.newBuilder()
                     .setStudentId(studentId)
+                    .setMandantId(mandantId != null ? mandantId : 0)
                     .build();
             
             StudentExistsResponse response = studentStub.studentExists(request);
@@ -84,6 +89,10 @@ public class StudentGrpcClient {
      * @return Der Student oder empty wenn nicht gefunden
      */
     public Optional<StudentInfo> getStudent(Long studentId) {
+        return getStudent(studentId, null);
+    }
+
+    public Optional<StudentInfo> getStudent(Long studentId, Long mandantId) {
         log.debug("Getting student: {}", studentId);
         
         if (studentStub == null) {
@@ -94,6 +103,7 @@ public class StudentGrpcClient {
         try {
             StudentIdRequest request = StudentIdRequest.newBuilder()
                     .setStudentId(studentId)
+                    .setMandantId(mandantId != null ? mandantId : 0)
                     .build();
             
             StudentResponse response = studentStub.getStudent(request);
@@ -126,7 +136,7 @@ public class StudentGrpcClient {
      * @param studiengangId Die Studiengang-ID
      * @return Liste der Studenten (leer wenn keine gefunden oder Fehler)
      */
-    public List<StudentInfo> getStudentsByStudiengang(Long studiengangId) {
+    public List<StudentInfo> getStudentsByStudiengang(Long studiengangId, Long mandantId) {
         log.debug("Getting students for studiengang: {}", studiengangId);
         
         if (studentStub == null) {
@@ -144,20 +154,28 @@ public class StudentGrpcClient {
             return Collections.emptyList();
         }
         
-        return getStudentsByIds(studentIds);
+        return getStudentsByIds(studentIds, mandantId);
+    }
+
+    public List<StudentInfo> getStudentsByIds(List<Long> studentIds) {
+        return getStudentsByIds(studentIds, null);
     }
 
     /**
      * Holt Studenten anhand einer Liste von IDs.
+     * @param mandantId Für DB-per-Tenant-Routing (wird an User-Service weitergegeben)
      */
-    public List<StudentInfo> getStudentsByIds(List<Long> studentIds) {
+    public List<StudentInfo> getStudentsByIds(List<Long> studentIds, Long mandantId) {
         if (studentStub == null || studentIds == null || studentIds.isEmpty()) {
             return Collections.emptyList();
         }
         try {
-            StudentIdsRequest request = StudentIdsRequest.newBuilder()
-                    .addAllStudentIds(studentIds)
-                    .build();
+            StudentIdsRequest.Builder reqBuilder = StudentIdsRequest.newBuilder()
+                    .addAllStudentIds(studentIds);
+            if (mandantId != null && mandantId > 0) {
+                reqBuilder.setMandantId(mandantId);
+            }
+            StudentIdsRequest request = reqBuilder.build();
             StudentListResponse response = studentStub.getStudentsByIds(request);
             List<StudentInfo> students = new ArrayList<>();
             for (StudentResponse sr : response.getStudentsList()) {

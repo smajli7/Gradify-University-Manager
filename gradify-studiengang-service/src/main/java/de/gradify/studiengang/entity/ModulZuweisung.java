@@ -5,7 +5,6 @@ import lombok.*;
 
 /**
  * Zuordnung: Welcher Dozent unterrichtet welches Modul.
- * Ein Dozent kann max. 3 Module unterrichten.
  */
 @Entity
 @Table(name = "modul_zuweisungen")

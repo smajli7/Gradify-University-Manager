@@ -183,7 +183,7 @@ interface ApiResponse<T> {
               <polyline points="9 22 9 12 15 12 15 22"/>
             </svg>
             <span>Hochschulen</span>
-            <small>Mandanten und Studiengänge</small>
+            <small>Hochschulen und Studiengänge</small>
           </a>
           <a routerLink="/admin/users" class="quick-link-btn">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">

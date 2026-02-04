@@ -1,6 +1,7 @@
 package de.gradify.user.controller;
 
 import de.gradify.shared.dto.ApiResponse;
+import de.gradify.user.config.SecurityUtils;
 import de.gradify.user.dto.CreateStudentRequest;
 import de.gradify.user.dto.StudentDto;
 import de.gradify.user.dto.UpdateStudentRequest;
@@ -27,10 +28,14 @@ public class StudentController {
 
     private final StudentService studentService;
 
-    @Operation(summary = "Alle Studenten abrufen", description = "Liefert alle Studenten, optional gefiltert nach Mandant")
+    @Operation(summary = "Alle Studenten abrufen", description = "Liefert alle Studenten. Verwalter sehen nur Studenten ihrer Hochschule.")
     @GetMapping
     public ResponseEntity<ApiResponse<List<StudentDto>>> getAllStudents(
             @RequestParam(value = "mandantId", required = false) Long mandantId) {
+        Long effectiveMandantId = SecurityUtils.getEffectiveMandantIdForFilter();
+        if (effectiveMandantId != null) {
+            mandantId = effectiveMandantId;
+        }
         log.info("Getting students - mandantId: {}", mandantId);
         
         List<StudentDto> students;
@@ -48,8 +53,8 @@ public class StudentController {
     public ResponseEntity<ApiResponse<StudentDto>> getStudentById(
             @Parameter(description = "ID des Studenten") @PathVariable Long id) {
         log.info("Getting student by id: {}", id);
-        
-        return studentService.getStudentById(id)
+        Long effectiveMandantId = SecurityUtils.getEffectiveMandantIdForFilter();
+        return studentService.getStudentByIdIfAccessible(id, effectiveMandantId)
                 .map(student -> ResponseEntity.ok(ApiResponse.success(student)))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error("Student nicht gefunden")));
@@ -60,8 +65,8 @@ public class StudentController {
     public ResponseEntity<ApiResponse<StudentDto>> getStudentByMatrikel(
             @Parameter(description = "Matrikelnummer (z.B. THM2026001)") @PathVariable String matrikelnummer) {
         log.info("Getting student by matrikelnummer: {}", matrikelnummer);
-        
-        return studentService.getStudentByMatrikelnummer(matrikelnummer)
+        Long effectiveMandantId = SecurityUtils.getEffectiveMandantIdForFilter();
+        return studentService.getStudentByMatrikelnummerIfAccessible(matrikelnummer, effectiveMandantId)
                 .map(student -> ResponseEntity.ok(ApiResponse.success(student)))
                 .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
                         .body(ApiResponse.error("Student nicht gefunden")));
@@ -71,7 +76,8 @@ public class StudentController {
     @GetMapping("/{id}/exists")
     public ResponseEntity<ApiResponse<Boolean>> studentExists(
             @Parameter(description = "ID des Studenten") @PathVariable Long id) {
-        boolean exists = studentService.existsById(id);
+        Long effectiveMandantId = SecurityUtils.getEffectiveMandantIdForFilter();
+        boolean exists = studentService.existsByIdIfAccessible(id, effectiveMandantId);
         return ResponseEntity.ok(ApiResponse.success(exists));
     }
 
@@ -81,7 +87,11 @@ public class StudentController {
             @Valid @RequestBody CreateStudentRequest request,
             @RequestParam(value = "mandantKuerzel") String mandantKuerzel) {
         log.info("Creating student for mandant: {}", mandantKuerzel);
-        
+        Long effectiveMandantId = SecurityUtils.getEffectiveMandantIdForFilter();
+        if (effectiveMandantId != null && !studentService.mandantKuerzelMatchesMandantId(mandantKuerzel, effectiveMandantId)) {
+            return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                    .body(ApiResponse.error("Kein Zugriff auf andere Hochschulen"));
+        }
         try {
             StudentDto student = studentService.createStudent(request, mandantKuerzel);
             return ResponseEntity.status(HttpStatus.CREATED)
@@ -99,9 +109,9 @@ public class StudentController {
             @PathVariable Long id,
             @Valid @RequestBody UpdateStudentRequest request) {
         log.info("Updating student: {}", id);
-        
+        Long effectiveMandantId = SecurityUtils.getEffectiveMandantIdForFilter();
         try {
-            return studentService.updateStudent(id, request)
+            return studentService.updateStudentIfAccessible(id, request, effectiveMandantId)
                     .map(student -> ResponseEntity.ok(ApiResponse.success(student, "Student aktualisiert")))
                     .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
                             .body(ApiResponse.error("Student nicht gefunden")));
@@ -117,12 +127,11 @@ public class StudentController {
     public ResponseEntity<ApiResponse<Void>> deleteStudent(
             @Parameter(description = "ID des Studenten") @PathVariable Long id) {
         log.info("Deleting student: {}", id);
-        
-        if (studentService.deleteStudent(id)) {
+        Long effectiveMandantId = SecurityUtils.getEffectiveMandantIdForFilter();
+        if (studentService.deleteStudentIfAccessible(id, effectiveMandantId)) {
             return ResponseEntity.ok(ApiResponse.success(null, "Student exmatrikuliert"));
-        } else {
-            return ResponseEntity.status(HttpStatus.NOT_FOUND)
-                    .body(ApiResponse.error("Student nicht gefunden"));
         }
+        return ResponseEntity.status(HttpStatus.NOT_FOUND)
+                .body(ApiResponse.error("Student nicht gefunden"));
     }
 }

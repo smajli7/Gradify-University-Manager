@@ -1,0 +1,2 @@
+-- Schema für gradify_noten_gu
+CREATE TABLE IF NOT EXISTS noten (id BIGSERIAL PRIMARY KEY, einschreibung_id BIGINT NOT NULL, modul_id BIGINT NOT NULL, erfasst_von BIGINT NOT NULL, note_wert DECIMAL(2,1), bestanden BOOLEAN, versuch INT NOT NULL DEFAULT 1, pruefungsdatum DATE NOT NULL, status VARCHAR(20) NOT NULL DEFAULT 'ERFASST', kommentar VARCHAR(500), erfasst_am TIMESTAMP, validiert_am TIMESTAMP, validiert_von BIGINT);

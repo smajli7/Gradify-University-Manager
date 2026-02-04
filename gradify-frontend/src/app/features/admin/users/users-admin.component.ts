@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -23,9 +23,27 @@ const GET_ALL_USERS = gql`
   }
 `;
 
+const GET_MANDANTEN = gql`
+  query GetMandanten {
+    mandanten {
+      id
+      name
+      kuerzel
+      aktiv
+    }
+  }
+`;
+
 interface Role {
   id: string;
   name: string;
+}
+
+interface Mandant {
+  id: string;
+  name: string;
+  kuerzel: string;
+  aktiv: boolean;
 }
 
 interface User {
@@ -75,10 +93,13 @@ interface ImportResult {
       <header class="page-header">
         <div class="header-content">
           <h1>Benutzerverwaltung</h1>
-          <p class="subtitle">{{ users().length }} Benutzer registriert</p>
+          <p class="subtitle">
+            {{ filteredUsers().length }} von {{ users().length }} Benutzer
+            @if (hasActiveFilters()) { <span class="filter-hint">(gefiltert)</span> }
+          </p>
         </div>
         <div class="header-actions">
-          <button class="btn btn-secondary" (click)="exportUsers()" [disabled]="users().length === 0">
+          <button class="btn btn-secondary" (click)="exportUsers()" [disabled]="filteredUsers().length === 0">
             <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
               <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
               <polyline points="7 10 12 15 17 10"/>
@@ -112,6 +133,42 @@ interface ImportResult {
       }
 
       @if (!loading()) {
+        <div class="filters-bar card">
+          <div class="filters-row">
+            <div class="filter-group filter-search">
+              <label>Suche</label>
+              <input 
+                type="text" 
+                class="form-input form-input--search" 
+                placeholder="Benutzername, Name, E-Mail..."
+                [ngModel]="searchTerm()"
+                (ngModelChange)="searchTerm.set($event)">
+            </div>
+            <div class="filter-group">
+              <label>Hochschule</label>
+              <select class="form-input" [ngModel]="filterMandantId()" (ngModelChange)="filterMandantId.set($event)">
+                <option value="">Alle Hochschulen</option>
+                @for (m of mandanten(); track m.id) {
+                  <option [value]="m.id">{{ m.name }} ({{ m.kuerzel }})</option>
+                }
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Rolle</label>
+              <select class="form-input" [ngModel]="filterRolle()" (ngModelChange)="filterRolle.set($event)">
+                <option value="">Alle Rollen</option>
+                    <option value="ROLE_ADMIN">Admin</option>
+                    <option value="ROLE_HOCHSCHUL_VERWALTER">Hochschul-Verwalter</option>
+                    <option value="ROLE_LEHRENDER">Dozent</option>
+                    <option value="ROLE_PRUEFUNGSAMT">Prüfungsamt</option>
+                    <option value="ROLE_STUDENT">Student</option>
+              </select>
+            </div>
+            @if (hasActiveFilters()) {
+              <button class="btn btn-secondary btn-sm" (click)="clearFilters()">Filter zurücksetzen</button>
+            }
+          </div>
+        </div>
         <div class="table-container card">
           <table class="data-table">
             <thead>
@@ -125,7 +182,7 @@ interface ImportResult {
               </tr>
             </thead>
             <tbody>
-              @for (user of users(); track user.id) {
+              @for (user of filteredUsers(); track user.id) {
                 <tr>
                   <td>
                     <span class="username-badge">{{ user.benutzername }}</span>
@@ -169,9 +226,15 @@ interface ImportResult {
                   </td>
                 </tr>
               }
-              @if (users().length === 0) {
+              @if (filteredUsers().length === 0) {
                 <tr>
-                  <td colspan="6" class="empty-row">Keine Benutzer gefunden</td>
+                  <td colspan="6" class="empty-row">
+                    @if (hasActiveFilters()) {
+                      Keine Benutzer entsprechen den Filtern
+                    } @else {
+                      Keine Benutzer gefunden
+                    }
+                  </td>
                 </tr>
               }
             </tbody>
@@ -250,6 +313,7 @@ interface ImportResult {
                     <option value="ROLE_STUDENT">Student</option>
                     <option value="ROLE_LEHRENDER">Dozent</option>
                     <option value="ROLE_PRUEFUNGSAMT">Prüfungsamt</option>
+                    <option value="ROLE_HOCHSCHUL_VERWALTER">Hochschul-Verwalter</option>
                     <option value="ROLE_ADMIN">Admin</option>
                   </select>
                 </div>
@@ -503,6 +567,11 @@ interface ImportResult {
       color: #ef4444;
     }
 
+    .role-badge.role-hochschul {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+    }
+
     .role-badge.role-dozent {
       background: rgba(168, 85, 247, 0.15);
       color: #a855f7;
@@ -744,6 +813,51 @@ interface ImportResult {
       cursor: pointer;
     }
 
+    .filters-bar {
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .filters-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: var(--spacing-md);
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-xs);
+      min-width: 160px;
+    }
+
+    .filter-group.filter-search {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .filter-group label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .form-input--search {
+      max-width: 320px;
+    }
+
+    .filter-hint {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    .btn-sm {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      font-size: 0.875rem;
+    }
+
     .header-actions {
       display: flex;
       gap: var(--spacing-sm);
@@ -910,6 +1024,43 @@ export class UsersAdminComponent implements OnInit {
   showModal = signal(false);
   editMode = signal(false);
   users = signal<User[]>([]);
+  mandanten = signal<Mandant[]>([]);
+
+  // Filter (als Signals, damit computed() bei Änderung neu berechnet wird)
+  searchTerm = signal('');
+  filterMandantId = signal('');
+  filterRolle = signal('');
+
+  filteredUsers = computed(() => {
+    let list = this.users();
+    const search = this.searchTerm()?.trim().toLowerCase();
+    const mandantId = this.filterMandantId()?.trim();
+    const rolle = this.filterRolle()?.trim();
+
+    if (search) {
+      list = list.filter(u => {
+        const text = `${u.benutzername} ${u.vorname} ${u.nachname} ${u.email}`.toLowerCase();
+        return text.includes(search);
+      });
+    }
+    if (mandantId) {
+      list = list.filter(u => String(u.mandantId ?? '') === String(mandantId));
+    }
+    if (rolle) {
+      list = list.filter(u => u.rollen?.some(r => r.name === rolle));
+    }
+    return list;
+  });
+
+  hasActiveFilters(): boolean {
+    return !!(this.searchTerm()?.trim() || this.filterMandantId() || this.filterRolle());
+  }
+
+  clearFilters(): void {
+    this.searchTerm.set('');
+    this.filterMandantId.set('');
+    this.filterRolle.set('');
+  }
 
   // Import State
   showImportModal = signal(false);
@@ -928,7 +1079,21 @@ export class UsersAdminComponent implements OnInit {
 
   ngOnInit(): void {
     this.loadRoles();
+    this.loadMandanten();
     this.loadUsers();
+  }
+
+  async loadMandanten(): Promise<void> {
+    try {
+      const result = await firstValueFrom(this.apollo.query<{ mandanten: Mandant[] }>({
+        query: GET_MANDANTEN,
+        context: { clientName: 'studiengang' },
+        fetchPolicy: 'network-only'
+      }));
+      this.mandanten.set(result.data?.mandanten || []);
+    } catch (err) {
+      console.error('Error loading mandanten:', err);
+    }
   }
 
   private async loadRoles(): Promise<void> {
@@ -945,6 +1110,7 @@ export class UsersAdminComponent implements OnInit {
       this.rolesMap.set('ROLE_LEHRENDER', 2);
       this.rolesMap.set('ROLE_PRUEFUNGSAMT', 3);
       this.rolesMap.set('ROLE_STUDIENGANGLEITUNG', 4);
+      this.rolesMap.set('ROLE_HOCHSCHUL_VERWALTER', 6);
       this.rolesMap.set('ROLE_ADMIN', 5);
     }
   }
@@ -992,6 +1158,7 @@ export class UsersAdminComponent implements OnInit {
     const role = rollen[0].name;
     switch (role) {
       case 'ROLE_ADMIN': return 'Admin';
+      case 'ROLE_HOCHSCHUL_VERWALTER': return 'Hochschul-Verwalter';
       case 'ROLE_LEHRENDER': return 'Dozent';
       case 'ROLE_PRUEFUNGSAMT': return 'Prüfungsamt';
       case 'ROLE_STUDENT': return 'Student';
@@ -1004,6 +1171,7 @@ export class UsersAdminComponent implements OnInit {
     const role = rollen[0].name;
     switch (role) {
       case 'ROLE_ADMIN': return 'role-admin';
+      case 'ROLE_HOCHSCHUL_VERWALTER': return 'role-hochschul';
       case 'ROLE_LEHRENDER': return 'role-dozent';
       case 'ROLE_PRUEFUNGSAMT': return 'role-pruefungsamt';
       case 'ROLE_STUDENT': return 'role-student';

@@ -26,7 +26,11 @@ public class SecurityConfig {
      * - STUDENT: Kann nur eigene Noten lesen (ueber GraphQL)
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) TenantContextFilter tenantContextFilter) throws Exception {
+        if (tenantContextFilter != null) {
+            http.addFilterBefore(tenantContextFilter, UsernamePasswordAuthenticationFilter.class);
+        }
         http
             .csrf(AbstractHttpConfigurer::disable)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
@@ -37,17 +41,17 @@ public class SecurityConfig {
                 .requestMatchers("/actuator/**").permitAll()
                 
                 // Noten-Endpunkte mit Rollen-Kontrolle
-                // Noten erfassen: DOZENT, ADMIN
+                // Noten erfassen: LEHRENDER, ADMIN
                 .requestMatchers(HttpMethod.POST, "/api/noten").hasAnyRole("LEHRENDER", "ADMIN")
-                
-                // Noten bearbeiten: DOZENT, ADMIN
+
+                // Noten bearbeiten: LEHRENDER, ADMIN
                 .requestMatchers(HttpMethod.PUT, "/api/noten/**").hasAnyRole("LEHRENDER", "ADMIN")
-                
-                // Noten validieren: DOZENT, PRUEFUNGSAMT, ADMIN
-                .requestMatchers(HttpMethod.POST, "/api/noten/*/validate").hasAnyRole("LEHRENDER", "PRUEFUNGSAMT", "ADMIN")
-                
-                // Noten freigeben: nur PRUEFUNGSAMT, ADMIN
-                .requestMatchers(HttpMethod.POST, "/api/noten/*/release").hasAnyRole("PRUEFUNGSAMT", "ADMIN")
+
+                // Noten validieren: LEHRENDER, PRUEFUNGSAMT, ADMIN, HOCHSCHUL_VERWALTER
+                .requestMatchers(HttpMethod.POST, "/api/noten/*/validate").hasAnyRole("LEHRENDER", "PRUEFUNGSAMT", "ADMIN", "HOCHSCHUL_VERWALTER")
+
+                // Noten freigeben: PRUEFUNGSAMT, ADMIN, HOCHSCHUL_VERWALTER
+                .requestMatchers(HttpMethod.POST, "/api/noten/*/release").hasAnyRole("PRUEFUNGSAMT", "ADMIN", "HOCHSCHUL_VERWALTER")
                 
                 // Noten loeschen: nur ADMIN
                 .requestMatchers(HttpMethod.DELETE, "/api/noten/**").hasRole("ADMIN")

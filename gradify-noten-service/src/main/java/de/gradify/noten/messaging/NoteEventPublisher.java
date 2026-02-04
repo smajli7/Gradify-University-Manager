@@ -4,6 +4,8 @@ import de.gradify.noten.config.RabbitMQConfig;
 import de.gradify.noten.entity.Note;
 import de.gradify.shared.event.NoteEvent;
 import de.gradify.shared.event.NoteEventType;
+import de.gradify.shared.tenant.TenantContext;
+import de.gradify.shared.tenant.TenantSuffixResolver;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.amqp.rabbit.core.RabbitTemplate;
@@ -23,6 +25,7 @@ import java.time.Instant;
 public class NoteEventPublisher {
 
     private final RabbitTemplate rabbitTemplate;
+    private final TenantSuffixResolver tenantSuffixResolver;
 
     /**
      * Publiziert ein Event für eine neu erstellte Note.
@@ -63,6 +66,13 @@ public class NoteEventPublisher {
      * Generische Methode zum Publizieren von Events.
      */
     private void publishEvent(Note note, NoteEventType eventType, String routingKey, String ausgeloestVon) {
+        Long mandantId = null;
+        if (tenantSuffixResolver != null) {
+            String suffix = TenantContext.getTenantSuffix();
+            if (suffix != null) {
+                mandantId = tenantSuffixResolver.resolveMandantId(suffix);
+            }
+        }
         NoteEvent event = NoteEvent.builder()
                 .eventType(eventType)
                 .noteId(note.getId())
@@ -72,6 +82,7 @@ public class NoteEventPublisher {
                 .bestanden(note.getBestanden())
                 .timestamp(Instant.now())
                 .ausgeloestVon(ausgeloestVon)
+                .mandantId(mandantId)
                 .build();
 
         try {

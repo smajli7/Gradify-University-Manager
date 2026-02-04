@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
@@ -12,8 +12,27 @@ const GET_ALL_USERS = gql`
       benutzername
       vorname
       nachname
+      mandantId
       rollen {
         name
+      }
+    }
+  }
+`;
+
+const GET_MANDANTEN_UND_STUDIENGAENGE = gql`
+  query GetMandantenUndStudiengaenge {
+    mandanten {
+      id
+      name
+      kuerzel
+      studiengaenge {
+        id
+        name
+        kuerzel
+        module {
+          id
+        }
       }
     }
   }
@@ -46,7 +65,15 @@ interface User {
   benutzername: string;
   vorname: string;
   nachname: string;
+  mandantId?: string | number;
   rollen: { name: string }[];
+}
+
+interface Mandant {
+  id: string;
+  name: string;
+  kuerzel: string;
+  studiengaenge: { id: string; name: string; kuerzel: string; module: { id: string }[] }[];
 }
 
 interface Modul {
@@ -80,7 +107,10 @@ interface ApiResponse<T> {
       <header class="page-header">
         <div class="header-content">
           <h1>Dozenten-Modul-Zuweisungen</h1>
-          <p class="subtitle">{{ assignments().length }} Zuweisungen aktiv</p>
+          <p class="subtitle">
+            {{ filteredAssignments().length }} von {{ assignments().length }} Zuweisungen
+            @if (hasActiveFilters()) { <span class="filter-hint">(gefiltert)</span> }
+          </p>
         </div>
         <button class="btn btn-primary" (click)="openNewAssignmentModal()">
           <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -97,8 +127,45 @@ interface ApiResponse<T> {
           <line x1="12" y1="16" x2="12" y2="12"/>
           <line x1="12" y1="8" x2="12.01" y2="8"/>
         </svg>
-        <span>Jeder Dozent kann maximal 3 Module unterrichten</span>
+        <span>Dozenten werden ihren Modulen zugewiesen</span>
       </div>
+
+      @if (!loading()) {
+        <div class="filters-bar card">
+          <div class="filters-row">
+            <div class="filter-group filter-search">
+              <label>Suche</label>
+              <input 
+                type="text" 
+                class="form-input form-input--search" 
+                placeholder="Dozent, Modul-Nr oder Modulname..."
+                [ngModel]="searchTerm()"
+                (ngModelChange)="searchTerm.set($event)">
+            </div>
+            <div class="filter-group">
+              <label>Hochschule</label>
+              <select class="form-input" [ngModel]="filterMandantId()" (ngModelChange)="filterMandantId.set($event); onMandantChange()">
+                <option value="">Alle Hochschulen</option>
+                @for (m of mandanten(); track m.id) {
+                  <option [value]="m.id">{{ m.name }} ({{ m.kuerzel }})</option>
+                }
+              </select>
+            </div>
+            <div class="filter-group">
+              <label>Studiengang</label>
+              <select class="form-input" [ngModel]="filterStudiengangId()" (ngModelChange)="filterStudiengangId.set($event)">
+                <option value="">Alle Studiengänge</option>
+                @for (sg of filteredStudiengaenge(); track sg.id) {
+                  <option [value]="sg.id">{{ sg.name }} ({{ sg.kuerzel }})</option>
+                }
+              </select>
+            </div>
+            @if (hasActiveFilters()) {
+              <button class="btn btn-secondary btn-sm" (click)="clearFilters()">Filter zurücksetzen</button>
+            }
+          </div>
+        </div>
+      }
 
       @if (loading()) {
         <div class="loading-card card">
@@ -116,12 +183,12 @@ interface ApiResponse<T> {
                 <th>Modul</th>
                 <th>ECTS</th>
                 <th>Semester</th>
-                <th class="col-center">Anzahl Module</th>
+                <th class="col-center">Module</th>
                 <th class="col-center">Aktionen</th>
               </tr>
             </thead>
             <tbody>
-              @for (assignment of assignments(); track assignment.dozentId + assignment.modulId) {
+              @for (assignment of filteredAssignments(); track assignment.dozentId + assignment.modulId) {
                 <tr>
                   <td>{{ assignment.dozentName }}</td>
                   <td>
@@ -131,9 +198,7 @@ interface ApiResponse<T> {
                   <td>{{ getModulEcts(assignment.modulId) }}</td>
                   <td>{{ getModulSemester(assignment.modulId) }}</td>
                   <td class="col-center">
-                    <span class="count-badge" [class.warning]="getDozentModuleCount(assignment.dozentId) >= 3">
-                      {{ getDozentModuleCount(assignment.dozentId) }}/3
-                    </span>
+                    <span class="count-badge">{{ getDozentModuleCount(assignment.dozentId) }}</span>
                   </td>
                   <td class="col-center">
                     <button 
@@ -148,9 +213,15 @@ interface ApiResponse<T> {
                   </td>
                 </tr>
               }
-              @if (assignments().length === 0) {
+              @if (filteredAssignments().length === 0) {
                 <tr>
-                  <td colspan="6" class="empty-row">Keine Zuweisungen vorhanden</td>
+                  <td colspan="6" class="empty-row">
+                    @if (hasActiveFilters()) {
+                      Keine Zuweisungen entsprechen den Filtern
+                    } @else {
+                      Keine Zuweisungen vorhanden
+                    }
+                  </td>
                 </tr>
               }
             </tbody>
@@ -182,9 +253,6 @@ interface ApiResponse<T> {
                       <option [value]="dozent.id">{{ dozent.vorname }} {{ dozent.nachname }}</option>
                     }
                   </select>
-                  @if (selectedDozentId && getDozentModuleCount(selectedDozentId) >= 3) {
-                    <span class="error-message">Dieser Dozent hat bereits 3 Module zugewiesen (Maximum erreicht)</span>
-                  }
                 </div>
 
                 <div class="form-group full-width">
@@ -204,7 +272,7 @@ interface ApiResponse<T> {
               <button 
                 class="btn btn-primary" 
                 (click)="saveAssignment()" 
-                [disabled]="!selectedDozentId || !selectedModulId || getDozentModuleCount(selectedDozentId) >= 3">
+                [disabled]="!selectedDozentId || !selectedModulId">
                 Zuweisen
               </button>
             </div>
@@ -237,6 +305,51 @@ interface ApiResponse<T> {
     .subtitle {
       color: var(--text-muted);
       margin: var(--spacing-xs) 0 0 0;
+    }
+
+    .filter-hint {
+      color: var(--text-muted);
+      font-size: 0.875rem;
+    }
+
+    .filters-bar {
+      margin-bottom: var(--spacing-lg);
+    }
+
+    .filters-row {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-end;
+      gap: var(--spacing-md);
+    }
+
+    .filter-group {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-xs);
+      min-width: 160px;
+    }
+
+    .filter-group.filter-search {
+      flex: 1;
+      min-width: 200px;
+    }
+
+    .filter-group label {
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+    }
+
+    .form-input--search {
+      max-width: 320px;
+    }
+
+    .btn-sm {
+      padding: var(--spacing-xs) var(--spacing-sm);
+      font-size: 0.875rem;
     }
 
     .info-banner {
@@ -539,12 +652,72 @@ export class AssignmentsComponent implements OnInit {
   // State
   loading = signal(false);
   showModal = signal(false);
-  
+
   // Data
   users = signal<User[]>([]);
   dozenten = signal<User[]>([]);
   module = signal<Modul[]>([]);
   assignments = signal<Assignment[]>([]);
+  mandanten = signal<Mandant[]>([]);
+
+  // Modul -> Studiengang/Mandant mapping
+  private modulIdToStudiengangId = new Map<string, string>();
+  private modulIdToMandantId = new Map<string, string>();
+  private dozentIdToMandantId = new Map<string, string>();
+
+  // Filter (als Signals, damit computed bei Änderung neu berechnet wird)
+  searchTerm = signal('');
+  filterMandantId = signal('');
+  filterStudiengangId = signal('');
+
+  filteredStudiengaenge = computed(() => {
+    const mandantId = this.filterMandantId()?.trim();
+    const all = this.mandanten();
+    if (!mandantId) {
+      return all.flatMap(m => m.studiengaenge || []);
+    }
+    const mandant = all.find(m => m.id === mandantId);
+    return mandant?.studiengaenge || [];
+  });
+
+  filteredAssignments = computed(() => {
+    let list = this.assignments();
+    const search = this.searchTerm()?.trim().toLowerCase();
+    const mandantId = this.filterMandantId()?.trim();
+    const studiengangId = this.filterStudiengangId()?.trim();
+
+    if (search) {
+      list = list.filter(a => {
+        const text = `${a.dozentName} ${a.modulNr} ${a.modulName}`.toLowerCase();
+        return text.includes(search);
+      });
+    }
+    if (mandantId) {
+      list = list.filter(a => {
+        const dozentMandant = this.dozentIdToMandantId.get(a.dozentId);
+        const modulMandant = this.modulIdToMandantId.get(a.modulId);
+        return dozentMandant === mandantId || modulMandant === mandantId;
+      });
+    }
+    if (studiengangId) {
+      list = list.filter(a => this.modulIdToStudiengangId.get(a.modulId) === studiengangId);
+    }
+    return list;
+  });
+
+  hasActiveFilters(): boolean {
+    return !!(this.searchTerm()?.trim() || this.filterMandantId() || this.filterStudiengangId());
+  }
+
+  onMandantChange(): void {
+    this.filterStudiengangId.set('');
+  }
+
+  clearFilters(): void {
+    this.searchTerm.set('');
+    this.filterMandantId.set('');
+    this.filterStudiengangId.set('');
+  }
 
   // Form
   selectedDozentId = '';
@@ -560,7 +733,7 @@ export class AssignmentsComponent implements OnInit {
   async loadData(): Promise<void> {
     this.loading.set(true);
     try {
-      // Alle Daten parallel laden
+      await this.loadMandantenUndStudiengaenge();
       const [usersResult, moduleResult] = await Promise.all([
         firstValueFrom(this.apollo.query<{ users: User[] }>({
           query: GET_ALL_USERS,
@@ -576,12 +749,16 @@ export class AssignmentsComponent implements OnInit {
       this.users.set(usersResult.data?.users || []);
       this.module.set(moduleResult.data?.module || []);
 
-      // Filter nur Dozenten (ROLE_LEHRENDER)
       const allUsers = this.users();
-      const dozentenList = allUsers.filter(u => 
+      const dozentenList = allUsers.filter(u =>
         u.rollen?.some(r => r.name === 'ROLE_LEHRENDER')
       );
       this.dozenten.set(dozentenList);
+      allUsers.forEach(u => {
+        if (u.mandantId != null) {
+          this.dozentIdToMandantId.set(u.id, String(u.mandantId));
+        }
+      });
 
       // Lade Zuweisungen für alle Dozenten
       await this.loadAllAssignments();
@@ -590,6 +767,31 @@ export class AssignmentsComponent implements OnInit {
       console.error('Error loading data:', error);
     } finally {
       this.loading.set(false);
+    }
+  }
+
+  async loadMandantenUndStudiengaenge(): Promise<void> {
+    try {
+      const result = await firstValueFrom(this.apollo.query<{ mandanten: Mandant[] }>({
+        query: GET_MANDANTEN_UND_STUDIENGAENGE,
+        context: { clientName: 'studiengang' },
+        fetchPolicy: 'network-only'
+      }));
+      const mandantenList = result.data?.mandanten || [];
+      this.mandanten.set(mandantenList);
+
+      this.modulIdToStudiengangId.clear();
+      this.modulIdToMandantId.clear();
+      for (const m of mandantenList) {
+        for (const sg of m.studiengaenge || []) {
+          for (const mod of sg.module || []) {
+            this.modulIdToStudiengangId.set(String(mod.id), sg.id);
+            this.modulIdToMandantId.set(String(mod.id), m.id);
+          }
+        }
+      }
+    } catch (err) {
+      console.error('Error loading mandanten/studiengaenge:', err);
     }
   }
 
@@ -666,10 +868,6 @@ export class AssignmentsComponent implements OnInit {
 
   async saveAssignment(): Promise<void> {
     if (!this.selectedDozentId || !this.selectedModulId) return;
-    if (this.getDozentModuleCount(this.selectedDozentId) >= 3) {
-      alert('Dieser Dozent hat bereits das Maximum von 3 Modulen erreicht');
-      return;
-    }
 
     try {
       await firstValueFrom(

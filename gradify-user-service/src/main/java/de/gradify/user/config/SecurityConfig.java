@@ -24,7 +24,11 @@ public class SecurityConfig {
      * Security-Konfiguration mit Authentifizierung (für dev und prod).
      */
     @Bean
-    public SecurityFilterChain prodSecurityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
+    public SecurityFilterChain prodSecurityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) de.gradify.user.config.TenantContextFilter tenantContextFilter) throws Exception {
+        if (tenantContextFilter != null) {
+            http.addFilterBefore(tenantContextFilter, UsernamePasswordAuthenticationFilter.class);
+        }
         http
             .csrf(AbstractHttpConfigurer::disable)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
@@ -34,7 +38,7 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 // Rollen-basierte Zugriffskontrolle
-                .requestMatchers("/api/students/**").hasAnyRole("ADMIN", "LEHRENDER", "PRUEFUNGSAMT")
+                .requestMatchers("/api/students/**").hasAnyRole("ADMIN", "LEHRENDER", "PRUEFUNGSAMT", "HOCHSCHUL_VERWALTER")
                 .requestMatchers("/api/users/**").hasRole("ADMIN")
                 .requestMatchers("/api/**").authenticated()
                 .requestMatchers("/graphql/**").authenticated()

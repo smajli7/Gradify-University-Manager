@@ -7,16 +7,14 @@
 -- =====================================================
 
 -- =====================================================
--- MANDANTEN (Hochschulen)
--- ID: 1 = THM
+-- MANDANTEN (nur THM - GU kommt per TenantDataLoader)
 -- =====================================================
 INSERT INTO mandanten (id, name, kuerzel, aktiv) VALUES
     (1, 'Technische Hochschule Mittelhessen', 'THM', true)
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================
--- STUDIENGÄNGE
--- ID: 1 = BVT Bachelor, 2 = FSA Master
+-- STUDIENGÄNGE (nur THM: BVT, FSA)
 -- Spalten: id, mandant_id, name, kuerzel, abschlussart, regelstudienzeit, gesamt_ects, studienvariante, aktiv
 -- =====================================================
 INSERT INTO studiengaenge (id, mandant_id, name, kuerzel, abschlussart, regelstudienzeit, gesamt_ects, studienvariante, aktiv) VALUES
@@ -25,14 +23,17 @@ INSERT INTO studiengaenge (id, mandant_id, name, kuerzel, abschlussart, regelstu
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================
--- PRÜFUNGSORDNUNGEN
--- ID: 1 = BVT PO 2023, 2 = FSA PO 2023
+-- PRÜFUNGSORDNUNGEN (nur THM: PO 1, 2)
 -- Spalten: id, studiengang_id, version, gueltig_ab, gueltig_bis, berechnungsart
 -- =====================================================
 INSERT INTO pruefungsordnungen (id, studiengang_id, version, gueltig_ab, gueltig_bis, berechnungsart) VALUES
     (1, 1, 'PO 2023', '2023-10-01', NULL, 'GEWICHTET'),
     (2, 2, 'PO 2023', '2023-10-01', NULL, 'ARITHMETISCH_GEMISCHT')
 ON CONFLICT (id) DO NOTHING;
+
+-- Studiengänge mit aktueller PO verknüpfen
+UPDATE studiengaenge SET aktuelle_po_id = 1 WHERE id = 1 AND aktuelle_po_id IS NULL;
+UPDATE studiengaenge SET aktuelle_po_id = 2 WHERE id = 2 AND aktuelle_po_id IS NULL;
 
 -- =====================================================
 -- MODULE - BIOVERFAHRENSTECHNIK (BVT)
@@ -102,7 +103,7 @@ INSERT INTO module (id, po_id, modul_nr, name, ects, semester, dauer_semester, p
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================
--- EINSCHREIBUNGEN - 35 Studenten
+-- EINSCHREIBUNGEN - nur THM (35 Studenten)
 -- IDs: 1-35 (matching student_id 1-35)
 -- Spalten: id, student_id, studiengang_id, po_id, studienvariante, immatrikuliert_am, aktuelles_semester, status
 -- =====================================================
@@ -173,23 +174,20 @@ ON CONFLICT (id) DO NOTHING;
 -- Spalten: id, dozent_id, modul_id
 -- =====================================================
 INSERT INTO modul_zuweisungen (id, dozent_id, modul_id) VALUES
-    -- Prof. Mueller (dozent_id=10): Mathematik, Physik, Thermodynamik
-    (1, 10, 1),   -- Mathematik I
-    (2, 10, 2),   -- Physik
-    (3, 10, 9),   -- Thermodynamik
-    -- Prof. Schmidt (dozent_id=11): Chemie, Biologie
-    (4, 11, 3),   -- Allgemeine Chemie
-    (5, 11, 4),   -- Biologie I
-    (6, 11, 7),   -- Organische Chemie
-    -- Prof. Weber (dozent_id=12): Verfahrenstechnik
-    (7, 12, 13),  -- Verfahrenstechnik I
-    (8, 12, 16),  -- Bioverfahrenstechnik I
-    -- Prof. Klein (dozent_id=13): FSA Forschungsmethoden
-    (9, 13, 101),  -- Forschungsmethoden I
-    (10, 13, 106), -- Forschungsmethoden II
-    -- Prof. Richter (dozent_id=14): FSA Statistik, Forschungsprojekte
-    (11, 14, 104), -- Statistik
-    (12, 14, 109)  -- Forschungsprojekt I
+    -- THM BVT: Prof. Mueller, Schmidt, Weber
+    (1, 10, 1),
+    (2, 10, 2),
+    (3, 10, 9),
+    (4, 11, 3),
+    (5, 11, 4),
+    (6, 11, 7),
+    (7, 12, 13),
+    (8, 12, 16),
+    -- THM FSA: Prof. Klein, Richter
+    (9, 13, 101),
+    (10, 13, 106),
+    (11, 14, 104),
+    (12, 14, 109)
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================

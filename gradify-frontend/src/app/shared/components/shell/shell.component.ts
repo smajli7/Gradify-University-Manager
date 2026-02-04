@@ -108,7 +108,7 @@ export class ShellComponent {
       label: 'Hochschulen',
       route: '/admin/mandanten',
       icon: 'assets/icons/stats.svg',
-      roles: ['ADMIN']
+      roles: ['ADMIN', 'HOCHSCHUL_VERWALTER']
     },
     {
       id: 'users',
@@ -129,35 +129,35 @@ export class ShellComponent {
       label: 'Studenten',
       route: '/students',
       icon: 'assets/icons/students.svg',
-      roles: ['ADMIN', 'PRUEFUNGSAMT']
+      roles: ['ADMIN', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER']
     },
     {
       id: 'validation',
       label: 'Validierung',
       route: '/grades/validation',
       icon: 'assets/icons/validation.svg',
-      roles: ['ADMIN', 'PRUEFUNGSAMT']
+      roles: ['ADMIN', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER']
     },
     {
       id: 'calculation',
       label: 'Berechnung',
       route: '/calculation',
       icon: 'assets/icons/calculation.svg',
-      roles: ['ADMIN', 'PRUEFUNGSAMT']
+      roles: ['ADMIN', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER']
     },
     {
       id: 'stats',
       label: 'Statistik',
       route: '/stats',
       icon: 'assets/icons/stats.svg',
-      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT']
+      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER']
     },
     {
       id: 'study-plan',
       label: 'Studienplan',
       route: '/study-plan',
       icon: 'assets/icons/progress.svg',
-      roles: ['ADMIN', 'PRUEFUNGSAMT', 'STUDENT']
+      roles: ['ADMIN', 'PRUEFUNGSAMT', 'STUDENT', 'HOCHSCHUL_VERWALTER']
     },
     
     // === DOZENT ===
@@ -201,7 +201,7 @@ export class ShellComponent {
       label: 'Profil',
       route: '/profile',
       icon: 'assets/icons/profile.svg',
-      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT', 'STUDENT']
+      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER', 'STUDENT']
     }
   ];
 

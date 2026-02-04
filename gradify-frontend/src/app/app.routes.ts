@@ -1,4 +1,6 @@
 import { Routes } from '@angular/router';
+import { adminGuard } from './core/guards/admin.guard';
+import { adminOrHochschulGuard } from './core/guards/admin-or-hochschul-guard';
 import { authGuard, authGuardChild, authGuardMatch } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
 import { roleRedirectGuard } from './core/guards/role-redirect.guard';
@@ -73,21 +75,25 @@ export const routes: Routes = [
       },
       {
         path: 'admin',
+        canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/admin.component')
           .then(m => m.AdminComponent)
       },
       {
         path: 'admin/mandanten',
+        canActivate: [adminOrHochschulGuard],
         loadComponent: () => import('./features/admin/mandanten/mandanten.component')
           .then(m => m.MandantenComponent)
       },
       {
         path: 'admin/users',
+        canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/users/users-admin.component')
           .then(m => m.UsersAdminComponent)
       },
       {
         path: 'admin/assignments',
+        canActivate: [adminGuard],
         loadComponent: () => import('./features/admin/assignments/assignments.component')
           .then(m => m.AssignmentsComponent)
       },

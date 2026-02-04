@@ -1,8 +1,14 @@
 package de.gradify.studiengang.controller;
 
+import de.gradify.shared.tenant.TenantContext;
+import de.gradify.shared.tenant.TenantSuffixResolver;
+import de.gradify.studiengang.config.AuthPrincipal;
+import de.gradify.studiengang.config.SecurityUtils;
 import de.gradify.studiengang.entity.*;
 import de.gradify.studiengang.repository.*;
+import de.gradify.studiengang.service.MandantAggregationService;
 import lombok.RequiredArgsConstructor;
+import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -23,6 +29,10 @@ import java.util.List;
 public class StudiengangGraphQLController {
 
     private final MandantRepository mandantRepository;
+    @Autowired(required = false)
+    private MandantAggregationService mandantAggregationService;
+    @Autowired(required = false)
+    private TenantSuffixResolver tenantSuffixResolver;
     private final StudiengangRepository studiengangRepository;
     private final ModulRepository modulRepository;
     private final EinschreibungRepository einschreibungRepository;
@@ -33,36 +43,69 @@ public class StudiengangGraphQLController {
 
     /**
      * Holt alle Mandanten.
-     * GraphQL: query { mandanten { id, name, kuerzel } }
+     * HOCHSCHUL_VERWALTER sieht nur seine zugewiesene Hochschule.
      */
     @QueryMapping
     public List<Mandant> mandanten() {
-        log.info("GraphQL: Fetching all mandanten");
-        return mandantRepository.findAll();
+        log.info("GraphQL: Fetching mandanten");
+        List<Mandant> all = mandantAggregationService != null
+                ? mandantAggregationService.findAllMandanten()
+                : mandantRepository.findAll();
+        AuthPrincipal ap = SecurityUtils.getAuthPrincipal();
+        if (ap != null && ap.isHochschulVerwalter() && ap.getMandantId() != null) {
+            all = all.stream()
+                    .filter(m -> ap.getMandantId().equals(m.getId()))
+                    .toList();
+        }
+        return all;
     }
 
     /**
      * Holt einen Mandanten nach ID.
+     * HOCHSCHUL_VERWALTER nur fuer eigene Hochschule.
      * GraphQL: query { mandant(id: "...") { id, name, studiengaenge {...} } }
      */
     @QueryMapping
     public Mandant mandant(@Argument("id") String id) {
         log.info("GraphQL: Fetching mandant by id: {}", id);
-        return mandantRepository.findById(Long.parseLong(id)).orElse(null);
+        Long mandantId = Long.parseLong(id);
+        if (!SecurityUtils.ensureMandantAccess(mandantId)) {
+            return null;
+        }
+        return mandantAggregationService != null
+                ? mandantAggregationService.findById(mandantId).orElse(null)
+                : mandantRepository.findById(mandantId).orElse(null);
     }
 
     // ==================== STUDIENGANG QUERIES ====================
 
     /**
      * Holt alle Studiengaenge, optional gefiltert nach Mandant.
+     * HOCHSCHUL_VERWALTER nur fuer eigene Hochschule.
      * GraphQL: query { studiengaenge(mandantId: "...") { id, name, ... } }
      */
     @QueryMapping
     public List<Studiengang> studiengaenge(@Argument("mandantId") String mandantId) {
         log.info("GraphQL: Fetching studiengaenge - mandantId: {}", mandantId);
-        
+        AuthPrincipal ap = SecurityUtils.getAuthPrincipal();
+        if (ap != null && ap.isHochschulVerwalter() && ap.getMandantId() != null) {
+            mandantId = String.valueOf(ap.getMandantId());
+        }
         if (mandantId != null) {
-            return studiengangRepository.findByMandantId(Long.parseLong(mandantId));
+            Long mid = Long.parseLong(mandantId);
+            if (!SecurityUtils.ensureMandantAccess(mid)) {
+                return List.of();
+            }
+            String suffix = tenantSuffixResolver != null ? tenantSuffixResolver.resolve(mid) : null;
+            if (suffix != null) {
+                TenantContext.setTenantSuffix(suffix);
+                try {
+                    return studiengangRepository.findByMandantId(mid);
+                } finally {
+                    TenantContext.clear();
+                }
+            }
+            return studiengangRepository.findByMandantId(mid);
         }
         return studiengangRepository.findAll();
     }
@@ -157,10 +200,23 @@ public class StudiengangGraphQLController {
 
     /**
      * Laedt die Studiengaenge fuer einen Mandanten.
+     * Nutzt JDBC (via MandantAggregationService), um JPA-Session-Probleme bei Multi-Tenant zu vermeiden.
      * GraphQL: mandant { studiengaenge { id, name } }
      */
     @SchemaMapping(typeName = "Mandant", field = "studiengaenge")
     public List<Studiengang> getStudiengaengeForMandant(Mandant mandant) {
+        String suffix = tenantSuffixResolver != null ? tenantSuffixResolver.resolve(mandant.getId()) : null;
+        if (suffix != null && mandantAggregationService != null) {
+            return mandantAggregationService.loadStudiengaengeForMandant(mandant.getId(), suffix, mandant);
+        }
+        if (suffix != null) {
+            TenantContext.setTenantSuffix(suffix);
+            try {
+                return studiengangRepository.findByMandantId(mandant.getId());
+            } finally {
+                TenantContext.clear();
+            }
+        }
         return studiengangRepository.findByMandantId(mandant.getId());
     }
 
@@ -175,14 +231,26 @@ public class StudiengangGraphQLController {
 
     /**
      * Laedt die Module fuer einen Studiengang.
+     * Setzt TenantContext, damit GU/Bioinformatik-Module korrekt geladen werden.
      * GraphQL: studiengang { module { id, name, ects } }
      */
     @SchemaMapping(typeName = "Studiengang", field = "module")
     public List<Modul> getModuleForStudiengang(Studiengang studiengang) {
-        if (studiengang.getAktuellePo() != null) {
-            return modulRepository.findByPruefungsordnungId(studiengang.getAktuellePo().getId());
+        if (studiengang.getAktuellePo() == null) return List.of();
+        String suffix = tenantSuffixResolver != null && studiengang.getMandant() != null
+                ? tenantSuffixResolver.resolve(studiengang.getMandant().getId()) : null;
+        if (suffix != null && mandantAggregationService != null) {
+            return mandantAggregationService.loadModuleByPoId(suffix, studiengang.getAktuellePo().getId());
         }
-        return List.of();
+        if (suffix != null) {
+            TenantContext.setTenantSuffix(suffix);
+            try {
+                return modulRepository.findByPruefungsordnungId(studiengang.getAktuellePo().getId());
+            } finally {
+                TenantContext.clear();
+            }
+        }
+        return modulRepository.findByPruefungsordnungId(studiengang.getAktuellePo().getId());
     }
 
     // ==================== EINSCHREIBUNG SCHEMA MAPPINGS ====================
@@ -231,17 +299,22 @@ public class StudiengangGraphQLController {
 
     /**
      * Holt alle Module, die einem Dozenten zugewiesen sind.
+     * Nutzt JDBC-Aggregation über alle Tenant-DBs, damit Bioinformatik/GU-Dozenten sichtbar sind.
      * GraphQL: query { dozentenModule(dozentId: "...") { id, modulNr, name, ects } }
      */
     @QueryMapping
     public List<Modul> dozentenModule(@Argument("dozentId") String dozentId) {
         log.info("GraphQL: Fetching modules for dozent: {}", dozentId);
-        
-        List<ModulZuweisung> zuweisungen = modulZuweisungRepository.findByDozentId(Long.parseLong(dozentId));
+        Long id = Long.parseLong(dozentId);
+
+        if (mandantAggregationService != null) {
+            return mandantAggregationService.loadDozentenModule(id);
+        }
+
+        List<ModulZuweisung> zuweisungen = modulZuweisungRepository.findByDozentId(id);
         List<Long> modulIds = zuweisungen.stream()
             .map(ModulZuweisung::getModulId)
             .toList();
-        
         return modulRepository.findAllById(modulIds);
     }
 

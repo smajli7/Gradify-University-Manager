@@ -67,6 +67,15 @@ logging:
   level:
     de.gradify: DEBUG
 
+# Shared User DB: Alle Benutzer in einer Datenbank (mandant_id für Filterung)
+# Nur Studiengang/Noten/Berechnung nutzen DB-per-Tenant
+gradify:
+  tenant-routing:
+    enabled: false
+  tenant-registry:
+    enabled: false
+  tenants: "1:thm,2:gu"  # Für gRPC-Aufrufer (Studiengang/Noten) – Mandant-Mapping
+
 ---
 # Profil für Entwicklung (lokale Datenbank mit Seed-Daten)
 spring:

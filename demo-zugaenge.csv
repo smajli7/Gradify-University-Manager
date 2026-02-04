@@ -1,11 +1,18 @@
 Benutzername;Passwort;Rolle;Vorname;Nachname;E-Mail;Studiengang;Semester
 admin;web00100113!;ADMIN;System;Administrator;admin@gradify.local;;
+hochschulverwalter;web00100113!;HOCHSCHUL_VERWALTER;Karl;Verwalter;verwalter@thm.de;;
+s.cremm;web00100113!;HOCHSCHUL_VERWALTER;Senna;Cremm;s.cremm@uni-frankfurt.de;;
 pruefungsamt;web00100113!;PRUEFUNGSAMT;Paula;Prüfung;pruefungsamt@thm.de;;
+pruefungsamt.gu;web00100113!;PRUEFUNGSAMT;Anna;Bürokratie;pruefungsamt@uni-frankfurt.de;;
 prof.mueller;web00100113!;LEHRENDER;Prof. Dr. Max;Mueller;mueller@thm.de;;
 prof.schmidt;web00100113!;LEHRENDER;Prof. Dr. Anna;Schmidt;schmidt@thm.de;;
 prof.weber;web00100113!;LEHRENDER;Prof. Dr. Thomas;Weber;weber@thm.de;;
 prof.klein;web00100113!;LEHRENDER;Prof. Dr. Lisa;Klein;klein@thm.de;;
 prof.richter;web00100113!;LEHRENDER;Prof. Dr. Michael;Richter;richter@thm.de;;
+prof.meyer.gu;web00100113!;LEHRENDER;Prof. Dr. Klaus;Meyer;meyer@uni-frankfurt.de;;
+prof.schulze.gu;web00100113!;LEHRENDER;Prof. Dr. Petra;Schulze;schulze@uni-frankfurt.de;;
+prof.berger.gu;web00100113!;LEHRENDER;Prof. Dr. Thomas;Berger;berger@uni-frankfurt.de;;
+prof.hoffmann.gu;web00100113!;LEHRENDER;Prof. Dr. Sandra;Hoffmann;hoffmann@uni-frankfurt.de;;
 max.mustermann;web00100113!;STUDENT;Max;Mustermann;max.mustermann@student.thm.de;Bioverfahrenstechnik (BVT);6
 anna.schmidt;web00100113!;STUDENT;Anna;Schmidt;anna.schmidt@student.thm.de;Bioverfahrenstechnik (BVT);6
 felix.bauer;web00100113!;STUDENT;Felix;Bauer;felix.bauer@student.thm.de;Bioverfahrenstechnik (BVT);6
@@ -41,3 +48,13 @@ carla.huber;web00100113!;STUDENT;Carla;Huber;carla.huber@student.thm.de;Forschun
 florian.keller;web00100113!;STUDENT;Florian;Keller;florian.keller@student.thm.de;Forschung Soziale Arbeit (FSA);1
 hannah.beck;web00100113!;STUDENT;Hannah;Beck;hannah.beck@student.thm.de;Forschung Soziale Arbeit (FSA);1
 simon.lorenz;web00100113!;STUDENT;Simon;Lorenz;simon.lorenz@student.thm.de;Forschung Soziale Arbeit (FSA);1
+lisa.bio;web00100113!;STUDENT;Lisa;Schmidt;lisa.bio@student.uni-frankfurt.de;Bioinformatik (BIO);3
+max.bio;web00100113!;STUDENT;Max;Fischer;max.bio@student.uni-frankfurt.de;Bioinformatik (BIO);3
+anna.bio;web00100113!;STUDENT;Anna;Weber;anna.bio@student.uni-frankfurt.de;Bioinformatik (BIO);2
+felix.bio;web00100113!;STUDENT;Felix;Becker;felix.bio@student.uni-frankfurt.de;Bioinformatik (BIO);2
+sophie.bio;web00100113!;STUDENT;Sophie;Zimmermann;sophie.bio@student.uni-frankfurt.de;Bioinformatik (BIO);1
+leon.bio;web00100113!;STUDENT;Leon;Koch;leon.bio@student.uni-frankfurt.de;Bioinformatik (BIO);1
+mia.bio;web00100113!;STUDENT;Mia;Wagner;mia.bio@student.uni-frankfurt.de;Bioinformatik (BIO);1
+paul.bio;web00100113!;STUDENT;Paul;Hoffmann;paul.bio@student.uni-frankfurt.de;Bioinformatik (BIO);2
+lena.bio;web00100113!;STUDENT;Lena;Schulz;lena.bio@student.uni-frankfurt.de;Bioinformatik (BIO);3
+jonas.bio;web00100113!;STUDENT;Jonas;Braun;jonas.bio@student.uni-frankfurt.de;Bioinformatik (BIO);1

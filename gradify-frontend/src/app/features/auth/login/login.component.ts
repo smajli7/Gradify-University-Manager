@@ -1,8 +1,16 @@
-import { Component, inject } from '@angular/core';
+import { Component, inject, OnInit } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { HttpClient } from '@angular/common/http';
 import { Router } from '@angular/router';
 import { AuthService } from '../../../core/services/auth.service';
+
+interface DemoUser {
+  username: string;
+  password: string;
+  label: string;
+  rolle: string;
+}
 
 @Component({
   selector: 'app-login',
@@ -190,31 +198,38 @@ import { AuthService } from '../../../core/services/auth.service';
               </button>
             </form>
 
-            <!-- Demo Accounts - Gray -->
+            <!-- Demo Accounts - Rollen-Buttons + Rollen-Dropdowns -->
             <div class="demo-info">
               <div class="demo-divider">
                 <span class="divider-line"></span>
                 <span class="divider-text">Demo-Zugänge</span>
                 <span class="divider-line"></span>
               </div>
-              <div class="demo-accounts">
-                <button class="demo-chip" (click)="fillDemo('admin', 'web00100113!')">
+              <div class="demo-role-buttons">
+                <button type="button" class="demo-role-btn demo-role-btn--admin" [class.active]="activeRole === 'ADMIN'" (click)="selectRole('ADMIN')" title="Admin">
                   <span class="material-icons-outlined">shield</span>
-                  Admin
                 </button>
-                <button class="demo-chip" (click)="fillDemo('prof.mueller', 'web00100113!')">
-                  <span class="material-icons-outlined">school</span>
-                  Dozent
+                <button type="button" class="demo-role-btn demo-role-btn--hv" [class.active]="activeRole === 'HOCHSCHUL_VERWALTER'" (click)="selectRole('HOCHSCHUL_VERWALTER')" title="Hochschul-Verwalter">
+                  <span class="material-icons-outlined">account_balance</span>
                 </button>
-                <button class="demo-chip" (click)="fillDemo('pruefungsamt', 'web00100113!')">
+                <button type="button" class="demo-role-btn demo-role-btn--pa" [class.active]="activeRole === 'PRUEFUNGSAMT'" (click)="selectRole('PRUEFUNGSAMT')" title="Prüfungsamt">
                   <span class="material-icons-outlined">description</span>
-                  Prüfungsamt
                 </button>
-                <button class="demo-chip" (click)="fillDemo('max.mustermann', 'web00100113!')">
+                <button type="button" class="demo-role-btn demo-role-btn--dozent" [class.active]="activeRole === 'LEHRENDER'" (click)="selectRole('LEHRENDER')" title="Dozent">
+                  <span class="material-icons-outlined">school</span>
+                </button>
+                <button type="button" class="demo-role-btn demo-role-btn--student" [class.active]="activeRole === 'STUDENT'" (click)="selectRole('STUDENT')" title="Student">
                   <span class="material-icons-outlined">person</span>
-                  Student
                 </button>
               </div>
+              @if (activeRole) {
+                <select class="demo-select" [(ngModel)]="selectedDemoUser" (ngModelChange)="onDemoUserSelect($event)" name="demoUser">
+                  <option value="">— Nutzer wählen —</option>
+                  @for (u of usersForActiveRole; track u.username) {
+                    <option [value]="u.username">{{ u.label }}</option>
+                  }
+                </select>
+              }
             </div>
           </div>
         </div>
@@ -933,42 +948,73 @@ import { AuthService } from '../../../core/services/auth.service';
       letter-spacing: 1px;
     }
 
-    .demo-accounts {
+    .demo-role-buttons {
       display: flex;
-      gap: var(--spacing-sm);
-      justify-content: center;
       flex-wrap: wrap;
+      gap: 6px;
+      justify-content: center;
+      margin-bottom: var(--spacing-sm);
     }
 
-    /* Gray Demo Chips */
-    .demo-chip {
+    .demo-role-btn {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 8px 16px;
-      background: transparent;
-      border: 1px solid rgba(139, 148, 158, 0.3);
-      border-radius: 20px;
-      font-size: var(--font-size-sm);
-      font-weight: 500;
-      color: #8B949E;
+      justify-content: center;
+      width: 36px;
+      height: 36px;
+      padding: 0;
+      background: rgba(20, 24, 32, 0.9);
+      border: 1px solid rgba(139, 148, 158, 0.25);
+      border-radius: 10px;
       cursor: pointer;
-      transition: all 0.3s ease;
+      transition: border-color 0.2s, background 0.2s;
     }
 
-    .demo-chip .material-icons-outlined {
-      font-size: 16px;
-      color: #8B949E;
+    .demo-role-btn .material-icons-outlined {
+      font-size: 18px;
     }
 
-    .demo-chip:hover {
-      background: rgba(139, 148, 158, 0.1);
-      border-color: rgba(139, 148, 158, 0.5);
-      color: #B0B8C1;
+    .demo-role-btn:hover,
+    .demo-role-btn.active {
+      border-width: 2px;
     }
 
-    .demo-chip:hover .material-icons-outlined {
-      color: #B0B8C1;
+    .demo-role-btn--admin { color: #dc2626; }
+    .demo-role-btn--admin:hover, .demo-role-btn--admin.active { border-color: #b91c1c; background: rgba(127, 29, 29, 0.5); }
+
+    .demo-role-btn--hv { color: #16a34a; }
+    .demo-role-btn--hv:hover, .demo-role-btn--hv.active { border-color: #15803d; background: rgba(20, 83, 45, 0.5); }
+
+    .demo-role-btn--pa { color: #ca8a04; }
+    .demo-role-btn--pa:hover, .demo-role-btn--pa.active { border-color: #a16207; background: rgba(113, 63, 18, 0.5); }
+
+    .demo-role-btn--dozent { color: #9333ea; }
+    .demo-role-btn--dozent:hover, .demo-role-btn--dozent.active { border-color: #7e22ce; background: rgba(88, 28, 135, 0.5); }
+
+    .demo-role-btn--student { color: #2563eb; }
+    .demo-role-btn--student:hover, .demo-role-btn--student.active { border-color: #1d4ed8; background: rgba(29, 78, 216, 0.35); }
+
+    .demo-select {
+      width: 100%;
+      max-width: 320px;
+      margin: 0 auto;
+      padding: 8px 14px;
+      background: rgba(11, 14, 20, 0.5);
+      border: 1px solid rgba(139, 148, 158, 0.3);
+      border-radius: 12px;
+      font-size: var(--font-size-sm);
+      color: var(--text-primary);
+      cursor: pointer;
+      outline: none;
+    }
+
+    .demo-select:hover, .demo-select:focus {
+      border-color: rgba(80, 220, 255, 0.5);
+    }
+
+    .demo-select option {
+      background: var(--bg-surface);
+      color: var(--text-primary);
     }
 
     /* Footer */
@@ -994,9 +1040,10 @@ import { AuthService } from '../../../core/services/auth.service';
     }
   `]
 })
-export class LoginComponent {
+export class LoginComponent implements OnInit {
   private authService = inject(AuthService);
   private router = inject(Router);
+  private http = inject(HttpClient);
 
   username = '';
   password = '';
@@ -1005,6 +1052,9 @@ export class LoginComponent {
   errorMessage = '';
   showContent = false;
   isTransitioning = false;
+  activeRole: string | null = null;
+  demoUsers: DemoUser[] = [];
+  selectedDemoUser = '';
 
   constructor() {
     // Animation sequence timing:
@@ -1019,6 +1069,57 @@ export class LoginComponent {
       this.isTransitioning = true;
       this.showContent = true;
     }, 2800);
+  }
+
+  ngOnInit(): void {
+    this.http.get('assets/demo-zugaenge.csv', { responseType: 'text' }).subscribe({
+      next: (csv) => this.parseDemoCsv(csv),
+      error: () => this.demoUsers = []
+    });
+  }
+
+  private parseDemoCsv(csv: string): void {
+    const lines = csv.trim().split(/\r?\n/);
+    if (lines.length < 2) return;
+    const users: DemoUser[] = [];
+    for (let i = 1; i < lines.length; i++) {
+      const cols = lines[i].split(';');
+      if (cols.length >= 4) {
+        const rolle = (cols[2] || '').trim();
+        const vorname = cols[3] || '';
+        const nachname = cols[4] || '';
+        const studiengang = cols[6] || '';
+        const label = studiengang
+          ? `${vorname} ${nachname} (${rolle}) – ${studiengang}`
+          : `${vorname} ${nachname} (${rolle})`;
+        users.push({
+          username: cols[0].trim(),
+          password: cols[1].trim(),
+          label: label.trim(),
+          rolle
+        });
+      }
+    }
+    this.demoUsers = users;
+  }
+
+  onDemoUserSelect(username: string): void {
+    const u = this.demoUsers.find(x => x.username === username);
+    if (u) {
+      this.username = u.username;
+      this.password = u.password;
+      this.errorMessage = '';
+    }
+  }
+
+  get usersForActiveRole(): DemoUser[] {
+    if (!this.activeRole) return [];
+    return this.demoUsers.filter(u => u.rolle === this.activeRole);
+  }
+
+  selectRole(rolle: string): void {
+    this.activeRole = this.activeRole === rolle ? null : rolle;
+    this.selectedDemoUser = '';
   }
 
   fillDemo(username: string, password: string): void {
@@ -1046,6 +1147,9 @@ export class LoginComponent {
         switch (role) {
           case 'ROLE_ADMIN':
             this.router.navigate(['/admin']);
+            break;
+          case 'ROLE_HOCHSCHUL_VERWALTER':
+            this.router.navigate(['/admin/mandanten']);
             break;
           case 'ROLE_LEHRENDER':
             this.router.navigate(['/dashboard']);

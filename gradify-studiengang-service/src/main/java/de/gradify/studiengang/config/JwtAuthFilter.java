@@ -1,5 +1,6 @@
 package de.gradify.studiengang.config;
 
+import de.gradify.studiengang.config.AuthPrincipal;
 import de.gradify.shared.security.GradifyTokenParser;
 import de.gradify.shared.security.GradifyTokenParser.ParsedToken;
 import jakarta.servlet.FilterChain;
@@ -33,8 +34,13 @@ public class JwtAuthFilter extends OncePerRequestFilter {
             var authorities = parsed.getRoles().stream()
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
-            var auth = new UsernamePasswordAuthenticationToken(
+            AuthPrincipal principal = AuthPrincipal.from(
                     parsed.getUserId(),
+                    parsed.getMandantId(),
+                    parsed.getRoles()
+            );
+            var auth = new UsernamePasswordAuthenticationToken(
+                    principal,
                     null,
                     authorities
             );

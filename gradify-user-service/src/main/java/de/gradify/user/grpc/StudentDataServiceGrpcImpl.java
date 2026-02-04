@@ -1,6 +1,8 @@
 package de.gradify.user.grpc;
 
 import de.gradify.shared.grpc.user.*;
+import de.gradify.shared.tenant.TenantContext;
+import de.gradify.shared.tenant.TenantSuffixResolver;
 import de.gradify.user.entity.Benutzer;
 import de.gradify.user.entity.Student;
 import de.gradify.user.repository.StudentRepository;
@@ -16,6 +18,7 @@ import java.util.Optional;
 /**
  * gRPC Server für Studentendaten.
  * Wird vom Studiengang-Service aufgerufen um Studenten zu validieren.
+ * Setzt TenantContext aus mandant_id in der Request-Nachricht.
  */
 @GrpcService
 @RequiredArgsConstructor
@@ -24,6 +27,7 @@ import java.util.Optional;
 public class StudentDataServiceGrpcImpl extends StudentDataServiceGrpc.StudentDataServiceImplBase {
 
     private final StudentRepository studentRepository;
+    private final TenantSuffixResolver tenantSuffixResolver;
 
     /**
      * Prüft ob ein Student existiert.
@@ -31,9 +35,10 @@ public class StudentDataServiceGrpcImpl extends StudentDataServiceGrpc.StudentDa
     @Override
     public void studentExists(StudentIdRequest request, StreamObserver<StudentExistsResponse> responseObserver) {
         log.info("gRPC: StudentExists called for id: {}", request.getStudentId());
-        
-        Long studentId = request.getStudentId();
-        Optional<Student> studentOpt = studentRepository.findById(studentId);
+        setTenantFromRequest(request.getMandantId());
+        try {
+            Long studentId = request.getStudentId();
+            Optional<Student> studentOpt = studentRepository.findById(studentId);
         
         StudentExistsResponse.Builder responseBuilder = StudentExistsResponse.newBuilder();
         
@@ -46,8 +51,10 @@ public class StudentDataServiceGrpcImpl extends StudentDataServiceGrpc.StudentDa
         } else {
             responseBuilder.setExists(false);
         }
-        
-        responseObserver.onNext(responseBuilder.build());
+            responseObserver.onNext(responseBuilder.build());
+        } finally {
+            TenantContext.clear();
+        }
         responseObserver.onCompleted();
     }
 
@@ -57,21 +64,21 @@ public class StudentDataServiceGrpcImpl extends StudentDataServiceGrpc.StudentDa
     @Override
     public void getStudent(StudentIdRequest request, StreamObserver<StudentResponse> responseObserver) {
         log.info("gRPC: GetStudent called for id: {}", request.getStudentId());
-        
-        Long studentId = request.getStudentId();
-        Optional<Student> studentOpt = studentRepository.findById(studentId);
+        setTenantFromRequest(request.getMandantId());
+        try {
+            Long studentId = request.getStudentId();
+            Optional<Student> studentOpt = studentRepository.findById(studentId);
         
         StudentResponse response;
         if (studentOpt.isPresent()) {
             response = toStudentResponse(studentOpt.get());
         } else {
-            // Leere Response wenn nicht gefunden
-            response = StudentResponse.newBuilder()
-                    .setId(0)
-                    .build();
+            response = StudentResponse.newBuilder().setId(0).build();
         }
-        
-        responseObserver.onNext(response);
+            responseObserver.onNext(response);
+        } finally {
+            TenantContext.clear();
+        }
         responseObserver.onCompleted();
     }
 
@@ -95,21 +102,34 @@ public class StudentDataServiceGrpcImpl extends StudentDataServiceGrpc.StudentDa
     @Override
     public void getStudentsByIds(StudentIdsRequest request, StreamObserver<StudentListResponse> responseObserver) {
         log.info("gRPC: GetStudentsByIds called for {} id(s)", request.getStudentIdsCount());
-        
-        List<Long> ids = request.getStudentIdsList().stream()
-                .filter(id -> id > 0)
-                .distinct()
-                .toList();
-        
-        List<Student> students = ids.isEmpty() ? List.of() : studentRepository.findAllById(ids);
-        
-        StudentListResponse.Builder responseBuilder = StudentListResponse.newBuilder();
-        for (Student student : students) {
-            responseBuilder.addStudents(toStudentResponse(student));
+        setTenantFromRequest(request.getMandantId());
+        try {
+            List<Long> ids = request.getStudentIdsList().stream()
+                    .filter(id -> id > 0)
+                    .distinct()
+                    .toList();
+            List<Student> students = ids.isEmpty() ? List.of() : studentRepository.findAllById(ids);
+            StudentListResponse.Builder responseBuilder = StudentListResponse.newBuilder();
+            for (Student student : students) {
+                responseBuilder.addStudents(toStudentResponse(student));
+            }
+            responseObserver.onNext(responseBuilder.build());
+        } finally {
+            TenantContext.clear();
         }
-        
-        responseObserver.onNext(responseBuilder.build());
         responseObserver.onCompleted();
+    }
+
+    private void setTenantFromRequest(long mandantId) {
+        if (mandantId > 0) {
+            String suffix = tenantSuffixResolver.resolve(mandantId);
+            if (suffix != null) {
+                TenantContext.setTenantSuffix(suffix);
+            }
+        }
+        if (TenantContext.getTenantSuffix() == null && !tenantSuffixResolver.getAllSuffixes().isEmpty()) {
+            TenantContext.setTenantSuffix(tenantSuffixResolver.getAllSuffixes().get(0));
+        }
     }
 
     /**

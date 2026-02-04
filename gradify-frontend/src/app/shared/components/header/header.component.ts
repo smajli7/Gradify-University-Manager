@@ -195,6 +195,12 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
       border-color: rgba(var(--color-danger-rgb), 0.3);
     }
 
+    .badge--hochschul_verwalter {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22c55e;
+      border-color: rgba(34, 197, 94, 0.3);
+    }
+
     .badge--dozent {
       background: rgba(var(--color-secondary-rgb), 0.15);
       color: #a855f7;
@@ -404,8 +410,10 @@ export class HeaderComponent implements AfterViewInit {
   get userRoleLabel(): string {
     const labels: Record<string, string> = {
       'ADMIN': 'Admin',
+      'HOCHSCHUL_VERWALTER': 'Hochschul-Verwalter',
       'DOZENT': 'Dozent',
-      'PRUEFUNGSAMT': 'Pruefungsamt',
+      'LEHRENDER': 'Dozent',
+      'PRUEFUNGSAMT': 'Prüfungsamt',
       'STUDENT': 'Student'
     };
     return labels[this.userRole] || this.userRole;

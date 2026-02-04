@@ -27,6 +27,7 @@ public class LoginResponse {
         private String nachname;
         private String[] roles;
         private Long studentId;  // null fuer Nicht-Studenten
+        private Long mandantId;  // fuer HOCHSCHUL_VERWALTER-Scoping
     }
 }
 

@@ -16,6 +16,7 @@ public final class GradifyTokenParser {
     private static final Pattern SUB_PATTERN = Pattern.compile("\"sub\":\"([^\"]+)\"");
     private static final Pattern ROLES_PATTERN = Pattern.compile("\"roles\":\\[([^\\]]*)\\]");
     private static final Pattern EXP_PATTERN = Pattern.compile("\"exp\":(\\d+)");
+    private static final Pattern MANDANT_ID_PATTERN = Pattern.compile("\"mandantId\":(\\d+)");
 
     private GradifyTokenParser() {}
 
@@ -65,7 +66,14 @@ public final class GradifyTokenParser {
                 }
             }
 
-            return new ParsedToken(sub, roles);
+            // MandantId extrahieren (optional, fuer HOCHSCHUL_VERWALTER)
+            Long mandantId = null;
+            Matcher mandantMatcher = MANDANT_ID_PATTERN.matcher(payloadJson);
+            if (mandantMatcher.find()) {
+                mandantId = Long.parseLong(mandantMatcher.group(1));
+            }
+
+            return new ParsedToken(sub, roles, mandantId);
         } catch (Exception e) {
             return null;
         }
@@ -74,10 +82,12 @@ public final class GradifyTokenParser {
     public static final class ParsedToken {
         private final String userId;
         private final List<String> roles;
+        private final Long mandantId;
 
-        public ParsedToken(String userId, List<String> roles) {
+        public ParsedToken(String userId, List<String> roles, Long mandantId) {
             this.userId = userId;
             this.roles = roles != null ? List.copyOf(roles) : List.of();
+            this.mandantId = mandantId;
         }
 
         public String getUserId() {
@@ -86,6 +96,11 @@ public final class GradifyTokenParser {
 
         public List<String> getRoles() {
             return roles;
+        }
+
+        /** MandantId des Benutzers (fuer HOCHSCHUL_VERWALTER-Scoping). */
+        public Long getMandantId() {
+            return mandantId;
         }
     }
 }

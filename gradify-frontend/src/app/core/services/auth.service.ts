@@ -10,6 +10,7 @@ export interface UserInfo {
   nachname: string;
   roles: string[];
   studentId?: string; // Falls der User ein Student ist
+  mandantId?: number; // Fuer HOCHSCHUL_VERWALTER-Scoping
 }
 
 interface ApiResponse<T> {
@@ -75,6 +76,11 @@ export class AuthService {
   isPruefungsamt = computed(() => {
     const user = this.currentUser();
     return user?.roles.includes('ROLE_PRUEFUNGSAMT') ?? false;
+  });
+
+  isHochschulVerwalter = computed(() => {
+    const user = this.currentUser();
+    return user?.roles.includes('ROLE_HOCHSCHUL_VERWALTER') ?? false;
   });
 
   constructor(

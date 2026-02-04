@@ -21,7 +21,8 @@ INSERT INTO rollen (id, name, beschreibung) VALUES
     (2, 'ROLE_LEHRENDER', 'Lehrende/Dozenten'),
     (3, 'ROLE_PRUEFUNGSAMT', 'Prüfungsamt-Mitarbeiter'),
     (4, 'ROLE_STUDIENGANGLEITUNG', 'Studiengangsleitungen'),
-    (5, 'ROLE_ADMIN', 'System-Administratoren')
+    (5, 'ROLE_ADMIN', 'System-Administratoren'),
+    (6, 'ROLE_HOCHSCHUL_VERWALTER', 'Hochschul-Verwalter (1:1 Mandant)')
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================
@@ -37,7 +38,11 @@ INSERT INTO benutzer (id, benutzername, email, passwort_hash, vorname, nachname,
     -- Prüfungsamt
     (2, 'pruefungsamt', 'pruefungsamt@thm.de', 
      '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 
-     'Paula', 'Prüfung', 1, true, NOW())
+     'Paula', 'Prüfung', 1, true, NOW()),
+    -- Hochschul-Verwalter (Mandant 1 = THM)
+    (3, 'hochschulverwalter', 'verwalter@thm.de', 
+     '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 
+     'Karl', 'Verwalter', 1, true, NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================
@@ -121,22 +126,33 @@ INSERT INTO benutzer (id, benutzername, email, passwort_hash, vorname, nachname,
     (132, 'carla.huber', 'carla.huber@student.thm.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Carla', 'Huber', 1, true, NOW()),
     (133, 'florian.keller', 'florian.keller@student.thm.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Florian', 'Keller', 1, true, NOW()),
     (134, 'hannah.beck', 'hannah.beck@student.thm.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Hannah', 'Beck', 1, true, NOW()),
-    (135, 'simon.lorenz', 'simon.lorenz@student.thm.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Simon', 'Lorenz', 1, true, NOW())
+    (135, 'simon.lorenz', 'simon.lorenz@student.thm.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Simon', 'Lorenz', 1, true, NOW()),
+    -- ===== GU (Mandant 2) – Goethe Universität Frankfurt =====
+    (4, 's.cremm', 's.cremm@uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Senna', 'Cremm', 2, true, NOW()),
+    (5, 'pruefungsamt.gu', 'pruefungsamt@uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Anna', 'Bürokratie', 2, true, NOW()),
+    (20, 'prof.meyer.gu', 'meyer@uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Prof. Dr. Klaus', 'Meyer', 2, true, NOW()),
+    (21, 'prof.schulze.gu', 'schulze@uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Prof. Dr. Petra', 'Schulze', 2, true, NOW()),
+    (22, 'prof.berger.gu', 'berger@uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Prof. Dr. Thomas', 'Berger', 2, true, NOW()),
+    (23, 'prof.hoffmann.gu', 'hoffmann@uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Prof. Dr. Sandra', 'Hoffmann', 2, true, NOW()),
+    (136, 'lisa.bio', 'lisa.bio@student.uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Lisa', 'Schmidt', 2, true, NOW()),
+    (137, 'max.bio', 'max.bio@student.uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Max', 'Fischer', 2, true, NOW()),
+    (138, 'anna.bio', 'anna.bio@student.uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Anna', 'Weber', 2, true, NOW()),
+    (139, 'felix.bio', 'felix.bio@student.uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Felix', 'Becker', 2, true, NOW()),
+    (140, 'sophie.bio', 'sophie.bio@student.uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Sophie', 'Zimmermann', 2, true, NOW()),
+    (141, 'leon.bio', 'leon.bio@student.uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Leon', 'Koch', 2, true, NOW()),
+    (142, 'mia.bio', 'mia.bio@student.uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Mia', 'Wagner', 2, true, NOW()),
+    (143, 'paul.bio', 'paul.bio@student.uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Paul', 'Hoffmann', 2, true, NOW()),
+    (144, 'lena.bio', 'lena.bio@student.uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Lena', 'Schulz', 2, true, NOW()),
+    (145, 'jonas.bio', 'jonas.bio@student.uni-frankfurt.de', '$2a$10$3K8silUv89xnxcL0p.z2HOb2xmgAst8GZs0N.Ojf9bfj9vTSz05G2', 'Jonas', 'Braun', 2, true, NOW())
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================
--- BENUTZER-ROLLEN ZUWEISUNGEN
+-- BENUTZER-ROLLEN ZUWEISUNGEN (THM + GU)
 -- =====================================================
 INSERT INTO benutzer_rolle (benutzer_id, rolle_id) VALUES
-    -- Admin & Mitarbeiter
-    (1, 5), -- Admin -> ROLE_ADMIN
-    (2, 3), -- Prüfungsamt -> ROLE_PRUEFUNGSAMT
-    -- Dozenten -> ROLE_LEHRENDER
-    (10, 2),
-    (11, 2),
-    (12, 2),
-    (13, 2),
-    (14, 2)
+    (1, 5), (2, 3), (3, 6), (10, 2), (11, 2), (12, 2), (13, 2), (14, 2),
+    (4, 6), (5, 3), (20, 2), (21, 2), (22, 2), (23, 2),
+    (136, 1), (137, 1), (138, 1), (139, 1), (140, 1), (141, 1), (142, 1), (143, 1), (144, 1), (145, 1)
 ON CONFLICT DO NOTHING;
 
 -- Studenten-Rollen -> ROLE_STUDENT
@@ -179,7 +195,7 @@ INSERT INTO benutzer_rolle (benutzer_id, rolle_id) VALUES
 ON CONFLICT DO NOTHING;
 
 -- =====================================================
--- STUDENTEN (1-35, verknüpft mit Benutzer 101-135)
+-- STUDENTEN (THM: 1-35, GU: 36-45)
 -- =====================================================
 INSERT INTO studenten (id, benutzer_id, matrikelnummer, geburtsdatum, status) VALUES
     -- BVT Semester 6
@@ -226,7 +242,13 @@ INSERT INTO studenten (id, benutzer_id, matrikelnummer, geburtsdatum, status) VA
     (32, 132, '2000012', '1999-03-05', 'AKTIV'),
     (33, 133, '2000013', '1998-09-18', 'AKTIV'),
     (34, 134, '2000014', '1999-06-22', 'AKTIV'),
-    (35, 135, '2000015', '1998-11-01', 'AKTIV')
+    (35, 135, '2000015', '1998-11-01', 'AKTIV'),
+    -- GU Bioinformatik-Studenten (36-45)
+    (36, 136, '3000001', '2001-05-12', 'AKTIV'), (37, 137, '3000002', '2002-08-19', 'AKTIV'),
+    (38, 138, '3000003', '2001-11-03', 'AKTIV'), (39, 139, '3000004', '2002-02-14', 'AKTIV'),
+    (40, 140, '3000005', '2003-01-08', 'AKTIV'), (41, 141, '3000006', '2002-07-22', 'AKTIV'),
+    (42, 142, '3000007', '2003-03-30', 'AKTIV'), (43, 143, '3000008', '2001-09-15', 'AKTIV'),
+    (44, 144, '3000009', '2002-04-25', 'AKTIV'), (45, 145, '3000010', '2002-12-11', 'AKTIV')
 ON CONFLICT (id) DO NOTHING;
 
 -- Sequenzen zurücksetzen (sonst ID-Kollision bei neuen Benutzern)

@@ -76,6 +76,7 @@ public class AuthService {
                         .nachname(user.nachname())
                         .roles(user.roles())
                         .studentId(user.studentId())
+                        .mandantId(user.mandantId())
                         .build())
                 .build();
         
@@ -194,10 +195,13 @@ public class AuthService {
         }
         rolesJson.append("]");
         
-        // StudentId hinzufügen falls vorhanden
-        String studentIdPart = "";
+        // StudentId und MandantId hinzufügen falls vorhanden
+        StringBuilder extra = new StringBuilder();
         if (user.studentId() != null) {
-            studentIdPart = ",\"studentId\":\"" + user.studentId() + "\"";
+            extra.append(",\"studentId\":\"").append(user.studentId()).append("\"");
+        }
+        if (user.mandantId() != null) {
+            extra.append(",\"mandantId\":").append(user.mandantId());
         }
         
         String payloadJson = String.format(
@@ -206,7 +210,7 @@ public class AuthService {
                 user.vorname(), 
                 user.nachname(), 
                 rolesJson,
-                studentIdPart,
+                extra,
                 exp
         );
         

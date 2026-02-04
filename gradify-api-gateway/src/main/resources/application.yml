@@ -51,7 +51,7 @@ spring:
         - id: studiengang-service
           uri: http://localhost:8083
           predicates:
-            - Path=/api/mandanten/**, /api/studiengaenge/**, /api/module/**, /api/pruefungsordnungen/**, /api/einschreibungen/**, /api/import/**
+            - Path=/api/mandanten/**, /api/studiengaenge/**, /api/module/**, /api/module-zuweisungen, /api/pruefungsordnungen/**, /api/einschreibungen/**, /api/import/**
           filters:
             - StripPrefix=0
 

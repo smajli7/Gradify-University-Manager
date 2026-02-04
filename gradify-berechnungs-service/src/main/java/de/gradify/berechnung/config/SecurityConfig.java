@@ -26,7 +26,11 @@ public class SecurityConfig {
      * - STUDENT: Kann nur eigene Berechnungen lesen
      */
     @Bean
-    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter) throws Exception {
+    public SecurityFilterChain securityFilterChain(HttpSecurity http, JwtAuthFilter jwtAuthFilter,
+            @org.springframework.beans.factory.annotation.Autowired(required = false) TenantContextFilter tenantContextFilter) throws Exception {
+        if (tenantContextFilter != null) {
+            http.addFilterBefore(tenantContextFilter, UsernamePasswordAuthenticationFilter.class);
+        }
         http
             .csrf(AbstractHttpConfigurer::disable)
             .addFilterBefore(jwtAuthFilter, UsernamePasswordAuthenticationFilter.class)
@@ -36,14 +40,14 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 
-                // Berechnungen ausfuehren: PRUEFUNGSAMT, ADMIN
-                .requestMatchers(HttpMethod.POST, "/api/berechnungen/**").hasAnyRole("PRUEFUNGSAMT", "ADMIN")
+                // Berechnungen ausfuehren: PRUEFUNGSAMT, ADMIN, HOCHSCHUL_VERWALTER
+                .requestMatchers(HttpMethod.POST, "/api/berechnungen/**").hasAnyRole("PRUEFUNGSAMT", "ADMIN", "HOCHSCHUL_VERWALTER")
                 
                 // Berechnungen lesen: alle authentifizierten Nutzer
                 .requestMatchers(HttpMethod.GET, "/api/berechnungen/**").authenticated()
                 
-                // Statistiken: DOZENT, PRUEFUNGSAMT, ADMIN
-                .requestMatchers("/api/berechnungen/statistik/**").hasAnyRole("LEHRENDER", "PRUEFUNGSAMT", "ADMIN")
+                // Statistiken: LEHRENDER, PRUEFUNGSAMT, ADMIN, HOCHSCHUL_VERWALTER
+                .requestMatchers("/api/berechnungen/statistik/**").hasAnyRole("LEHRENDER", "PRUEFUNGSAMT", "ADMIN", "HOCHSCHUL_VERWALTER")
                 
                 .anyRequest().authenticated()
             );

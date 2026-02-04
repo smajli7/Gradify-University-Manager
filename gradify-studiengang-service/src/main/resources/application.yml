@@ -68,6 +68,17 @@ logging:
   level:
     de.gradify: DEBUG
 
+# Tenant-Provisioning: CREATE DATABASE bei neuer Hochschule
+# Tenant-Routing: gradify_studiengang_thm, gradify_studiengang_gu
+gradify:
+  tenant-provisioning:
+    enabled: true
+  tenant-routing:
+    enabled: true
+  tenant-registry:
+    enabled: true
+  tenants: "1:thm,2:gu"
+
 ---
 # Profil für Entwicklung (lokale Datenbank mit Seed-Daten)
 spring:
@@ -97,5 +108,10 @@ spring:
   jpa:
     hibernate:
       ddl-auto: validate
+gradify:
+  tenant-provisioning:
+    enabled: false
+  tenant-routing:
+    enabled: false  # Externe DB unterstützt kein DB-per-Tenant
 
 

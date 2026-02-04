@@ -27,6 +27,7 @@ public class Rolle {
     public static final String ROLE_LEHRENDER = "LEHRENDER";
     public static final String ROLE_PRUEFUNGSAMT = "PRUEFUNGSAMT";
     public static final String ROLE_STUDIENGANGLEITUNG = "STUDIENGANGLEITUNG";
+    public static final String ROLE_HOCHSCHUL_VERWALTER = "HOCHSCHUL_VERWALTER";
     public static final String ROLE_ADMIN = "ADMIN";
 }
 

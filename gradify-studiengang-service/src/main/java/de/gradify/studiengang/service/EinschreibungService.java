@@ -89,8 +89,13 @@ public class EinschreibungService {
         log.info("Creating Einschreibung for student: {} in studiengang: {}", 
                 request.getStudentId(), request.getStudiengangId());
 
-        // 1. Validiere dass Student existiert (via gRPC)
-        var validationResult = studentGrpcClient.studentExists(request.getStudentId());
+        // 1. Lade Studiengang (für mandantId bei gRPC)
+        Studiengang studiengang = studiengangRepository.findById(request.getStudiengangId())
+                .orElseThrow(() -> new IllegalArgumentException("Studiengang nicht gefunden: " + request.getStudiengangId()));
+        Long mandantId = studiengang.getMandant() != null ? studiengang.getMandant().getId() : null;
+
+        // 2. Validiere dass Student existiert (via gRPC) - mandantId für DB-per-Tenant
+        var validationResult = studentGrpcClient.studentExists(request.getStudentId(), mandantId);
         if (!validationResult.grpcAvailable()) {
             log.error("gRPC nicht verfügbar: {}", validationResult.statusMessage());
             throw new IllegalStateException("User-Service nicht erreichbar: " + validationResult.statusMessage());
@@ -99,21 +104,17 @@ public class EinschreibungService {
             throw new IllegalArgumentException("Student nicht gefunden: " + request.getStudentId());
         }
 
-        // 2. Lade Studiengang
-        Studiengang studiengang = studiengangRepository.findById(request.getStudiengangId())
-                .orElseThrow(() -> new IllegalArgumentException("Studiengang nicht gefunden: " + request.getStudiengangId()));
-
-        // 3. Lade Prüfungsordnung
+        // 4. Lade Prüfungsordnung
         Pruefungsordnung pruefungsordnung = pruefungsordnungRepository.findById(request.getPruefungsordnungId())
                 .orElseThrow(() -> new IllegalArgumentException("Prüfungsordnung nicht gefunden: " + request.getPruefungsordnungId()));
 
-        // 4. Prüfe ob Student bereits eingeschrieben
+        // 5. Prüfe ob Student bereits eingeschrieben
         if (einschreibungRepository.existsByStudentIdAndStudiengangIdAndStatus(
                 request.getStudentId(), request.getStudiengangId(), Einschreibung.EinschreibungStatus.AKTIV)) {
             throw new IllegalArgumentException("Student ist bereits in diesem Studiengang eingeschrieben");
         }
 
-        // 5. Studienvariante bestimmen
+        // 6. Studienvariante bestimmen
         Studiengang.Studienvariante studienvariante = Studiengang.Studienvariante.ALLGEMEIN;
         if (request.getStudienvariante() != null) {
             try {
@@ -177,8 +178,9 @@ public class EinschreibungService {
         // Studentendaten via gRPC holen
         String studentName = "";
         String matrikelnummer = "";
+        Long mandantId = studiengang != null && studiengang.getMandant() != null ? studiengang.getMandant().getId() : null;
         Optional<StudentGrpcClient.StudentInfo> studentInfo = 
-                studentGrpcClient.getStudent(einschreibung.getStudentId());
+                studentGrpcClient.getStudent(einschreibung.getStudentId(), mandantId);
         if (studentInfo.isPresent()) {
             studentName = studentInfo.get().getFullName();
             matrikelnummer = studentInfo.get().matrikelnummer();

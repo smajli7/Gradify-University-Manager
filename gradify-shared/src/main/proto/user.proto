@@ -71,14 +71,17 @@ message UserResponse {
 
 message StudentIdRequest {
   int64 student_id = 1;
+  int64 mandant_id = 2;  // Für DB-per-Tenant-Routing
 }
 
 message StudiengangIdRequest {
   int64 studiengang_id = 1;
+  int64 mandant_id = 2;  // Für DB-per-Tenant-Routing
 }
 
 message StudentIdsRequest {
   repeated int64 student_ids = 1;
+  int64 mandant_id = 2;  // Für DB-per-Tenant-Routing
 }
 
 message StudentResponse {
