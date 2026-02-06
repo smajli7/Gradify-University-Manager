@@ -679,6 +679,34 @@ a {
   background-color: rgba(255, 255, 255, 0.06) !important;
 }
 
+/* Sidebar: kein weißer Material-Fokus/Ripple/Streifen beim Klick */
+app-dock .sidebar,
+app-dock .sidebar * {
+  outline: none !important;
+}
+app-dock .sidebar *:focus {
+  outline: none !important;
+}
+app-dock .sidebar .mat-ripple-element,
+app-dock .sidebar .mat-ripple {
+  display: none !important;
+}
+app-dock .sidebar::before,
+app-dock .sidebar::after {
+  display: none !important;
+}
+
+/* CDK Overlay: kein sichtbarer Streifen links (Snackbar-Container) */
+.cdk-overlay-container {
+  pointer-events: none;
+}
+.cdk-overlay-container .cdk-overlay-pane {
+  pointer-events: auto;
+}
+.cdk-global-overlay-wrapper {
+  background: transparent !important;
+}
+
 /* ngx-skeleton-loader */
 .skeleton-loader {
   background: var(--bg-elevated) !important;

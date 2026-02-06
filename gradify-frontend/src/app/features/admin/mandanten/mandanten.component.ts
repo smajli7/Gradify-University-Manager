@@ -209,7 +209,7 @@ interface ImportResult {
                 <button type="button" class="btn btn--secondary" (click)="closeAddHochschuleModal()">
                   Abbrechen
                 </button>
-                <button type="submit" class="btn btn--primary" [disabled]="savingHochschule() || !newHochschuleName?.trim() || !newHochschuleKuerzel?.trim()">
+                <button type="submit" class="btn btn--primary" [disabled]="savingHochschule() || !newHochschuleName.trim() || !newHochschuleKuerzel.trim()">
                   @if (savingHochschule()) {
                     <span class="spinner-btn"></span>
                     Wird angelegt...

@@ -202,7 +202,7 @@ const NOTEN_QUERY = gql`
       <!-- Error State -->
       @if (error()) {
         <div class="error-state">
-          <span class="error-icon">⚠️</span>
+          <span class="error-icon" aria-hidden="true"></span>
           <p>{{ error() }}</p>
           <button class="btn btn--primary" (click)="loadStudyPlan()">Erneut versuchen</button>
         </div>
@@ -261,9 +261,6 @@ const NOTEN_QUERY = gql`
                       <div class="module-header">
                         <span class="module-ects">{{ modul.ects }} CP</span>
                         <span class="module-nr">{{ modul.modulNr }}</span>
-                        @if (modul.status === 'in-bearbeitung') {
-                          <span class="module-icon-clock" aria-hidden="true">🕐</span>
-                        }
                         @if (modul.status === 'bestanden') {
                           <span class="module-icon-check" aria-hidden="true">✓</span>
                         }
@@ -312,7 +309,7 @@ const NOTEN_QUERY = gql`
       <!-- Empty State -->
       @if (!loading() && !error() && semesterRows().length === 0) {
         <div class="empty-state">
-          <div class="empty-icon">📚</div>
+          <div class="empty-icon" aria-hidden="true"></div>
           <h3>Kein Studienverlaufsplan geladen</h3>
           <p>Wählen Sie eine Einschreibung aus, um den Studienverlaufsplan anzuzeigen.</p>
         </div>
@@ -809,11 +806,6 @@ const NOTEN_QUERY = gql`
       color: #22C55E;
       font-size: 12px;
       font-weight: 700;
-    }
-
-    .module-icon-clock {
-      font-size: 11px;
-      opacity: 0.9;
     }
 
     .module-name {

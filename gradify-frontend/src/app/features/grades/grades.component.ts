@@ -2,6 +2,7 @@ import { Component, OnInit, OnDestroy, signal, computed, inject, ElementRef, Vie
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { RouterLink } from '@angular/router';
 import { Apollo, gql } from 'apollo-angular';
 import { GradeService } from '../../core/services/grade.service';
 import { ModuleService } from '../../core/services/module.service';
@@ -9,7 +10,7 @@ import { AuthService } from '../../core/services/auth.service';
 import { OverlayService } from '../../core/services/overlay.service';
 import { ToastService } from '../../core/services/toast.service';
 import { SkeletonStateComponent } from '../../shared/components/skeleton-state/skeleton-state.component';
-import { Note } from '../../types';
+import { Note, NoteStatus } from '../../types';
 import jsPDF from 'jspdf';
 
 // Query für Einschreibungen eines Studenten
@@ -51,67 +52,35 @@ interface EinschreibungOption {
 @Component({
   selector: 'app-grades',
   standalone: true,
-  imports: [CommonModule, FormsModule, SkeletonStateComponent],
+  imports: [CommonModule, FormsModule, RouterLink, SkeletonStateComponent],
   template: `
     <div class="page animate-slide-up">
-      <!-- Header -->
-      <div class="page-header">
-        <div class="header-content">
-          <h1>Notenübersicht</h1>
-          <p class="text-muted">Alle erfassten Prüfungsleistungen</p>
+      <!-- A) Sticky Top-Bar: bleibt beim Scrollen oben (Notenübersicht | Suche | Filter + Sort) -->
+      @if (!gradeService.loading() && !gradeService.error() && gradeService.noten().length > 0) {
+        <div class="grades-sticky-bar-wrap">
+          <header class="grades-sticky-bar">
+          <span class="grades-sticky-title">Notenübersicht</span>
+          <div class="grades-search-wrap">
+            <input type="text" class="grades-search" placeholder="Modul suchen…" [ngModel]="searchQuery()" (ngModelChange)="searchQuery.set($event)">
+          </div>
+          <div class="grades-filters">
+            <button type="button" class="filter-chip" [class.filter-chip--active]="filterChip() === 'alle'" (click)="filterChip.set('alle')">Alle</button>
+            <button type="button" class="filter-chip" [class.filter-chip--active]="filterChip() === 'bestanden'" (click)="filterChip.set('bestanden')">Bestanden</button>
+            <button type="button" class="filter-chip" [class.filter-chip--active]="filterChip() === 'offen'" (click)="filterChip.set('offen')">Offen</button>
+            <button type="button" class="filter-chip" [class.filter-chip--active]="filterChip() === 'wiederholung'" (click)="filterChip.set('wiederholung')">Wiederholung</button>
+            <select class="grades-sort" [ngModel]="sortBy()" (ngModelChange)="setSortBy($event)">
+              <option value="datum">Sort: Datum</option>
+              <option value="note">Sort: Note</option>
+              <option value="name">Sort: Name</option>
+            </select>
+            @if (isStudent() && filteredNoten().length > 0) {
+              <button type="button" class="btn btn--secondary btn--sm" (click)="exportCsv()">CSV</button>
+              <button type="button" class="btn btn--secondary btn--sm" (click)="showTranscript()">Notenbescheinigung</button>
+            }
+          </div>
+        </header>
         </div>
-        
-        <div class="header-right">
-          @if (gradeService.durchschnitt()) {
-            <div class="header-stats">
-              <div class="stat-card stat-card--primary">
-                <span class="stat-icon material-icons-outlined">trending_up</span>
-                <div class="stat-info">
-                  <span class="stat-value">{{ gradeService.durchschnitt() | number:'1.2-2' }}</span>
-                  <span class="stat-label">Durchschnitt</span>
-                </div>
-              </div>
-              <div class="stat-card stat-card--success">
-                <span class="stat-icon material-icons-outlined">check_circle</span>
-                <div class="stat-info">
-                  <span class="stat-value">{{ gradeService.bestandenCount() }}</span>
-                  <span class="stat-label">Bestanden</span>
-                </div>
-              </div>
-              <div class="stat-card stat-card--warning">
-                <span class="stat-icon material-icons-outlined">schedule</span>
-                <div class="stat-info">
-                  <span class="stat-value">{{ gradeService.offenCount() }}</span>
-                  <span class="stat-label">Offen</span>
-                </div>
-              </div>
-            </div>
-          }
-          
-          @if (isStudent() && filteredNoten().length > 0) {
-            <div class="export-buttons">
-              <button class="btn btn--secondary btn-export" (click)="exportCsv()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/>
-                  <polyline points="7 10 12 15 17 10"/>
-                  <line x1="12" y1="15" x2="12" y2="3"/>
-                </svg>
-                CSV
-              </button>
-              <button class="btn btn--secondary btn-export" (click)="showTranscript()">
-                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                  <polyline points="14 2 14 8 20 8"/>
-                  <line x1="16" y1="13" x2="8" y2="13"/>
-                  <line x1="16" y1="17" x2="8" y2="17"/>
-                  <polyline points="10 9 9 9 8 9"/>
-                </svg>
-                Notenbescheinigung
-              </button>
-            </div>
-          }
-        </div>
-      </div>
+      }
 
       <!-- Einschreibungs-Auswahl für Studenten (falls mehrere vorhanden) -->
       @if (isStudent() && einschreibungen().length > 1) {
@@ -148,58 +117,131 @@ interface EinschreibungOption {
         </div>
       }
 
-      <!-- Grades Table -->
+      <!-- B) Insights-Zeile: 4 Mini-KPIs + Sparkline -->
       @if (!gradeService.loading() && !gradeService.error() && gradeService.noten().length > 0) {
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th class="col-modul">Modul</th>
-                <th class="col-note">Note</th>
-                <th class="col-versuch">Versuch</th>
-                <th class="col-datum">Prüfungsdatum</th>
-                <th class="col-status">Status</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (note of filteredNoten(); track note.id) {
-                <tr class="table-row" (click)="openDetail(note)">
-                  <td class="col-modul">
-                    <div class="modul-cell">
-                      <span class="modul-nr">{{ moduleService.getModulNr(note.modulId) || note.modulId }}</span>
-                      <span class="modul-name">{{ moduleService.getModulName(note.modulId) }}</span>
-                    </div>
-                  </td>
-                  <td class="col-note">
-                    <span class="note-badge note-badge--{{ gradeService.getNoteColor(note.noteWert) }}">
-                      {{ gradeService.formatNote(note.noteWert) }}
-                    </span>
-                  </td>
-                  <td class="col-versuch">
-                    <span class="versuch-badge">{{ note.versuch }}. Versuch</span>
-                  </td>
-                  <td class="col-datum">{{ formatDate(note.pruefungsdatum) }}</td>
-                  <td class="col-status">
-                    <span class="status-badge status-badge--{{ gradeService.getStatusColor(note.status) }}">
-                      {{ gradeService.getStatusLabel(note.status) }}
-                    </span>
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="5" class="empty-state">
-                    <span class="material-icons-outlined">school</span>
-                    <p>Keine Noten vorhanden</p>
-                  </td>
-                </tr>
+        <div class="grades-insights-row">
+          <div class="insight-mini"><span class="insight-mini-label">Ø Note</span><span class="insight-mini-value">{{ (gradeService.durchschnitt() ?? 0) | number:'1.2-2' }}</span></div>
+          <div class="insight-mini"><span class="insight-mini-label">Bestanden</span><span class="insight-mini-value">{{ gradeService.bestandenCount() }}</span></div>
+          <div class="insight-mini"><span class="insight-mini-label">Offen</span><span class="insight-mini-value">{{ gradeService.offenCount() }}</span></div>
+          <div class="insight-mini"><span class="insight-mini-label">Letzte Änderung</span><span class="insight-mini-value">{{ lastChangeDate() }}</span></div>
+          @if (noteTrendData().length > 0) {
+            <div class="insight-sparkline">
+              @for (v of noteTrendData(); track $index) {
+                <span class="sparkline-bar" [style.height.%]="(5 - v) / 4 * 100"></span>
               }
-            </tbody>
-          </table>
+            </div>
+          }
         </div>
 
-        <!-- Table Footer -->
-        <div class="table-footer">
-          <span class="result-count">{{ filteredNoten().length }} Prüfungsleistungen</span>
+        <!-- Schnellfilter-Chips + View-Toggle -->
+        <div class="grades-quick-filters">
+          <button type="button" class="quick-chip" [class.quick-chip--active]="quickFilter() === 'le2'" (click)="toggleQuickFilter('le2')">≤ 2.0</button>
+          <button type="button" class="quick-chip" [class.quick-chip--active]="quickFilter() === 'ge3'" (click)="toggleQuickFilter('ge3')">≥ 3.0</button>
+          <button type="button" class="quick-chip" [class.quick-chip--active]="quickFilter() === 'zweitversuch'" (click)="toggleQuickFilter('zweitversuch')">Zweitversuch</button>
+          <button type="button" class="quick-chip" [class.quick-chip--active]="quickFilter() === 'letzte90'" (click)="toggleQuickFilter('letzte90')">Letzte 90 Tage</button>
+          <button type="button" class="quick-chip" [class.quick-chip--active]="quickFilter() === 'ohneNote'" (click)="toggleQuickFilter('ohneNote')">Ohne Note / Offen</button>
+          <label class="impact-toggle"><input type="checkbox" [ngModel]="showImpact()" (ngModelChange)="showImpact.set($event)"> Impact anzeigen</label>
+        </div>
+
+        <!-- C) 2-Spalten: Tabelle links, Detail-Panel rechts -->
+        <div class="grades-body-grid" [class.grades-body-grid--with-panel]="selectedNote()">
+          <div class="grades-table-column">
+            <div class="table-view-toggle">
+              <button type="button" class="toggle-btn" [class.toggle-btn--active]="viewGroup() === 'semester'" (click)="viewGroup.set('semester')">Nach Semester</button>
+              <button type="button" class="toggle-btn" [class.toggle-btn--active]="viewGroup() === 'flat'" (click)="viewGroup.set('flat')">Alle</button>
+            </div>
+            @if (viewGroup() === 'flat') {
+              <div class="smart-table">
+                @for (note of filteredNoten(); track note.id) {
+                  <div class="smart-row" (click)="selectedNote.set(note)">
+                    <div class="smart-row-left">
+                      <span class="smart-modul-name">{{ moduleService.getModulName(note.modulId) }}</span>
+                      <span class="smart-modul-nr">{{ moduleService.getModulNr(note.modulId) || note.modulId }}</span>
+                    </div>
+                    <div class="smart-row-right">
+                      <span class="note-pill note-pill--{{ gradeService.getNoteColor(note.noteWert) }}">{{ gradeService.formatNote(note.noteWert) }}</span>
+                      <span class="smart-versuch">{{ note.versuch }}. Versuch</span>
+                      <span class="smart-datum">{{ formatDate(note.pruefungsdatum) }}</span>
+                      <span class="status-pill status-pill--{{ gradeService.getStatusColor(note.status) }}">{{ gradeService.getStatusLabel(note.status) }}</span>
+                      @if (showImpact()) {
+                        <span class="impact-badge impact-badge--{{ getImpactLevel(note) }}">{{ getImpactLevel(note) }}</span>
+                      }
+                      <span class="smart-chevron">›</span>
+                    </div>
+                  </div>
+                } @empty {
+                  <div class="grades-empty-filters">
+                    <p>Keine Einträge passen zu den gewählten Filtern.</p>
+                    <button type="button" class="btn btn--secondary btn--sm" (click)="clearAllFilters()">Filter zurücksetzen</button>
+                  </div>
+                }
+              </div>
+            } @else {
+              <div class="semester-accordion">
+                @if (notenBySemester().length === 0) {
+                  <div class="grades-empty-filters">
+                    <p>Keine Einträge passen zu den gewählten Filtern.</p>
+                    <button type="button" class="btn btn--secondary btn--sm" (click)="clearAllFilters()">Filter zurücksetzen</button>
+                  </div>
+                }
+                @for (group of notenBySemester(); track group.semester) {
+                  <div class="semester-group">
+                    <div class="semester-group-head">{{ group.semester === 0 ? 'Überblick' : group.semester + '. Semester' }}</div>
+                    @for (note of group.noten; track note.id) {
+                      <div class="smart-row" (click)="selectedNote.set(note)">
+                        <div class="smart-row-left">
+                          <span class="smart-modul-name">{{ moduleService.getModulName(note.modulId) }}</span>
+                          <span class="smart-modul-nr">{{ moduleService.getModulNr(note.modulId) || note.modulId }}</span>
+                        </div>
+                        <div class="smart-row-right">
+                          <span class="note-pill note-pill--{{ gradeService.getNoteColor(note.noteWert) }}">{{ gradeService.formatNote(note.noteWert) }}</span>
+                          <span class="smart-versuch">{{ note.versuch }}. Versuch</span>
+                          <span class="smart-datum">{{ formatDate(note.pruefungsdatum) }}</span>
+                          <span class="status-pill status-pill--{{ gradeService.getStatusColor(note.status) }}">{{ gradeService.getStatusLabel(note.status) }}</span>
+                          @if (showImpact()) {
+                            <span class="impact-badge impact-badge--{{ getImpactLevel(note) }}">{{ getImpactLevel(note) }}</span>
+                          }
+                          <span class="smart-chevron">›</span>
+                        </div>
+                      </div>
+                    }
+                  </div>
+                }
+              </div>
+            }
+            <div class="table-footer">
+              <span class="result-count">{{ filteredNoten().length }} Prüfungsleistungen</span>
+            </div>
+          </div>
+
+          <!-- Detail-Sidepanel (rechts) -->
+          @if (selectedNote(); as note) {
+            <aside class="grades-detail-panel">
+              <div class="detail-panel-header">
+                <h3>{{ moduleService.getModulName(note.modulId) }}</h3>
+                <button type="button" class="detail-panel-close" (click)="selectedNote.set(null)">✕</button>
+              </div>
+              <div class="detail-panel-body">
+                <p class="detail-panel-meta">{{ moduleService.getModulNr(note.modulId) }} · {{ getEctsForNote(note) }} ECTS</p>
+                <div class="detail-panel-row">
+                  <span class="detail-label">Note</span>
+                  <span class="note-pill note-pill--{{ gradeService.getNoteColor(note.noteWert) }}">{{ gradeService.formatNote(note.noteWert) }}</span>
+                </div>
+                <div class="detail-panel-row">
+                  <span class="detail-label">Versuch</span>
+                  <span>{{ note.versuch }}. Versuch</span>
+                </div>
+                <div class="detail-panel-row">
+                  <span class="detail-label">Prüfungsdatum</span>
+                  <span>{{ formatDate(note.pruefungsdatum) }}</span>
+                </div>
+                <div class="detail-panel-row">
+                  <span class="detail-label">Status</span>
+                  <span class="status-pill status-pill--{{ gradeService.getStatusColor(note.status) }}">{{ gradeService.getStatusLabel(note.status) }}</span>
+                </div>
+              </div>
+            </aside>
+          }
         </div>
       }
 
@@ -211,76 +253,6 @@ interface EinschreibungOption {
           </div>
           <h3>Keine Noten vorhanden</h3>
           <p>Für die ausgewählte Einschreibung sind noch keine Noten erfasst.</p>
-        </div>
-      }
-
-      <!-- Detail Modal -->
-      @if (selectedNote()) {
-        <div class="modal-overlay" (click)="closeDetail()">
-          <div class="modal-content" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2>Notendetails</h2>
-              <button class="close-btn" (click)="closeDetail()">
-                <span class="material-icons-outlined">close</span>
-              </button>
-            </div>
-            <div class="modal-body">
-              <div class="note-display">
-                <span class="note-large note-large--{{ gradeService.getNoteColor(selectedNote()!.noteWert) }}">
-                  {{ gradeService.formatNote(selectedNote()!.noteWert) }}
-                </span>
-                @if (selectedNote()!.bestanden !== null && selectedNote()!.bestanden !== undefined) {
-                  <span class="bestanden-badge" [class.bestanden-badge--success]="selectedNote()!.bestanden">
-                    {{ selectedNote()!.bestanden ? 'Bestanden' : 'Nicht bestanden' }}
-                  </span>
-                }
-              </div>
-              
-              <div class="detail-grid">
-                <div class="detail-item">
-                  <span class="detail-label">Modul</span>
-                  <span class="detail-value">{{ moduleService.getModulName(selectedNote()!.modulId) }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Modul-Nr.</span>
-                  <span class="detail-value">{{ moduleService.getModulNr(selectedNote()!.modulId) || selectedNote()!.modulId }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Versuch</span>
-                  <span class="detail-value">{{ selectedNote()!.versuch }}. Versuch</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Prüfungsdatum</span>
-                  <span class="detail-value">{{ formatDate(selectedNote()!.pruefungsdatum) }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Status</span>
-                  <span class="status-badge status-badge--{{ gradeService.getStatusColor(selectedNote()!.status) }}">
-                    {{ gradeService.getStatusLabel(selectedNote()!.status) }}
-                  </span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Erfasst am</span>
-                  <span class="detail-value">{{ formatDate(selectedNote()!.erfasstAm) }}</span>
-                </div>
-                @if (selectedNote()!.validiertAm) {
-                  <div class="detail-item">
-                    <span class="detail-label">Validiert am</span>
-                    <span class="detail-value">{{ formatDate(selectedNote()!.validiertAm!) }}</span>
-                  </div>
-                }
-                @if (selectedNote()!.kommentar) {
-                  <div class="detail-item detail-item--full">
-                    <span class="detail-label">Kommentar</span>
-                    <span class="detail-value">{{ selectedNote()!.kommentar }}</span>
-                  </div>
-                }
-              </div>
-            </div>
-            <div class="modal-footer">
-              <button class="btn btn--secondary" (click)="closeDetail()">Schließen</button>
-            </div>
-          </div>
         </div>
       }
 
@@ -495,7 +467,193 @@ interface EinschreibungOption {
       padding: var(--spacing-md) 0;
     }
 
-    /* Header */
+    /* A) Sticky Top-Bar – bleibt beim Scrollen oben, läuft nicht mit */
+    .grades-sticky-bar-wrap {
+      position: sticky;
+      top: 0;
+      z-index: 50;
+      margin-bottom: var(--spacing-sm);
+      background: var(--bg-page);
+    }
+    .grades-sticky-bar {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+      padding: var(--spacing-md);
+      background: var(--bg-surface);
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+    }
+    .grades-sticky-title { font-weight: 600; font-size: 1.1rem; white-space: nowrap; color: var(--text-primary); }
+    .grades-search-wrap { flex: 1; min-width: 0; max-width: 320px; }
+    .grades-search {
+      width: 100%;
+      padding: 8px 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+    .grades-search::placeholder { color: var(--text-muted); }
+    .grades-filters { display: flex; align-items: center; gap: var(--spacing-xs); flex-wrap: wrap; }
+    .filter-chip {
+      padding: 6px 12px;
+      border-radius: 999px;
+      border: 1px solid var(--border-color);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      font-size: 0.875rem;
+      cursor: pointer;
+    }
+    .filter-chip--active { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-color-light); }
+    .grades-sort {
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      font-size: 0.875rem;
+    }
+
+    /* B) Insights-Zeile */
+    .grades-insights-row {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-lg);
+      padding: var(--spacing-sm) 0;
+      margin-bottom: var(--spacing-md);
+      font-variant-numeric: tabular-nums;
+    }
+    .insight-mini { display: flex; flex-direction: column; gap: 2px; }
+    .insight-mini-label { font-size: 0.75rem; color: var(--text-muted); }
+    .insight-mini-value { font-weight: 600; font-size: 0.95rem; color: var(--text-primary); }
+    .insight-sparkline {
+      display: flex; align-items: flex-end; gap: 2px; height: 24px;
+    }
+    .sparkline-bar {
+      width: 4px; min-height: 2px; background: var(--color-primary); opacity: 0.8; border-radius: 1px;
+    }
+
+    /* Schnellfilter + Impact-Toggle */
+    .grades-quick-filters {
+      display: flex; align-items: center; gap: var(--spacing-xs); flex-wrap: wrap; margin-bottom: var(--spacing-md);
+    }
+    .quick-chip {
+      padding: 4px 10px; border-radius: 999px; border: 1px solid var(--border-color);
+      background: var(--bg-surface); color: var(--text-primary); font-size: 0.8rem; cursor: pointer;
+    }
+    .quick-chip--active { background: var(--bg-hover); color: var(--text-primary); }
+    .impact-toggle { font-size: 0.8rem; color: var(--text-muted); display: inline-flex; align-items: center; gap: 6px; margin-left: auto; }
+
+    /* C) 2-Spalten */
+    .grades-body-grid {
+      display: grid;
+      grid-template-columns: 1fr;
+      gap: var(--spacing-lg);
+      align-items: start;
+    }
+    .grades-body-grid--with-panel {
+      grid-template-columns: 1fr 320px;
+    }
+    .grades-table-column { min-width: 0; }
+    .table-view-toggle { display: flex; gap: 4px; margin-bottom: var(--spacing-sm); }
+    .toggle-btn {
+      padding: 6px 12px; border-radius: var(--radius-md); border: 1px solid var(--border-color);
+      background: var(--bg-surface); color: var(--text-primary); font-size: 0.875rem; cursor: pointer;
+    }
+    .toggle-btn--active { background: var(--bg-hover); color: var(--text-primary); border-color: var(--border-color-light); }
+
+    .smart-table, .semester-accordion {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      overflow: hidden;
+    }
+    .smart-row {
+      display: flex; align-items: center; justify-content: space-between; gap: var(--spacing-md);
+      padding: 10px 12px;
+      background: var(--bg-elevated);
+      border-bottom: 1px solid var(--border-color);
+      cursor: pointer;
+      font-variant-numeric: tabular-nums;
+    }
+    .smart-row:last-child { border-bottom: none; }
+    .smart-row:hover { background: var(--bg-hover); }
+    .semester-accordion .smart-row {
+      background: var(--bg-surface);
+    }
+    .semester-accordion .smart-row:hover {
+      background: var(--bg-elevated);
+    }
+    .smart-row-left { display: flex; flex-direction: column; gap: 2px; min-width: 0; }
+    .smart-modul-name { font-weight: 500; color: var(--text-primary); }
+    .smart-modul-nr { font-size: 0.8rem; color: var(--text-muted); }
+    .smart-row-right { display: flex; align-items: center; gap: var(--spacing-sm); flex-shrink: 0; }
+    .note-pill {
+      padding: 4px 10px; border-radius: 999px; font-size: 0.9rem; font-weight: 600;
+      border: none; outline: none; font-variant-numeric: tabular-nums;
+      background: rgba(255, 255, 255, 0.08); color: var(--text-primary);
+    }
+    .note-pill--success, .note-pill--info, .note-pill--warning, .note-pill--caution, .note-pill--danger,
+    .note-pill--neutral, .note-pill--muted {
+      background: rgba(255, 255, 255, 0.08); color: var(--text-primary);
+    }
+    .status-pill {
+      padding: 2px 8px; border-radius: 999px; font-size: 0.75rem;
+      border: none; outline: none;
+      background: transparent; color: var(--text-secondary);
+    }
+    .status-pill--success {
+      background: rgba(22, 101, 52, 0.25); color: #86efac;
+    }
+    .status-pill--warning, .status-pill--danger, .status-pill--neutral {
+      background: transparent; color: var(--text-secondary);
+    }
+    .impact-badge { font-size: 0.7rem; text-transform: uppercase; color: var(--text-muted); }
+    .impact-badge--hoch { color: var(--color-primary); }
+    .smart-versuch, .smart-datum { font-size: 0.85rem; color: var(--text-secondary); font-variant-numeric: tabular-nums; }
+    .smart-chevron { color: var(--text-secondary); font-size: 1rem; }
+
+    .semester-group { border-bottom: 1px solid var(--border-color); }
+    .semester-group:last-child { border-bottom: none; }
+    .semester-group-head {
+      padding: 8px 12px;
+      background: var(--bg-hover);
+      color: var(--text-primary);
+      font-weight: 600;
+      font-size: 0.9rem;
+    }
+
+    .table-footer { padding: var(--spacing-sm) 0; font-size: 0.875rem; color: var(--text-secondary); }
+    .result-count { font-variant-numeric: tabular-nums; }
+
+    .grades-empty-filters {
+      padding: var(--spacing-xl);
+      text-align: center;
+      color: var(--text-secondary);
+    }
+    .grades-empty-filters p { margin-bottom: var(--spacing-md); }
+
+    .grades-detail-panel {
+      position: sticky; top: 80px;
+      border: 1px solid var(--border-color); border-radius: var(--radius-md);
+      background: var(--bg-surface); padding: var(--spacing-md); min-height: 120px;
+    }
+    .detail-panel-header { display: flex; justify-content: space-between; align-items: flex-start; margin-bottom: var(--spacing-md); }
+    .detail-panel-header h3 { margin: 0; font-size: 1rem; }
+    .detail-panel-close { background: none; border: none; cursor: pointer; font-size: 1.1rem; color: var(--text-muted); padding: 4px; }
+    .detail-panel-meta { font-size: 0.8rem; color: var(--text-muted); margin-bottom: var(--spacing-sm); }
+    .detail-panel-row { display: flex; justify-content: space-between; align-items: center; margin-bottom: var(--spacing-xs); font-variant-numeric: tabular-nums; }
+    .detail-label { font-size: 0.85rem; color: var(--text-muted); }
+
+    @media (max-width: 900px) {
+      .grades-body-grid { grid-template-columns: 1fr; }
+      .grades-detail-panel { position: static; }
+    }
+
+    /* Header (fallback/empty state) */
     .page-header {
       display: flex;
       justify-content: space-between;
@@ -1477,6 +1635,13 @@ export class GradesComponent implements OnInit, OnDestroy {
   loadingEinschreibungen = signal(false);
   showTranscriptModal = signal(false);
   generatingPdf = signal(false);
+
+  searchQuery = signal('');
+  filterChip = signal<'alle' | 'bestanden' | 'offen' | 'wiederholung'>('alle');
+  sortBy = signal<'datum' | 'note' | 'name'>('datum');
+  viewGroup = signal<'semester' | 'flat'>('semester');
+  showImpact = signal(false);
+  quickFilter = signal<string | null>(null);
   
   @ViewChild('transcriptDocument') transcriptDocument!: ElementRef;
   
@@ -1487,7 +1652,87 @@ export class GradesComponent implements OnInit, OnDestroy {
   einschreibungen = signal<EinschreibungOption[]>([]);
 
   filteredNoten = computed(() => {
-    return this.gradeService.noten();
+    let list = this.gradeService.noten();
+    // Studenten sehen nur freigegebene Noten; Erfasst/Validiert sind interne Workflow-Zustände
+    if (this.isStudent()) {
+      list = list.filter(n => n.status === NoteStatus.FREIGEGEBEN);
+    }
+    const q = (this.searchQuery() || '').trim().toLowerCase();
+    const chip = this.filterChip();
+    const sort = this.sortBy();
+    const qf = this.quickFilter();
+
+    if (q) {
+      list = list.filter(n => {
+        const name = this.moduleService.getModulName(n.modulId).toLowerCase();
+        const nr = (this.moduleService.getModulNr(n.modulId) || '').toLowerCase();
+        return name.includes(q) || nr.includes(q);
+      });
+    }
+    if (chip === 'bestanden') list = list.filter(n => n.bestanden === true);
+    else if (chip === 'offen') list = list.filter(n => this.isOffen(n));
+    else if (chip === 'wiederholung') list = list.filter(n => (n.versuch ?? 1) > 1);
+
+    if (qf === 'le2') list = list.filter(n => n.noteWert != null && n.noteWert <= 2.0);
+    else if (qf === 'ge3') list = list.filter(n => n.noteWert != null && n.noteWert >= 3.0);
+    else if (qf === 'zweitversuch') list = list.filter(n => (n.versuch ?? 1) >= 2);
+    else if (qf === 'letzte90') {
+      const cutoff = new Date();
+      cutoff.setDate(cutoff.getDate() - 90);
+      list = list.filter(n => {
+        const d = n.pruefungsdatum || n.erfasstAm;
+        if (!d) return false;
+        const t = new Date(d).getTime();
+        return !Number.isNaN(t) && t >= cutoff.getTime();
+      });
+    } else if (qf === 'ohneNote') list = list.filter(n => n.noteWert == null || n.bestanden !== true);
+
+    const arr = list.slice();
+    if (sort === 'datum') {
+      arr.sort((a, b) => {
+        const ta = new Date(a.pruefungsdatum || a.erfasstAm || 0).getTime();
+        const tb = new Date(b.pruefungsdatum || b.erfasstAm || 0).getTime();
+        return tb - ta;
+      });
+    } else if (sort === 'note') {
+      arr.sort((a, b) => (a.noteWert ?? 5) - (b.noteWert ?? 5));
+    } else if (sort === 'name') {
+      arr.sort((a, b) => this.moduleService.getModulName(a.modulId).localeCompare(this.moduleService.getModulName(b.modulId)));
+    }
+    return arr;
+  });
+
+  notenBySemester = computed(() => {
+    const noten = this.filteredNoten();
+    const map = this.moduleService.moduleMap();
+    const groups = new Map<number, Note[]>();
+    for (const n of noten) {
+      const modul = map.get(String(n.modulId));
+      const sem = modul?.semester != null ? Number.parseInt(String(modul.semester), 10) : 0;
+      const key = Number.isNaN(sem) ? 0 : sem;
+      if (!groups.has(key)) groups.set(key, []);
+      groups.get(key)!.push(n);
+    }
+    const semesters = Array.from(groups.keys()).sort((a, b) => a - b);
+    return semesters.map(semester => ({ semester, noten: groups.get(semester)! }));
+  });
+
+  lastChangeDate = computed(() => {
+    const noten = this.gradeService.noten();
+    if (noten.length === 0) return '-';
+    let latest = 0;
+    for (const n of noten) {
+      const t = new Date(n.pruefungsdatum || n.erfasstAm || 0).getTime();
+      if (t > latest) latest = t;
+    }
+    return latest ? new Date(latest).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '-';
+  });
+
+  noteTrendData = computed(() => {
+    const noten = this.gradeService.noten().filter(n => n.noteWert != null);
+    const sorted = noten.slice().sort((a, b) =>
+      new Date(b.pruefungsdatum || 0).getTime() - new Date(a.pruefungsdatum || 0).getTime());
+    return sorted.slice(0, 12).map(n => n.noteWert!);
   });
 
   constructor(
@@ -1622,6 +1867,36 @@ export class GradesComponent implements OnInit, OnDestroy {
 
   closeDetail(): void {
     this.selectedNote.set(null);
+  }
+
+  getImpactLevel(note: Note): 'hoch' | 'mittel' | 'gering' {
+    const ectsNum = parseInt(this.getEctsForNote(note), 10) || 0;
+    if (ectsNum >= 6) return 'hoch';
+    if (ectsNum >= 3) return 'mittel';
+    return 'gering';
+  }
+
+  toggleQuickFilter(key: string): void {
+    this.quickFilter.set(this.quickFilter() === key ? null : key);
+  }
+
+  setSortBy(value: string): void {
+    if (value === 'datum' || value === 'note' || value === 'name') {
+      this.sortBy.set(value);
+    }
+  }
+
+  clearAllFilters(): void {
+    this.searchQuery.set('');
+    this.filterChip.set('alle');
+    this.quickFilter.set(null);
+  }
+
+  /** Eine Note gilt als „offen“, wenn kein Status (bestanden null/undefined) oder keine Note eingetragen ist. */
+  private isOffen(n: Note): boolean {
+    const statusOffen = n.bestanden !== true && n.bestanden !== false;
+    const keineNote = n.noteWert == null;
+    return statusOffen || keineNote;
   }
 
   // ========== TRANSCRIPT ==========
@@ -1899,8 +2174,8 @@ export class GradesComponent implements OnInit, OnDestroy {
   }
 
   getSemesterForNote(note: Note): string {
-    // Hier könnte man das Semester aus dem Modul laden
-    return '-';
+    const modul = this.moduleService.moduleMap().get(String(note.modulId));
+    return modul?.semester != null ? String(modul.semester) : '-';
   }
 
   toStr(val: any): string {

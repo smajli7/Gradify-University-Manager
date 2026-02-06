@@ -102,6 +102,27 @@ interface SemesterProgress {
   durchschnitt: number | null;
 }
 
+export type ModulStatus = 'offen' | 'in-bearbeitung' | 'bestanden' | 'nicht-bestanden';
+
+interface ModulWithStatus {
+  id: string;
+  modulNr: string;
+  name: string;
+  ects: number;
+  semester: number;
+  status: ModulStatus;
+  noteWert: number | null;
+  noteId?: string;
+}
+
+interface RoadmapSemester {
+  semester: number;
+  ects: number;
+  ectsGesamt: number;
+  durchschnitt: number | null;
+  module: ModulWithStatus[];
+}
+
 @Component({
   selector: 'app-progress',
   standalone: true,
@@ -193,157 +214,120 @@ interface SemesterProgress {
 
       <!-- Content -->
       @if (!loading() && !error() && dataLoaded()) {
-        <!-- Overview Cards -->
-        <div class="overview-grid">
-          <div class="overview-card overview-card--primary">
-            <div class="card-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-                <path d="M6 12v5c0 2 4 3 6 3s6-1 6-3v-5"/>
-              </svg>
-            </div>
-            <div class="card-content">
-              <span class="card-value">{{ studiengangName() }}</span>
-              <span class="card-label">Studiengang</span>
-            </div>
-          </div>
-          
-          <div class="overview-card">
-            <div class="card-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <rect x="3" y="4" width="18" height="18" rx="2" ry="2"/>
-                <line x1="16" y1="2" x2="16" y2="6"/>
-                <line x1="8" y1="2" x2="8" y2="6"/>
-                <line x1="3" y1="10" x2="21" y2="10"/>
-              </svg>
-            </div>
-            <div class="card-content">
-              <span class="card-value">{{ currentSemester() }}. Semester</span>
-              <span class="card-label">von {{ regelstudienzeit() }}</span>
-            </div>
-          </div>
-          
-          <div class="overview-card">
-            <div class="card-icon">
-              <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 3v18h18"/>
-                <path d="M18 17V9"/>
-                <path d="M13 17V5"/>
-                <path d="M8 17v-3"/>
-              </svg>
-            </div>
-            <div class="card-content">
-              <span class="card-value">{{ durchschnitt() | number:'1.2-2' }}</span>
-              <span class="card-label">Notendurchschnitt</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Main Progress Section: Donut + 3 Kernwerte -->
-        <div class="progress-section">
-          <h2 class="section-title">ECTS-Fortschritt</h2>
-          
-          <div class="progress-display">
-            <div class="progress-circle">
-              <svg viewBox="0 0 120 120">
-                <circle class="progress-bg" cx="60" cy="60" r="54" />
-                <circle 
-                  class="progress-fill" 
-                  cx="60" 
-                  cy="60" 
-                  r="54"
-                  [style.stroke-dasharray]="circumference"
-                  [style.stroke-dashoffset]="progressOffset()" />
-              </svg>
-              <div class="progress-text">
-                <span class="progress-value">{{ progressPercent() | number:'1.0-0' }}%</span>
-                <span class="progress-label">abgeschlossen</span>
-              </div>
-            </div>
-            
-            <div class="progress-details">
-              <div class="detail-row">
-                <span class="detail-label">Erreichte ECTS</span>
-                <span class="detail-value detail-value--success">{{ ectsErreicht() }}</span>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">Offene ECTS</span>
-                <span class="detail-value detail-value--muted">{{ totalEcts() - ectsErreicht() }}</span>
-              </div>
-              <div class="detail-row">
-                <span class="detail-label">Bestanden</span>
-                <span class="detail-value">{{ bestandenCount() }} / {{ totalModules() }}</span>
-              </div>
-            </div>
-          </div>
-        </div>
-
-        <!-- Semester Progress -->
-        <div class="semester-section">
-          <h2 class="section-title">Fortschritt pro Semester</h2>
-          
-          <div class="semester-bars">
-            @for (sem of semesterProgress(); track sem.semester) {
-              <div class="semester-bar-container">
-                <div class="semester-label">{{ sem.semester }}. Sem</div>
-                <div class="semester-bar">
-                  <div 
-                    class="semester-bar-fill" 
-                    [style.width.%]="sem.ectsGesamt > 0 ? (sem.ects / sem.ectsGesamt) * 100 : 0"
-                    [class.semester-bar-fill--complete]="sem.ects >= sem.ectsGesamt">
-                  </div>
-                </div>
-                <div class="semester-kennzahl">{{ sem.ects }}/{{ sem.ectsGesamt }}</div>
-                @if (sem.durchschnitt !== null) {
-                  <span class="semester-avg-pill">{{ sem.durchschnitt | number:'1.1-1' }}</span>
-                } @else {
-                  <span class="semester-avg-pill semester-avg-pill--empty">–</span>
-                }
-              </div>
-            }
-          </div>
-        </div>
-
-        <!-- Status Overview: kompakt, Akzent Topline -->
-        <div class="status-section">
-          <h2 class="section-title">Modulstatus</h2>
-          
-          <div class="status-grid">
-            <div class="status-card status-card--success">
-              <span class="status-icon">✓</span>
-              <span class="status-count">{{ bestandenCount() }}</span>
-              <span class="status-label">Bestanden</span>
-            </div>
-            <div class="status-card status-card--warning">
-              <span class="status-icon">○</span>
-              <span class="status-count">{{ inProgressCount() }}</span>
-              <span class="status-label">In Bearbeitung</span>
-            </div>
-            <div class="status-card status-card--muted">
-              <span class="status-icon">–</span>
-              <span class="status-count">{{ offenCount() }}</span>
-              <span class="status-label">Offen</span>
-            </div>
-            <div class="status-card status-card--danger">
-              <span class="status-icon">✕</span>
-              <span class="status-count">{{ nichtBestandenCount() }}</span>
-              <span class="status-label">Nicht bestanden</span>
-            </div>
-          </div>
-        </div>
-
-        <!-- Prognose: dezenter Hinweis + CTA -->
-        <div class="prognose-section">
-          <p class="prognose-hinweis">
-            @if (semesterBisAbschluss() > 0) {
-              Voraussichtlicher Abschluss in {{ semesterBisAbschluss() }} Semestern
-              (Ø {{ ectsProSemester() | number:'1.0-0' }} ECTS/Sem).
-            } @else {
-              Abschluss bei aktuellem Tempo möglich.
-            }
-            <a routerLink="/study-plan" class="prognose-cta">Offene Module priorisieren</a>
+        <!-- A) Sticky Header: ein Satz + Plan ansehen + Filter -->
+        <header class="progress-sticky-header">
+          <p class="progress-sticky-line">
+            Noch <strong>{{ totalEcts() - ectsErreicht() }} ECTS</strong> bis Abschluss · {{ offenCount() }} Module offen · Ø <strong>{{ durchschnitt() !== null ? (durchschnitt() | number:'1.2-2') : '–' }}</strong>
           </p>
+          <div class="progress-sticky-actions">
+            <button type="button" class="filter-chip" [class.filter-chip--active]="filterStatus() === 'all'" (click)="filterStatus.set('all')">Alle</button>
+            <button type="button" class="filter-chip" [class.filter-chip--active]="filterStatus() === 'offen'" (click)="filterStatus.set('offen')">Nur offen</button>
+            <button type="button" class="filter-chip" [class.filter-chip--active]="filterStatus() === 'in-bearbeitung'" (click)="filterStatus.set('in-bearbeitung')">In Bearbeitung</button>
+            <a routerLink="/study-plan" class="btn btn--primary btn--sm">Plan ansehen</a>
+          </div>
+        </header>
+
+        <!-- B) Dein Stand – kompakter Fortschritts-Puls -->
+        <section class="progress-pulse-section">
+          <div class="progress-pulse-bar-wrap">
+            <div class="progress-pulse-bar" [style.width.%]="progressPercent()"></div>
+          </div>
+          <div class="progress-pulse-meta">
+            <span class="progress-pulse-ects">{{ ectsErreicht() }} / {{ totalEcts() }} ECTS</span>
+            @if (ectsErreicht() < totalEcts() && ectsProSemester() > 0) {
+              <span class="progress-pulse-hint">Bei {{ ectsProSemester() | number:'1.0-0' }} ECTS/Sem → Abschluss in ca. {{ semesterBisAbschluss() }} Sem.</span>
+            }
+          </div>
+          @if (nextActions().length > 0) {
+            <div class="progress-pulse-cta">
+              <span class="progress-pulse-next">Nächster Schritt: {{ nextActions()[0].name }} ({{ nextActions()[0].ects }} ECTS)</span>
+              <a [routerLink]="['/study-plan']" class="btn btn--primary btn--sm">Zum Studienplan</a>
+            </div>
+          }
+        </section>
+
+        <!-- C) Roadmap + D) Insights (2-Spalten auf Desktop) -->
+        <div class="progress-body-grid">
+          <div class="roadmap-column">
+            <h2 class="section-title">Roadmap</h2>
+            <div class="roadmap-accordion">
+              @for (row of roadmapBySemester(); track row.semester) {
+                <div class="roadmap-semester" [class.roadmap-semester--current]="row.semester === currentSemester()">
+                  <button type="button" class="roadmap-semester-head" (click)="toggleRoadmapSemester(row.semester)">
+                    <span class="roadmap-semester-title">{{ row.semester }}. Semester {{ row.semester === currentSemester() ? '(aktuell)' : '' }}</span>
+                    <span class="roadmap-semester-ects">{{ row.ects }}/{{ row.ectsGesamt }} ECTS</span>
+                    @if (row.durchschnitt !== null) {
+                      <span class="roadmap-semester-avg">Ø {{ row.durchschnitt | number:'1.1-1' }}</span>
+                    }
+                    <span class="roadmap-semester-chevron">{{ expandedRoadmapSemester() === row.semester ? '▼' : '▶' }}</span>
+                  </button>
+                  @if (expandedRoadmapSemester() === row.semester) {
+                    <ul class="roadmap-module-list">
+                      @for (m of row.module; track m.id) {
+                        @if (filterStatus() === 'all' || m.status === filterStatus()) {
+                        <li class="roadmap-module-row" (click)="selectedModul.set(m)">
+                          <span class="roadmap-module-name">{{ m.name }}</span>
+                          <span class="roadmap-module-ects">{{ m.ects }} ECTS</span>
+                          <span class="roadmap-module-status roadmap-module-status--{{ m.status }}">{{ m.status === 'bestanden' ? '✓' : m.status === 'offen' ? '○' : m.status === 'in-bearbeitung' ? '…' : '✕' }}</span>
+                          <span class="roadmap-module-note">{{ m.noteWert != null ? (m.noteWert | number:'1.1-1') : '—' }}</span>
+                          <span class="roadmap-module-arrow">›</span>
+                        </li>
+                        }
+                      }
+                    </ul>
+                  }
+                </div>
+              }
+            </div>
+          </div>
+
+          <aside class="insights-column">
+            <h3 class="insights-title">Insights</h3>
+            <div class="insight-item">
+              <span class="insight-label">Pace</span>
+              <span class="insight-value">Ø {{ paceEctsPerSem() | number:'1.0-0' }} ECTS/Sem</span>
+            </div>
+            @if (noteTrendData().length > 0) {
+              <div class="insight-item">
+                <span class="insight-label">Notentrend</span>
+                <div class="mini-sparkline" [attr.aria-label]="'Letzte ' + noteTrendData().length + ' Noten'">
+                  @for (v of noteTrendData(); track $index) {
+                    <span class="sparkline-bar" [style.height.%]="(v / 5) * 100"></span>
+                  }
+                </div>
+              </div>
+            }
+            @if (riskHint(); as hint) {
+              <div class="insight-item insight-item--risk">
+                <span class="insight-label">Hinweis</span>
+                <span class="insight-value">{{ hint }}</span>
+              </div>
+            }
+          </aside>
         </div>
+
+        <!-- Modul-Side-Panel -->
+        @if (selectedModul(); as modul) {
+          <div class="side-panel-overlay" (click)="selectedModul.set(null)">
+            <div class="side-panel" (click)="$event.stopPropagation()">
+              <div class="side-panel-header">
+                <h3>{{ modul.name }}</h3>
+                <button type="button" class="side-panel-close" (click)="selectedModul.set(null)">✕</button>
+              </div>
+              <div class="side-panel-body">
+                <p class="side-panel-meta">{{ modul.modulNr }} · {{ modul.ects }} ECTS · {{ modul.semester }}. Sem</p>
+                <p class="side-panel-status">Status: {{ modul.status === 'bestanden' ? 'Bestanden' : modul.status === 'offen' ? 'Offen' : modul.status === 'in-bearbeitung' ? 'In Bearbeitung' : 'Nicht bestanden' }}</p>
+                @if (modul.noteWert != null) {
+                  <p class="side-panel-note">Note: {{ modul.noteWert | number:'1.1-1' }}</p>
+                }
+                <div class="side-panel-ctas">
+                  <a routerLink="/study-plan" class="btn btn--primary btn--sm">Zum Studienplan</a>
+                  <a routerLink="/grades" class="btn btn--secondary btn--sm">Zum Notenverlauf</a>
+                </div>
+              </div>
+            </div>
+          </div>
+        }
       }
 
       <!-- Empty State (nur für Nicht-Studenten) -->
@@ -482,293 +466,388 @@ interface SemesterProgress {
       color: var(--text-primary);
     }
 
-    /* Overview Grid */
-    .overview-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: var(--spacing-md);
-      margin-bottom: var(--spacing-lg);
-    }
-
-    .overview-card {
+    /* A) Sticky Header */
+    .progress-sticky-header {
+      position: sticky;
+      top: 0;
+      z-index: 100;
       display: flex;
       align-items: center;
-      gap: var(--spacing-md);
+      justify-content: space-between;
+      gap: 16px;
+      padding: 10px 20px;
+      margin: 0 -20px 16px -20px;
+      padding-left: 20px;
+      padding-right: 20px;
+      margin-left: 0;
+      margin-right: 0;
+      background: var(--bg-surface);
+      border-bottom: 1px solid var(--border-color);
+      flex-wrap: wrap;
+    }
+
+    .progress-sticky-line {
+      margin: 0;
+      font-size: var(--font-size-sm);
+      color: var(--text-secondary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .progress-sticky-line strong {
+      color: var(--text-primary);
+    }
+
+    .progress-sticky-actions {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      flex-wrap: wrap;
+    }
+
+    .filter-chip {
+      padding: 6px 12px;
+      font-size: var(--font-size-xs);
+      font-weight: 500;
+      color: var(--text-muted);
+      background: transparent;
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .filter-chip:hover {
+      color: var(--text-secondary);
+      border-color: rgba(255, 255, 255, 0.2);
+    }
+
+    .filter-chip--active {
+      background: rgba(255, 255, 255, 0.08);
+      border-color: rgba(255, 255, 255, 0.25);
+      color: var(--text-primary);
+    }
+
+    /* B) Dein Stand – Fortschritts-Puls */
+    .progress-pulse-section {
       padding: var(--spacing-lg);
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
       border-radius: var(--radius-lg);
-    }
-
-    .overview-card--primary {
-      border-color: rgba(255, 255, 255, 0.3);
-      background: rgba(255, 255, 255, 0.05);
-    }
-
-    .card-icon {
-      color: var(--text-secondary);
-    }
-
-    .card-content {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .card-value {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text-primary);
-    }
-
-    .card-label {
-      font-size: var(--font-size-xs);
-      color: var(--text-muted);
-    }
-
-    /* Section titles: stärkere Hierarchie */
-    .section-title {
-      margin: 0 0 var(--spacing-md) 0;
-      font-size: 1.25rem;
-      font-weight: 700;
-      color: var(--text-primary);
-    }
-
-    .progress-section,
-    .semester-section,
-    .status-section,
-    .prognose-section {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-xl);
-      padding: var(--spacing-lg);
       margin-bottom: var(--spacing-lg);
     }
 
-    .progress-display {
+    .progress-pulse-bar-wrap {
+      height: 8px;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: 999px;
+      overflow: hidden;
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .progress-pulse-bar {
+      height: 100%;
+      background: linear-gradient(90deg, rgba(34, 197, 94, 0.6), rgba(34, 197, 94, 0.9));
+      border-radius: 999px;
+      transition: width 0.4s ease;
+    }
+
+    .progress-pulse-meta {
       display: flex;
-      align-items: center;
-      gap: var(--spacing-xl);
       flex-wrap: wrap;
-    }
-
-    .progress-circle {
-      position: relative;
-      width: 160px;
-      height: 160px;
-    }
-
-    .progress-circle svg {
-      transform: rotate(-90deg);
-    }
-
-    .progress-bg {
-      fill: none;
-      stroke: var(--bg-deep);
-      stroke-width: 8;
-    }
-
-    .progress-fill {
-      fill: none;
-      stroke: #CBD5E1;
-      stroke-width: 8;
-      stroke-linecap: round;
-      transition: stroke-dashoffset 0.5s ease;
-    }
-
-    .progress-text {
-      position: absolute;
-      inset: 0;
-      display: flex;
-      flex-direction: column;
       align-items: center;
-      justify-content: center;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-sm);
+      font-variant-numeric: tabular-nums;
     }
 
-    .progress-value {
-      font-size: 2rem;
+    .progress-pulse-ects {
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .progress-pulse-hint {
+      font-size: var(--font-size-sm);
+      color: var(--text-muted);
+    }
+
+    .progress-pulse-cta {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--spacing-sm);
+      padding-top: var(--spacing-sm);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .progress-pulse-next {
+      font-size: var(--font-size-sm);
+      color: var(--text-secondary);
+    }
+
+    .progress-pulse-cta .btn {
+      flex-shrink: 0;
+    }
+
+    /* Section titles */
+    .section-title {
+      margin: 0 0 12px 0;
+      font-size: 1.15rem;
       font-weight: 700;
       color: var(--text-primary);
     }
 
-    .progress-label {
-      font-size: var(--font-size-sm);
-      color: var(--text-muted);
-    }
-
-    .progress-details {
-      flex: 1;
-      min-width: 0;
-      max-width: 240px;
-      display: flex;
-      flex-direction: column;
-      gap: 0;
-    }
-
-    .detail-row {
-      display: flex;
-      justify-content: space-between;
-      align-items: baseline;
-      gap: 16px;
-      padding: 6px 0;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
-    }
-
-    .detail-row:last-child {
-      border-bottom: none;
-    }
-
-    .detail-label {
-      font-size: var(--font-size-sm);
-      color: var(--text-muted);
-      flex-shrink: 0;
-    }
-
-    .detail-value {
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      text-align: right;
-      flex-shrink: 0;
-    }
-
-    .detail-value--success { color: var(--color-success); }
-    .detail-value--muted { color: var(--text-muted); }
-
-    /* Semester Bars: Track grau, nur Füllung grün; Kennzahl rechts */
-    .semester-bars {
-      display: flex;
-      flex-direction: column;
-      gap: 10px;
-    }
-
-    .semester-bar-container {
+    /* C) Roadmap + D) Insights Grid */
+    .progress-body-grid {
       display: grid;
-      grid-template-columns: 72px 1fr 56px 44px;
-      gap: 12px;
-      align-items: center;
+      grid-template-columns: 1fr 220px;
+      gap: 20px;
+      margin-bottom: 16px;
     }
 
-    .semester-label {
-      font-size: var(--font-size-sm);
-      font-weight: 500;
-      color: var(--text-muted);
+    .roadmap-column {
+      min-width: 0;
     }
 
-    .semester-bar {
-      height: 20px;
-      background: var(--bg-deep);
-      border-radius: var(--radius-full);
+    .roadmap-accordion {
+      display: flex;
+      flex-direction: column;
+      gap: 4px;
+    }
+
+    .roadmap-semester {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
       overflow: hidden;
     }
 
-    .semester-bar-fill {
-      height: 100%;
-      background: var(--color-success);
-      border-radius: var(--radius-full);
-      transition: width 0.5s ease;
+    .roadmap-semester--current {
+      border-color: rgba(34, 197, 94, 0.35);
     }
 
-    .semester-bar-fill--complete {
-      background: var(--color-success);
-    }
-
-    .semester-kennzahl {
-      font-size: var(--font-size-sm);
-      font-weight: 700;
-      font-variant-numeric: tabular-nums;
-      text-align: right;
+    .roadmap-semester-head {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      width: 100%;
+      padding: 12px 16px;
+      background: transparent;
+      border: none;
       color: var(--text-primary);
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      cursor: pointer;
+      text-align: left;
+      transition: background 0.15s;
     }
 
-    .semester-avg-pill {
-      font-size: 11px;
-      font-weight: 600;
+    .roadmap-semester-head:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .roadmap-semester-title {
+      flex: 1;
+    }
+
+    .roadmap-semester-ects {
       font-variant-numeric: tabular-nums;
-      padding: 2px 6px;
-      border-radius: 6px;
-      background: rgba(255, 255, 255, 0.08);
       color: var(--text-secondary);
+    }
+
+    .roadmap-semester-avg {
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .roadmap-semester-chevron {
+      font-size: 10px;
+      color: var(--text-muted);
+    }
+
+    .roadmap-module-list {
+      list-style: none;
+      margin: 0;
+      padding: 0 0 8px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.06);
+    }
+
+    .roadmap-module-row {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      padding: 8px 16px;
+      font-size: var(--font-size-sm);
+      cursor: pointer;
+      transition: background 0.15s;
+    }
+
+    .roadmap-module-row:hover {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .roadmap-module-name {
+      flex: 1;
+      min-width: 0;
+      color: var(--text-primary);
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .roadmap-module-ects {
+      font-variant-numeric: tabular-nums;
+      color: var(--text-muted);
+    }
+
+    .roadmap-module-status {
+      width: 20px;
       text-align: center;
     }
 
-    .semester-avg-pill--empty {
-      color: var(--text-muted);
-    }
-
-    /* Status Grid: kompakt, Akzent Topline */
-    .status-grid {
-      display: grid;
-      grid-template-columns: repeat(4, 1fr);
-      gap: var(--spacing-sm);
-    }
-
-    .status-card {
-      display: flex;
-      align-items: center;
-      gap: 8px;
-      padding: 10px 12px;
-      border-radius: var(--radius-md);
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-top: 3px solid transparent;
-      background: var(--bg-hover);
-    }
-
-    .status-card--success { border-top-color: var(--color-success); }
-    .status-card--warning { border-top-color: var(--color-warning); }
-    .status-card--muted { border-top-color: var(--text-muted); }
-    .status-card--danger { border-top-color: var(--color-danger); }
-
-    .status-icon {
-      font-size: 14px;
-      font-weight: 700;
-      flex-shrink: 0;
-    }
-
-    .status-card--success .status-icon { color: var(--color-success); }
-    .status-card--warning .status-icon { color: var(--color-warning); }
-    .status-card--muted .status-icon { color: var(--text-muted); }
-    .status-card--danger .status-icon { color: var(--color-danger); }
-
-    .status-count {
-      font-size: 1.25rem;
-      font-weight: 700;
+    .roadmap-module-note {
+      min-width: 2.5em;
       font-variant-numeric: tabular-nums;
-    }
-
-    .status-card--success .status-count { color: var(--color-success); }
-    .status-card--warning .status-count { color: var(--color-warning); }
-    .status-card--muted .status-count { color: var(--text-muted); }
-    .status-card--danger .status-count { color: var(--color-danger); }
-
-    .status-label {
-      font-size: var(--font-size-xs);
-      color: var(--text-muted);
-      margin-left: auto;
-      white-space: nowrap;
-    }
-
-    /* Prognose: dezenter Hinweis + CTA */
-    .prognose-section {
-      padding: var(--spacing-md) var(--spacing-lg);
-    }
-
-    .prognose-hinweis {
-      margin: 0;
-      font-size: var(--font-size-sm);
-      color: var(--text-muted);
-      line-height: 1.5;
-    }
-
-    .prognose-cta {
-      display: inline-block;
-      margin-left: 8px;
-      font-weight: 500;
+      text-align: right;
       color: var(--text-secondary);
-      text-decoration: none;
     }
 
-    .prognose-cta:hover {
+    .roadmap-module-arrow {
+      color: var(--text-muted);
+      font-size: 14px;
+    }
+
+    /* Insights (rechte Spalte) */
+    .insights-column {
+      padding: 16px;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      height: fit-content;
+    }
+
+    .insights-title {
+      margin: 0 0 12px 0;
+      font-size: var(--font-size-sm);
+      font-weight: 600;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .insight-item {
+      margin-bottom: 12px;
+    }
+
+    .insight-item:last-child {
+      margin-bottom: 0;
+    }
+
+    .insight-label {
+      display: block;
+      font-size: 10px;
+      color: var(--text-muted);
+      margin-bottom: 2px;
+    }
+
+    .insight-value {
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      font-variant-numeric: tabular-nums;
       color: var(--text-primary);
-      text-decoration: underline;
+    }
+
+    .insight-item--risk .insight-value {
+      color: var(--color-warning);
+    }
+
+    .mini-sparkline {
+      display: flex;
+      align-items: flex-end;
+      gap: 2px;
+      height: 24px;
+    }
+
+    .sparkline-bar {
+      flex: 1;
+      min-width: 4px;
+      background: var(--color-success);
+      border-radius: 2px;
+      opacity: 0.8;
+    }
+
+    /* Side Panel */
+    .side-panel-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.6);
+      z-index: 500;
+      display: flex;
+      justify-content: flex-end;
+    }
+
+    .side-panel {
+      width: 100%;
+      max-width: 360px;
+      background: var(--bg-surface);
+      border-left: 1px solid var(--border-color);
+      padding: 20px;
+      overflow-y: auto;
+    }
+
+    .side-panel-header {
+      display: flex;
+      justify-content: space-between;
+      align-items: flex-start;
+      margin-bottom: 16px;
+    }
+
+    .side-panel-header h3 {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .side-panel-close {
+      background: none;
+      border: none;
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 18px;
+      padding: 0 4px;
+    }
+
+    .side-panel-close:hover {
+      color: var(--text-primary);
+    }
+
+    .side-panel-body {
+      font-size: var(--font-size-sm);
+    }
+
+    .side-panel-meta {
+      margin: 0 0 8px 0;
+      color: var(--text-muted);
+    }
+
+    .side-panel-status,
+    .side-panel-note {
+      margin: 0 0 8px 0;
+      color: var(--text-secondary);
+    }
+
+    .side-panel-ctas {
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+      margin-top: 16px;
+    }
+
+    .btn--sm {
+      padding: 8px 14px;
+      font-size: var(--font-size-sm);
     }
 
     /* Buttons */
@@ -794,14 +873,15 @@ interface SemesterProgress {
 
     /* Responsive */
     @media (max-width: 768px) {
-      .progress-display { flex-direction: column; }
-      .progress-details { max-width: none; }
-      .semester-bar-container {
-        grid-template-columns: 60px 1fr 48px 40px;
-        gap: 8px;
+      .progress-sticky-header {
+        flex-direction: column;
+        align-items: flex-start;
       }
-      .status-grid {
-        grid-template-columns: repeat(2, 1fr);
+      .progress-body-grid {
+        grid-template-columns: 1fr;
+      }
+      .insights-column {
+        order: -1;
       }
       .selection-controls { flex-direction: column; }
       .control-group { width: 100%; }
@@ -837,28 +917,45 @@ export class ProgressComponent implements OnInit {
   
   currentSemester = computed(() => this.einschreibung()?.aktuellesSemester || 1);
   regelstudienzeit = computed(() => this.einschreibung()?.studiengang?.regelstudienzeit || 7);
-  totalEcts = computed(() => this.einschreibung()?.studiengang?.gesamtEcts || 0);
+
+  /** ECTS immer als Zahl (Backend kann String liefern). */
+  private static ectsNum(m: { ects?: number | string | null }): number {
+    const v = m?.ects;
+    if (v == null) return 0;
+    return typeof v === 'number' ? v : Number(v) || 0;
+  }
+
+  /** Gesamt-ECTS: bevorzugt Summe der PO-Module (wie in Roadmap), sonst Studiengang. */
+  totalEcts = computed(() => {
+    const mods = this.module();
+    if (mods.length > 0) {
+      return mods.reduce((sum, m) => sum + ProgressComponent.ectsNum(m), 0);
+    }
+    const fromStudiengang = this.einschreibung()?.studiengang?.gesamtEcts;
+    return fromStudiengang == null ? 0 : (Number(fromStudiengang) || 0);
+  });
   totalModules = computed(() => this.module().length);
-  
+
   bestandenModulIds = computed(() => {
     return new Set(
       this.noten().filter(n => n.bestanden === true).map(n => String(n.modulId ?? ''))
     );
   });
-  
+
   bestandenCount = computed(() => this.bestandenModulIds().size);
-  
+
   ectsErreicht = computed(() => {
     const ids = this.bestandenModulIds();
     return this.module()
       .filter(m => ids.has(String(m.id ?? '')))
-      .reduce((sum, m) => sum + m.ects, 0);
+      .reduce((sum, m) => sum + ProgressComponent.ectsNum(m), 0);
   });
-  
+
   progressPercent = computed(() => {
     const total = this.totalEcts();
-    if (total === 0) return 0;
-    return (this.ectsErreicht() / total) * 100;
+    if (total <= 0) return 0;
+    const achieved = this.ectsErreicht();
+    return Math.min(100, (achieved / total) * 100);
   });
   
   progressOffset = computed(() => {
@@ -912,10 +1009,10 @@ export class ProgressComponent implements OnInit {
         .map(m => notenMap.get(String(m.id ?? '')))
         .filter(n => n?.bestanden === true);
       
-      const ectsGesamt = semModule.reduce((sum, m) => sum + m.ects, 0);
+      const ectsGesamt = semModule.reduce((sum, m) => sum + ProgressComponent.ectsNum(m), 0);
       const ectsErreicht = semModule
         .filter(m => notenMap.get(String(m.id ?? ''))?.bestanden === true)
-        .reduce((sum, m) => sum + m.ects, 0);
+        .reduce((sum, m) => sum + ProgressComponent.ectsNum(m), 0);
       
       const notenMitWert = semNoten.filter(n => n.noteWert !== null);
       const durchschnitt = notenMitWert.length > 0
@@ -947,6 +1044,113 @@ export class ProgressComponent implements OnInit {
     if (sem <= 0) return 30;
     return this.ectsErreicht() / sem;
   });
+
+  /** Module mit Status für Roadmap & Next Actions */
+  modulesWithStatus = computed((): ModulWithStatus[] => {
+    const moduleList = this.module();
+    const notenList = this.noten();
+    const notenByModul = new Map(notenList.map(n => [String(n.modulId ?? ''), n]));
+    return moduleList.map(m => {
+      const n = notenByModul.get(String(m.id ?? ''));
+      let status: ModulStatus = 'offen';
+      let noteWert: number | null = null;
+      if (n) {
+        noteWert = n.noteWert ?? null;
+        if (n.bestanden === true) status = 'bestanden';
+        else if (n.bestanden === false) status = 'nicht-bestanden';
+        else if (n.status === 'ERFASST' || n.status === 'VALIDIERT') status = 'in-bearbeitung';
+      }
+      return {
+        id: String(m.id ?? ''),
+        modulNr: m.modulNr ?? '',
+        name: m.name ?? '',
+        ects: ProgressComponent.ectsNum(m),
+        semester: typeof m.semester === 'string' ? Number.parseInt(m.semester, 10) || 1 : (m.semester ?? 1),
+        status,
+        noteWert,
+        noteId: n?.id
+      };
+    });
+  });
+
+  /** Roadmap: pro Semester mit Modulliste (absteigend: 6, 5, 4, …) */
+  roadmapBySemester = computed((): RoadmapSemester[] => {
+    const list = this.modulesWithStatus();
+    const regelzeit = this.regelstudienzeit();
+    const bySem = new Map<number, ModulWithStatus[]>();
+    for (const m of list) {
+      const sem = m.semester;
+      if (!bySem.has(sem)) bySem.set(sem, []);
+      bySem.get(sem)!.push(m);
+    }
+    const result: RoadmapSemester[] = [];
+    for (let s = regelzeit; s >= 1; s--) {
+      const module = [...(bySem.get(s) ?? [])].sort((a, b) => (b.ects ?? 0) - (a.ects ?? 0));
+      const ectsGesamt = module.reduce((sum, m) => sum + (m.ects ?? 0), 0);
+      const bestanden = module.filter(m => m.status === 'bestanden');
+      const ects = bestanden.reduce((sum, m) => sum + (m.ects ?? 0), 0);
+      const mitNote = bestanden.filter(m => m.noteWert != null);
+      const durchschnitt = mitNote.length > 0
+        ? mitNote.reduce((acc, m) => acc + (m.noteWert ?? 0), 0) / mitNote.length
+        : null;
+      result.push({ semester: s, ects, ectsGesamt, durchschnitt, module });
+    }
+    return result;
+  });
+
+  /** Top 3 „Next Actions“: Offen + In Bearbeitung, nach ECTS absteigend */
+  nextActions = computed((): ModulWithStatus[] => {
+    return [...this.modulesWithStatus()]
+      .filter(m => m.status === 'offen' || m.status === 'in-bearbeitung')
+      .sort((a, b) => (b.ects ?? 0) - (a.ects ?? 0))
+      .slice(0, 3);
+  });
+
+  /** Pace: Ø ECTS/Semester (letzte 2 Semester) – vereinfacht: aktuelle Rate */
+  paceEctsPerSem = computed(() => this.ectsProSemester());
+
+  /** Risiko-Hinweis: z. B. „4 offene Module, 1 davon 12 ECTS“ */
+  riskHint = computed(() => {
+    const offen = this.modulesWithStatus().filter(m => m.status === 'offen');
+    if (offen.length === 0) return null;
+    const maxEcts = Math.max(...offen.map(m => m.ects), 0);
+    if (offen.length === 1) return `1 offenes Modul (${maxEcts} ECTS)`;
+    return `${offen.length} offene Module, davon 1 mit ${maxEcts} ECTS`;
+  });
+
+  /** Notenverlauf für Mini-Sparkline (z. B. letzte 10 Noten nach Datum) */
+  noteTrendData = computed(() => {
+    const noten = [...this.noten()].filter((n): n is typeof n & { noteWert: number } => n.noteWert != null);
+    return noten
+      .slice()
+      .sort((a, b) => (b.pruefungsdatum ?? '').localeCompare(a.pruefungsdatum ?? ''))
+      .slice(0, 10)
+      .map(n => n.noteWert)
+      .reverse();
+  });
+
+  // UI State: Roadmap-Accordion (null = aktuelles Sem aufgeklappt, 0 = alle zu)
+  roadmapExpandedSemester = signal<number | null>(null);
+
+  // Filter/Sort (für spätere Nutzung)
+  filterStatus = signal<'all' | 'offen' | 'in-bearbeitung'>('all');
+  filterSemester = signal<number | 'all'>('all');
+
+  // Side-Panel: ausgewähltes Modul
+  selectedModul = signal<ModulWithStatus | null>(null);
+
+  toggleRoadmapSemester(sem: number): void {
+    const cur = this.roadmapExpandedSemester();
+    if (cur === sem) this.roadmapExpandedSemester.set(0);
+    else this.roadmapExpandedSemester.set(sem);
+  }
+
+  expandedRoadmapSemester(): number {
+    const v = this.roadmapExpandedSemester();
+    if (v === null) return this.currentSemester();
+    if (v === 0) return 0;
+    return v;
+  }
 
   constructor(private readonly apollo: Apollo) {}
 

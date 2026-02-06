@@ -200,7 +200,7 @@ export class ShellComponent {
       id: 'study-plan',
       label: 'Studienplan',
       route: '/study-plan',
-      icon: 'assets/icons/progress.svg',
+      icon: 'assets/icons/calculation.svg',
       roles: ['ADMIN', 'PRUEFUNGSAMT', 'STUDENT', 'HOCHSCHUL_VERWALTER'],
       section: 'Studium'
     },

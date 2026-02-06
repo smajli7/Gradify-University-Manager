@@ -1,9 +1,11 @@
-import { Component, OnInit, signal, inject } from '@angular/core';
+import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Apollo, gql } from 'apollo-angular';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
 import { SkeletonStateComponent } from '../../shared/components/skeleton-state/skeleton-state.component';
 
 // Query für Studentendaten (User-Service)
@@ -96,25 +98,25 @@ interface EinschreibungData {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule, SkeletonStateComponent],
+  imports: [CommonModule, FormsModule, RouterLink, SkeletonStateComponent],
   template: `
     <div class="page animate-slide-up">
-      <div class="page-header">
-        <div class="header-content">
-          <h1>Mein Profil</h1>
-          <p class="text-muted">Persönliche Daten und Einstellungen</p>
-        </div>
-      </div>
-
       <!-- Loading State -->
       @if (loading()) {
+        <div class="profile-header profile-header--skeleton">
+          <div class="profile-header__avatar"></div>
+          <div class="profile-header__main">
+            <div class="profile-header__name"></div>
+            <div class="profile-header__subline"></div>
+          </div>
+        </div>
         <app-skeleton-state [lineCount]="6" />
       }
 
       <!-- Error State -->
       @if (error()) {
         <div class="error-state">
-          <span class="error-icon">⚠️</span>
+          <span class="error-icon" aria-hidden="true"></span>
           <p>{{ error() }}</p>
           <button class="btn btn--primary" (click)="loadProfile()">Erneut versuchen</button>
         </div>
@@ -122,129 +124,159 @@ interface EinschreibungData {
 
       <!-- Profile Content -->
       @if (!loading() && !error()) {
-        <div class="profile-content">
-          <!-- Benutzerdaten -->
-          <div class="card">
-            <div class="card-header">
-              <h2>Benutzerdaten</h2>
+        <!-- 1) Profil-Kopfzeile -->
+        <header class="profile-header">
+          <div class="profile-header__left">
+            <div class="profile-header__avatar" [title]="displayName()">
+              {{ initials() }}
             </div>
-            <div class="card-body">
-              <div class="info-grid">
-                <div class="info-item">
-                  <span class="info-label">Benutzername</span>
-                  <span class="info-value">{{ authService.currentUser()?.username || '-' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Vorname</span>
-                  <span class="info-value">{{ authService.currentUser()?.vorname || '-' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Nachname</span>
-                  <span class="info-value">{{ authService.currentUser()?.nachname || '-' }}</span>
-                </div>
-                <div class="info-item">
-                  <span class="info-label">Rollen</span>
-                  <span class="info-value">
-                    @for (role of authService.currentUser()?.roles || []; track role) {
-                      <span class="role-badge" [ngClass]="getRoleBadgeClass(role)">{{ formatRole(role) }}</span>
-                    }
-                  </span>
-                </div>
-              </div>
+            <div class="profile-header__main">
+              <h1 class="profile-header__name">{{ displayName() }}</h1>
+              <p class="profile-header__subline">{{ headerSubline() }}</p>
             </div>
           </div>
+          <div class="profile-header__right">
+            <div class="profile-header__chips">
+              @if (authService.currentUser()?.roles?.length) {
+                <span class="chip chip--role">{{ formatRole(authService.currentUser()!.roles[0]) }}</span>
+              }
+              @if (studentData()?.benutzer?.aktiv !== false) {
+                <span class="chip chip--aktiv">Aktiv</span>
+              }
+              @if (studentData()?.matrikelnummer) {
+                <span class="chip chip--matrikel" [title]="'Kopieren: ' + studentData()!.matrikelnummer">
+                  {{ studentData()!.matrikelnummer }}
+                  <button type="button" class="copy-btn" (click)="copyToClipboard(studentData()!.matrikelnummer, $event)" title="Kopieren" aria-label="Kopieren"><svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                </span>
+              }
+              @if (primaryEmail()) {
+                <span class="chip chip--email" [title]="'Kopieren: ' + primaryEmail()">
+                  {{ primaryEmail() }}
+                  <button type="button" class="copy-btn" (click)="copyToClipboard(primaryEmail()!, $event)" title="Kopieren" aria-label="Kopieren"><svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                </span>
+              }
+            </div>
+          </div>
+        </header>
 
-          <!-- Studentendaten (nur für Studenten) -->
-          @if (authService.isStudent() && studentData()) {
-            <div class="card">
-              <div class="card-header">
-                <h2>Studentendaten</h2>
-              </div>
+        <div class="profile-content">
+          <!-- Account + Student als Accordion -->
+          <div class="card card--accordion">
+            <button type="button" class="card-header card-header--tappable" (click)="toggleSection('account')" [attr.aria-expanded]="sectionOpen('account')">
+              <h2 class="card-title">Account</h2>
+              <span class="card-header__chevron" [class.card-header__chevron--open]="sectionOpen('account')">▼</span>
+            </button>
+            @if (sectionOpen('account')) {
               <div class="card-body">
-                <div class="info-grid">
-                  <div class="info-item">
-                    <span class="info-label">Matrikelnummer</span>
-                    <span class="info-value">{{ studentData()!.matrikelnummer || '-' }}</span>
+                <div class="detail-grid">
+                  <div class="detail-row">
+                    <span class="detail-label">Benutzername</span>
+                    <span class="detail-value">{{ authService.currentUser()?.username || '–' }}</span>
                   </div>
-                  <div class="info-item">
-                    <span class="info-label">E-Mail</span>
-                    <span class="info-value">{{ studentData()!.email || '-' }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Geburtsdatum</span>
-                    <span class="info-value">{{ formatDate(studentData()!.geburtsdatum) }}</span>
-                  </div>
-                  <div class="info-item">
-                    <span class="info-label">Status</span>
-                    <span class="info-value">
-                      <span class="status-badge status-badge--{{ studentData()!.status.toLowerCase() }}">
-                        {{ formatStatus(studentData()!.status) }}
-                      </span>
+                  <div class="detail-row">
+                    <span class="detail-label">Rolle</span>
+                    <span class="detail-value">
+                      @for (role of authService.currentUser()?.roles || []; track role) {
+                        <span class="role-badge" [ngClass]="getRoleBadgeClass(role)">{{ formatRole(role) }}</span>
+                      }
+                      @if (!authService.currentUser()?.roles?.length) { – }
                     </span>
                   </div>
-                  @if (studentData()!.benutzer?.letzterLogin) {
-                    <div class="info-item">
-                      <span class="info-label">Letzter Login</span>
-                      <span class="info-value">{{ formatDateTime(studentData()!.benutzer!.letzterLogin) }}</span>
-                    </div>
-                  }
                 </div>
               </div>
-            </div>
-          }
+            }
+          </div>
 
-          <!-- Einschreibungen (nur für Studenten) -->
-          @if (authService.isStudent() && einschreibungen().length > 0) {
-            <div class="card">
-              <div class="card-header">
-                <h2>Einschreibungen</h2>
-              </div>
-              <div class="card-body">
-                <div class="einschreibungen-list">
-                  @for (e of einschreibungen(); track e.id) {
-                    <div class="einschreibung-item">
-                      <div class="einschreibung-header">
-                        <div>
-                          <h3>{{ e.studiengang.name }} ({{ e.studiengang.kuerzel }})</h3>
-                          <p class="text-muted">Prüfungsordnung {{ e.pruefungsordnung?.version || 'N/A' }}</p>
-                        </div>
-                        <span class="status-badge status-badge--{{ e.status.toLowerCase() }}">
-                          {{ formatStatus(e.status) }}
-                        </span>
-                      </div>
-                      <div class="einschreibung-details">
-                        <div class="detail-item">
-                          <span class="detail-label">Aktuelles Semester</span>
-                          <span class="detail-value">{{ e.aktuellesSemester }}. Semester</span>
-                        </div>
-                        <div class="detail-item">
-                          <span class="detail-label">Regelstudienzeit</span>
-                          <span class="detail-value">{{ e.studiengang.regelstudienzeit }} Semester</span>
-                        </div>
-                        <div class="detail-item">
-                          <span class="detail-label">Gesamt ECTS</span>
-                          <span class="detail-value">{{ e.studiengang.gesamtEcts }} CP</span>
-                        </div>
-                        @if (e.immatrikuliertAm) {
-                          <div class="detail-item">
-                            <span class="detail-label">Immatrikuliert am</span>
-                            <span class="detail-value">{{ formatDate(e.immatrikuliertAm) }}</span>
-                          </div>
+          @if (authService.isStudent() && studentData()) {
+            <div class="card card--accordion">
+              <button type="button" class="card-header card-header--tappable" (click)="toggleSection('student')" [attr.aria-expanded]="sectionOpen('student')">
+                <h2 class="card-title">Student</h2>
+                <span class="card-header__chevron" [class.card-header__chevron--open]="sectionOpen('student')">▼</span>
+              </button>
+              @if (sectionOpen('student')) {
+                <div class="card-body">
+                  <div class="detail-grid">
+                    <div class="detail-row">
+                      <span class="detail-label">Matrikelnummer</span>
+                      <span class="detail-value detail-value--copyable">
+                        {{ studentData()!.matrikelnummer || '–' }}
+                        @if (studentData()!.matrikelnummer) {
+                          <button type="button" class="copy-btn copy-btn--inline" (click)="copyToClipboard(studentData()!.matrikelnummer!, $event)" title="Kopieren" aria-label="Kopieren"><svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
                         }
-                      </div>
+                      </span>
                     </div>
-                  }
+                    <div class="detail-row">
+                      <span class="detail-label">E-Mail</span>
+                      <span class="detail-value detail-value--copyable">
+                        {{ studentData()!.email || '–' }}
+                        @if (studentData()!.email) {
+                          <button type="button" class="copy-btn copy-btn--inline" (click)="copyToClipboard(studentData()!.email!, $event)" title="Kopieren" aria-label="Kopieren"><svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                        }
+                      </span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Geburtsdatum</span>
+                      <span class="detail-value detail-value--num">{{ formatDate(studentData()!.geburtsdatum) }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Status</span>
+                      <span class="detail-value">
+                        <span class="status-badge status-badge--{{ studentData()!.status.toLowerCase() }}">{{ formatStatus(studentData()!.status) }}</span>
+                      </span>
+                    </div>
+                    @if (studentData()!.benutzer?.letzterLogin) {
+                      <div class="detail-row">
+                        <span class="detail-label">Letzter Login</span>
+                        <span class="detail-value detail-value--num">{{ formatDateTime(studentData()!.benutzer!.letzterLogin) }}</span>
+                      </div>
+                    }
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- 4) Einschreibung als Highlight-Card (Primary) -->
+          @if (authService.isStudent() && primaryEinschreibung(); as e) {
+            <div class="card card--primary">
+              <div class="card-body card-body--einschreibung">
+                <div class="einschreibung-hero">
+                  <div class="einschreibung-hero__text">
+                    <h2 class="einschreibung-hero__title">{{ e.studiengang.name }} ({{ e.studiengang.kuerzel }})</h2>
+                    <span class="status-badge status-badge--{{ e.status.toLowerCase() }}">{{ formatStatus(e.status) }}</span>
+                  </div>
+                  <p class="einschreibung-hero__subline">Prüfungsordnung {{ e.pruefungsordnung?.version || 'N/A' }}</p>
+                  <div class="einschreibung-kpis">
+                    <div class="einschreibung-kpi">
+                      <span class="einschreibung-kpi__label">Aktuelles Semester</span>
+                      <span class="einschreibung-kpi__value" style="font-variant-numeric: tabular-nums;">{{ e.aktuellesSemester }}. Sem</span>
+                    </div>
+                    <div class="einschreibung-kpi">
+                      <span class="einschreibung-kpi__label">Regelstudienzeit</span>
+                      <span class="einschreibung-kpi__value" style="font-variant-numeric: tabular-nums;">{{ e.studiengang.regelstudienzeit }} Sem</span>
+                    </div>
+                    <div class="einschreibung-kpi">
+                      <span class="einschreibung-kpi__label">Gesamt ECTS</span>
+                      <span class="einschreibung-kpi__value" style="font-variant-numeric: tabular-nums;">{{ e.studiengang.gesamtEcts }}</span>
+                    </div>
+                    <div class="einschreibung-kpi">
+                      <span class="einschreibung-kpi__label">Immatrikuliert am</span>
+                      <span class="einschreibung-kpi__value" style="font-variant-numeric: tabular-nums;">{{ formatDate(e.immatrikuliertAm) }}</span>
+                    </div>
+                  </div>
+                </div>
+                <div class="einschreibung-hero__action">
+                  <a [routerLink]="['/study-plan']" class="btn btn--primary">Zum Studienplan</a>
                 </div>
               </div>
             </div>
           }
 
-          <!-- Empty State für Einschreibungen -->
           @if (authService.isStudent() && einschreibungen().length === 0 && !loading()) {
             <div class="card">
               <div class="card-body">
                 <div class="empty-state">
-                  <span class="empty-icon">📚</span>
+                  <span class="empty-icon" aria-hidden="true"></span>
                   <p>Keine Einschreibungen gefunden</p>
                 </div>
               </div>
@@ -260,18 +292,314 @@ interface EinschreibungData {
       min-height: calc(100vh - 140px);
     }
 
-    .page-header {
-      margin-bottom: var(--spacing-lg);
+    /* ––– 1) Profil-Kopfzeile ––– */
+    .profile-header {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--spacing-lg);
+      margin-bottom: var(--spacing-xl);
+      padding-bottom: var(--spacing-lg);
+      border-bottom: 1px solid var(--border-color);
     }
 
-    .page-header h1 {
-      margin: 0 0 var(--spacing-xs) 0;
-      font-size: 1.75rem;
+    .profile-header__left {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    .profile-header__avatar {
+      width: 56px;
+      height: 56px;
+      border-radius: 50%;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.1rem;
       font-weight: 600;
+      color: var(--text-primary);
+      flex-shrink: 0;
     }
 
-    /* Loading & Error States */
-    .loading-state,
+    .profile-header--skeleton .profile-header__avatar {
+      background: var(--bg-hover);
+    }
+
+    .profile-header__main {
+      min-width: 0;
+    }
+
+    .profile-header__name {
+      margin: 0 0 var(--spacing-2px) 0;
+      font-size: 1.35rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      letter-spacing: -0.02em;
+    }
+
+    .profile-header__subline {
+      margin: 0;
+      font-size: var(--font-size-sm);
+      color: var(--text-muted);
+    }
+
+    .profile-header__right {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--spacing-sm);
+    }
+
+    .profile-header__chips {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--spacing-xs);
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 10px;
+      border-radius: var(--radius-md);
+      font-size: var(--font-size-xs);
+      font-weight: 500;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+    }
+
+    .chip--aktiv {
+      color: var(--text-primary);
+    }
+
+    .copy-btn {
+      background: none;
+      border: none;
+      padding: 2px;
+      cursor: pointer;
+      opacity: 0.75;
+      line-height: 0;
+      color: rgba(255, 255, 255, 0.9);
+    }
+
+    .copy-btn:hover {
+      opacity: 1;
+    }
+
+    .copy-btn--inline {
+      margin-left: 6px;
+    }
+
+    .copy-icon {
+      display: block;
+      stroke: currentColor;
+    }
+
+    /* ––– Content + Cards ––– */
+    .profile-content {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-lg);
+    }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+
+    .card--accordion .card-header {
+      padding: var(--spacing-sm) var(--spacing-md);
+      min-height: auto;
+    }
+
+    .card-header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--spacing-md) var(--spacing-lg);
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-elevated);
+    }
+
+    .card-header--tappable {
+      width: 100%;
+      cursor: pointer;
+      border: none;
+      text-align: left;
+      font: inherit;
+      color: inherit;
+    }
+
+    .card-header--tappable:hover {
+      background: var(--bg-hover);
+    }
+
+    .card-title {
+      margin: 0;
+      font-size: 1.05rem;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .card-header__chevron {
+      font-size: 0.7rem;
+      opacity: 0.7;
+      transition: transform 0.2s ease;
+    }
+
+    .card-header__chevron--open {
+      transform: rotate(180deg);
+    }
+
+    .card-body {
+      padding: var(--spacing-md) var(--spacing-lg);
+    }
+
+    /* ––– 2) Detail-Grid (Label | Value) ––– */
+    .detail-grid {
+      display: grid;
+      grid-template-columns: 1fr 1fr;
+      gap: var(--spacing-sm) var(--spacing-lg);
+    }
+
+    .detail-row {
+      display: contents;
+    }
+
+    .detail-row .detail-label {
+      grid-column: 1;
+      font-size: 0.75rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      padding: var(--spacing-2px) 0;
+    }
+
+    .detail-row .detail-value {
+      grid-column: 2;
+      font-size: 0.95rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      display: flex;
+      align-items: center;
+      flex-wrap: wrap;
+      gap: 6px;
+    }
+
+    .detail-value--num {
+      font-variant-numeric: tabular-nums;
+    }
+
+    .detail-value--copyable .copy-btn {
+      flex-shrink: 0;
+    }
+
+    /* ––– 4) Einschreibung Highlight-Card ––– */
+    .card--primary {
+      border-color: rgba(255, 255, 255, 0.12);
+      background: var(--bg-surface);
+    }
+
+    .card-body--einschreibung {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--spacing-lg);
+    }
+
+    .einschreibung-hero__text {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      flex-wrap: wrap;
+      margin-bottom: var(--spacing-xs);
+    }
+
+    .einschreibung-hero__title {
+      margin: 0;
+      font-size: 1.2rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .einschreibung-hero__subline {
+      margin: 0 0 var(--spacing-md) 0;
+      font-size: var(--font-size-sm);
+      color: var(--text-muted);
+    }
+
+    .einschreibung-kpis {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--spacing-md);
+      max-width: 100%;
+    }
+
+    .einschreibung-kpi {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .einschreibung-kpi__label {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+    }
+
+    .einschreibung-kpi__value {
+      font-size: 1rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
+    .einschreibung-hero__action {
+      flex-shrink: 0;
+    }
+
+    /* Role + Status Badges */
+    .role-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-secondary);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: 500;
+    }
+
+    .role-badge--admin { background: rgba(220, 38, 38, 0.15); color: #DC2626; border-color: rgba(220, 38, 38, 0.3); }
+    .role-badge--hv { background: rgba(22, 163, 74, 0.15); color: #16A34A; border-color: rgba(22, 163, 74, 0.3); }
+    .role-badge--dozent { background: rgba(147, 51, 234, 0.15); color: #9333EA; border-color: rgba(147, 51, 234, 0.3); }
+    .role-badge--pa { background: rgba(202, 138, 4, 0.15); color: #CA8A04; border-color: rgba(202, 138, 4, 0.3); }
+    .role-badge--student { background: rgba(255, 255, 255, 0.1); color: var(--text-secondary); border-color: rgba(255, 255, 255, 0.2); }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: var(--font-size-xs);
+      font-weight: 500;
+    }
+
+    .status-badge--aktiv { background: rgba(34, 197, 94, 0.15); color: #22C55E; border: 1px solid rgba(34, 197, 94, 0.3); }
+    .status-badge--beurlaubt { background: rgba(255, 184, 0, 0.15); color: var(--color-warning); border: 1px solid rgba(255, 184, 0, 0.3); }
+    .status-badge--exmatrikuliert { background: rgba(239, 68, 68, 0.15); color: #EF4444; border: 1px solid rgba(239, 68, 68, 0.3); }
+
+    /* Error + Empty */
     .error-state {
       display: flex;
       flex-direction: column;
@@ -281,202 +609,8 @@ interface EinschreibungData {
       color: var(--text-muted);
     }
 
-    .spinner-lg {
-      width: 40px;
-      height: 40px;
-      border: 3px solid var(--border-color);
-      border-top-color: var(--text-primary);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-bottom: var(--spacing-md);
-    }
+    .error-icon { font-size: 48px; margin-bottom: var(--spacing-md); }
 
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .error-icon {
-      font-size: 48px;
-      margin-bottom: var(--spacing-md);
-    }
-
-    /* Profile Content */
-    .profile-content {
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-lg);
-    }
-
-    /* Card */
-    .card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-xl);
-      overflow: hidden;
-    }
-
-    .card-header {
-      padding: var(--spacing-lg);
-      border-bottom: 1px solid var(--border-color);
-      background: var(--bg-elevated);
-    }
-
-    .card-header h2 {
-      margin: 0;
-      font-size: 1.25rem;
-      font-weight: 600;
-    }
-
-    .card-body {
-      padding: var(--spacing-lg);
-    }
-
-    /* Info Grid */
-    .info-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
-      gap: var(--spacing-md);
-    }
-
-    .info-item {
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-xs);
-    }
-
-    .info-label {
-      font-size: var(--font-size-sm);
-      color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.5px;
-    }
-
-    .info-value {
-      font-weight: 500;
-      display: flex;
-      flex-wrap: wrap;
-      gap: var(--spacing-xs);
-      align-items: center;
-    }
-
-    /* Role Badge */
-    .role-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--text-secondary);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      border-radius: var(--radius-full);
-      font-size: var(--font-size-xs);
-      font-weight: 500;
-    }
-
-    .role-badge--admin {
-      background: rgba(220, 38, 38, 0.15);
-      color: #DC2626;
-      border-color: rgba(220, 38, 38, 0.3);
-    }
-
-    .role-badge--hv {
-      background: rgba(22, 163, 74, 0.15);
-      color: #16A34A;
-      border-color: rgba(22, 163, 74, 0.3);
-    }
-
-    .role-badge--dozent {
-      background: rgba(147, 51, 234, 0.15);
-      color: #9333EA;
-      border-color: rgba(147, 51, 234, 0.3);
-    }
-
-    .role-badge--pa {
-      background: rgba(202, 138, 4, 0.15);
-      color: #CA8A04;
-      border-color: rgba(202, 138, 4, 0.3);
-    }
-
-    .role-badge--student {
-      background: rgba(255, 255, 255, 0.1);
-      color: var(--text-secondary);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    /* Status Badge */
-    .status-badge {
-      display: inline-block;
-      padding: 4px 12px;
-      border-radius: var(--radius-full);
-      font-size: var(--font-size-xs);
-      font-weight: 500;
-    }
-
-    .status-badge--aktiv {
-      background: rgba(34, 197, 94, 0.15);
-      color: #22C55E;
-      border: 1px solid rgba(34, 197, 94, 0.3);
-    }
-
-    .status-badge--beurlaubt {
-      background: rgba(255, 184, 0, 0.15);
-      color: var(--color-warning);
-      border: 1px solid rgba(255, 184, 0, 0.3);
-    }
-
-    .status-badge--exmatrikuliert {
-      background: rgba(239, 68, 68, 0.15);
-      color: #EF4444;
-      border: 1px solid rgba(239, 68, 68, 0.3);
-    }
-
-    /* Einschreibungen */
-    .einschreibungen-list {
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-md);
-    }
-
-    .einschreibung-item {
-      padding: var(--spacing-md);
-      background: var(--bg-elevated);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-    }
-
-    .einschreibung-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: var(--spacing-md);
-    }
-
-    .einschreibung-header h3 {
-      margin: 0 0 var(--spacing-xs) 0;
-      font-size: 1.1rem;
-      font-weight: 600;
-    }
-
-    .einschreibung-details {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: var(--spacing-md);
-    }
-
-    .detail-item {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .detail-label {
-      font-size: var(--font-size-xs);
-      color: var(--text-muted);
-    }
-
-    .detail-value {
-      font-weight: 500;
-    }
-
-    /* Empty State */
     .empty-state {
       display: flex;
       flex-direction: column;
@@ -486,12 +620,8 @@ interface EinschreibungData {
       color: var(--text-muted);
     }
 
-    .empty-icon {
-      font-size: 48px;
-      margin-bottom: var(--spacing-md);
-    }
+    .empty-icon { font-size: 48px; margin-bottom: var(--spacing-md); }
 
-    /* Buttons */
     .btn {
       display: inline-flex;
       align-items: center;
@@ -513,36 +643,84 @@ interface EinschreibungData {
       border-color: var(--text-primary);
     }
 
-    .btn--primary:hover:not(:disabled) {
-      opacity: 0.9;
-    }
+    .btn--primary:hover:not(:disabled) { opacity: 0.9; }
 
-    /* Responsive */
     @media (max-width: 768px) {
-      .info-grid {
-        grid-template-columns: 1fr;
-      }
-
-      .einschreibung-header {
-        flex-direction: column;
-        gap: var(--spacing-sm);
-      }
-
-      .einschreibung-details {
-        grid-template-columns: 1fr;
-      }
+      .profile-header { flex-direction: column; align-items: flex-start; }
+      .profile-header__right { width: 100%; }
+      .detail-grid { grid-template-columns: 1fr; }
+      .detail-row .detail-value { grid-column: 1; }
+      .einschreibung-kpis { grid-template-columns: repeat(2, 1fr); }
+      .card-body--einschreibung { flex-direction: column; }
     }
   `]
 })
 export class ProfileComponent implements OnInit {
   private readonly apollo = inject(Apollo);
   readonly authService = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
-  // State
   loading = signal(false);
   error = signal<string | null>(null);
   studentData = signal<StudentData | null>(null);
   einschreibungen = signal<EinschreibungData[]>([]);
+
+  /** Accordion: 'account' und 'student' standardmäßig offen. */
+  sectionsOpen = signal<Record<string, boolean>>({ account: true, student: true });
+
+  displayName = computed(() => {
+    const u = this.authService.currentUser();
+    const s = this.studentData();
+    if (s?.vorname || s?.nachname) return [s?.vorname, s?.nachname].filter(Boolean).join(' ') || '–';
+    if (u?.vorname || u?.nachname) return [u.vorname, u.nachname].filter(Boolean).join(' ') || '–';
+    return u?.username || '–';
+  });
+
+  initials = computed(() => {
+    const u = this.authService.currentUser();
+    const s = this.studentData();
+    const v = (s?.vorname ?? u?.vorname ?? '').trim().slice(0, 1).toUpperCase();
+    const n = (s?.nachname ?? u?.nachname ?? '').trim().slice(0, 1).toUpperCase();
+    if (v || n) return (v + n) || '?';
+    return (u?.username ?? '?').slice(0, 2).toUpperCase();
+  });
+
+  headerSubline = computed(() => {
+    if (!this.authService.isStudent()) return 'Benutzer';
+    const e = this.einschreibungen()[0];
+    const parts = ['Student'];
+    if (e?.studiengang?.kuerzel) parts.push(e.studiengang.kuerzel);
+    if (e?.aktuellesSemester) parts.push(`${e.aktuellesSemester}. Semester`);
+    return parts.join(' · ');
+  });
+
+  primaryEinschreibung = computed(() => this.einschreibungen()[0] ?? null);
+
+  primaryEmail = computed(() => {
+    const s = this.studentData();
+    if (s?.email) return s.email;
+    return this.authService.currentUser()?.username?.includes('@') ? this.authService.currentUser()?.username : null;
+  });
+
+  sectionOpen(key: string): boolean {
+    return this.sectionsOpen()[key] !== false;
+  }
+
+  toggleSection(key: string): void {
+    const cur = this.sectionsOpen();
+    this.sectionsOpen.set({ ...cur, [key]: !cur[key] });
+  }
+
+  async copyToClipboard(text: string, event?: Event): Promise<void> {
+    event?.preventDefault();
+    event?.stopPropagation();
+    try {
+      await navigator.clipboard.writeText(text);
+      this.toast.success('Kopiert');
+    } catch {
+      this.toast.error('Kopieren fehlgeschlagen');
+    }
+  }
 
   ngOnInit(): void {
     this.loadProfile();

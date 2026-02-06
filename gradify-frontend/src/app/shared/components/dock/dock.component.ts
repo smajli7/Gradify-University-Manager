@@ -17,7 +17,7 @@ export interface DockItem {
   standalone: true,
   imports: [CommonModule, RouterLink, RouterLinkActive],
   template: `
-    <aside class="sidebar" [class.sidebar--collapsed]="isCollapsed">
+    <aside class="sidebar" [class.sidebar--collapsed]="isCollapsed" tabindex="-1">
       <nav class="sidebar-nav">
         @for (group of groupedItems; track group.section) {
           @if (group.section && !isCollapsed) {
@@ -63,7 +63,7 @@ export interface DockItem {
       height: calc(100vh - 60px);
       width: 240px;
       min-width: 240px;
-      background: rgba(18, 18, 18, 0.95); /* Leicht transparent */
+      background: rgba(18, 18, 18, 0.95);
       backdrop-filter: blur(12px);
       -webkit-backdrop-filter: blur(12px);
       border-right: 1px solid rgba(255, 255, 255, 0.06);
@@ -72,6 +72,17 @@ export interface DockItem {
       overflow: hidden;
       z-index: var(--z-sidebar, 400);
       transition: width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 0s, min-width 0.45s cubic-bezier(0.2, 0.8, 0.2, 1) 0s;
+      outline: none;
+    }
+
+    .sidebar:focus {
+      outline: none;
+    }
+
+    .sidebar,
+    .sidebar * {
+      -webkit-tap-highlight-color: transparent;
+      tap-highlight-color: transparent;
     }
 
     .sidebar--collapsed {
@@ -126,6 +137,9 @@ export interface DockItem {
     .sidebar-item:hover {
       background: rgba(255, 255, 255, 0.06);
       color: #F4F4F5;
+    }
+    .sidebar-item:focus {
+      outline: none;
     }
     .sidebar-item:focus-visible {
       outline: 2px solid rgba(249, 115, 22, 0.5);
@@ -241,6 +255,16 @@ export interface DockItem {
       cursor: pointer;
       border-radius: 0;
       transition: background 0.15s ease, color 0.15s ease;
+      outline: none;
+    }
+
+    .sidebar-toggle:focus {
+      outline: none;
+    }
+
+    .sidebar-toggle:focus-visible {
+      outline: 2px solid rgba(249, 115, 22, 0.4);
+      outline-offset: -2px;
     }
 
     .sidebar-toggle:hover {
