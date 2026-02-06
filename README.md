@@ -280,6 +280,25 @@ export JWT_SECRET=<secret-min-256-bit>
 mvn spring-boot:run -Dspring.profiles.active=prod
 ```
 
+## PWA (Progressive Web App)
+
+Gradify ist als **Progressive Web App** installierbar:
+
+- **Installation**: Im Browser (Chrome/Edge) auf „App installieren“ klicken oder Menü → „Zum Startbildschirm hinzufügen“
+- **Offline**: App-Shell und statische Assets werden gecacht; bei Offline-Anzeige erscheint ein Hinweisbanner
+- **API-Daten**: Werden nicht gecacht (immer aktuelle Daten bei Verbindung)
+
+**PWA testen:**
+```bash
+cd gradify-frontend
+npm run serve:pwa
+```
+Öffne http://localhost:4200 – die App ist installierbar. In Chrome: Adressleiste → Install-Icon. DevTools → Application → Service Workers prüft die Registrierung.
+
+*Hinweis:* `serve:pwa` startet nur das gebaute Frontend. Für volle Funktionalität Backend separat starten (API unter Port 8080).
+
+---
+
 ## Technologie-Stack
 
 ### Backend
@@ -295,6 +314,7 @@ mvn spring-boot:run -Dspring.profiles.active=prod
 - Angular 18
 - Angular Material
 - Apollo Client (GraphQL)
+- PWA (Service Worker, Web App Manifest)
 
 ### Datenbank
 - PostgreSQL 16
@@ -318,6 +338,7 @@ Die vollständige Projektdokumentation befindet sich im Ordner `/documentation`:
 | [Authentifizierung](documentation/authentifizierung.md) | Login, Token, Rollen, Guards |
 | [Deployment](documentation/deployment.md) | Docker, Kubernetes, Multi-Tenant |
 | [Message Queue](documentation/message-queue-konzept.md) | RabbitMQ-Konzept (optional) |
+| [PWA](documentation/pwa.md) | Progressive Web App – Installation, Offline |
 | [Bioverfahrenstechnik](documentation/bioverfahrenstechnik.md) | PO Bachelor |
 | [Forschung Soziale Arbeit](documentation/forschungsozialearbeit.md) | PO Master |
 

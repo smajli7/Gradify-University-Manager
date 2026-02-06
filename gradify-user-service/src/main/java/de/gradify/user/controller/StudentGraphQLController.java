@@ -11,6 +11,7 @@ import de.gradify.user.repository.StudentRepository;
 import de.gradify.user.service.StudentService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
@@ -36,6 +37,7 @@ public class StudentGraphQLController {
     private final StudentRepository studentRepository;
     private final BenutzerRepository benutzerRepository;
     private final RolleRepository rolleRepository;
+    private final PasswordEncoder passwordEncoder;
 
     // ==================== QUERIES ====================
 
@@ -132,7 +134,7 @@ public class StudentGraphQLController {
         Benutzer benutzer = Benutzer.builder()
                 .benutzername((String) input.get("benutzername"))
                 .email((String) input.get("email"))
-                .passwortHash("{noop}" + input.get("passwort")) // Temporaer ohne Encoding fuer GraphQL
+                .passwortHash(passwordEncoder.encode((String) input.get("passwort")))
                 .vorname((String) input.get("vorname"))
                 .nachname((String) input.get("nachname"))
                 .mandantId(requestedMandantId)
@@ -281,6 +283,28 @@ public class StudentGraphQLController {
     @SchemaMapping(typeName = "User", field = "rollen")
     public List<Rolle> getRollen(Benutzer benutzer) {
         return benutzer.getRollen().stream().collect(Collectors.toList());
+    }
+
+    /**
+     * Gibt letzterLogin als String zurueck.
+     * GraphQL: user { letzterLogin }
+     */
+    @SchemaMapping(typeName = "User", field = "letzterLogin")
+    public String getLetzterLogin(Benutzer benutzer) {
+        return benutzer.getLetzterLogin() != null
+                ? benutzer.getLetzterLogin().toString()
+                : null;
+    }
+
+    /**
+     * Gibt erstelltAm als String zurueck.
+     * GraphQL: user { erstelltAm }
+     */
+    @SchemaMapping(typeName = "User", field = "erstelltAm")
+    public String getErstelltAm(Benutzer benutzer) {
+        return benutzer.getErstelltAm() != null
+                ? benutzer.getErstelltAm().toString()
+                : "";
     }
 
     /**

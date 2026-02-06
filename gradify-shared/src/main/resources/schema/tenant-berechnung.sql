@@ -1,3 +1,5 @@
 -- Schema für neue Tenant-DBs (z.B. gradify_berechnung_xyz)
 CREATE TABLE IF NOT EXISTS berechnungsergebnisse (id BIGSERIAL PRIMARY KEY, einschreibung_id BIGINT NOT NULL UNIQUE, gesamtnote DECIMAL(2,1), gesamtnote_roh DECIMAL(4,3), status VARCHAR(20) NOT NULL DEFAULT 'VORLAEUFIG', module_bestanden INT NOT NULL, module_gesamt INT NOT NULL, ects_erreicht INT NOT NULL, ects_gesamt INT NOT NULL, erstellt_am TIMESTAMP, berechnet_am TIMESTAMP);
 CREATE TABLE IF NOT EXISTS modul_berechnungen (id BIGSERIAL PRIMARY KEY, berechnungsergebnis_id BIGINT NOT NULL REFERENCES berechnungsergebnisse(id), modul_id BIGINT NOT NULL, modul_nr VARCHAR(10) NOT NULL, modul_name VARCHAR(200) NOT NULL, note DECIMAL(2,1), gewichtung DECIMAL(3,1) NOT NULL, in_gesamtnote BOOLEAN NOT NULL, bestanden BOOLEAN NOT NULL, ects INT NOT NULL, gewichteter_beitrag DECIMAL(4,3));
+-- Performance Indexes
+CREATE INDEX IF NOT EXISTS idx_modul_berechnungen_ergebnis_id ON modul_berechnungen(berechnungsergebnis_id);

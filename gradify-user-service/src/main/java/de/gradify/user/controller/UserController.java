@@ -1,6 +1,7 @@
 package de.gradify.user.controller;
 
 import de.gradify.shared.dto.ApiResponse;
+import de.gradify.user.config.SecurityUtils;
 import de.gradify.user.dto.BenutzerDto;
 import de.gradify.user.dto.CreateBenutzerRequest;
 import de.gradify.user.dto.UpdateBenutzerRequest;
@@ -27,6 +28,12 @@ public class UserController {
     public ResponseEntity<ApiResponse<List<BenutzerDto>>> getAllUsers(
             @RequestParam(value = "mandantId", required = false) Long mandantId) {
         log.info("Getting all users, mandantId={}", mandantId);
+        
+        // Verwalter duerfen nur Benutzer ihrer eigenen Hochschule sehen
+        Long effectiveMandantId = SecurityUtils.getEffectiveMandantIdForFilter();
+        if (effectiveMandantId != null) {
+            mandantId = effectiveMandantId;
+        }
         
         List<BenutzerDto> users;
         if (mandantId != null) {

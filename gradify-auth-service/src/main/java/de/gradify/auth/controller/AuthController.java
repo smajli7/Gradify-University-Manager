@@ -7,12 +7,14 @@ import de.gradify.auth.dto.TokenResponse;
 import de.gradify.auth.grpc.UserGrpcClient;
 import de.gradify.auth.service.AuthService;
 import de.gradify.shared.dto.ApiResponse;
+import io.jsonwebtoken.Claims;
 import jakarta.validation.Valid;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.util.HashMap;
 import java.util.Map;
 
 @RestController
@@ -74,7 +76,7 @@ public class AuthController {
     }
 
     @GetMapping("/me")
-    public ResponseEntity<ApiResponse<Object>> getCurrentUser(
+    public ResponseEntity<ApiResponse<Map<String, Object>>> getCurrentUser(
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         log.debug("Get current user request");
         
@@ -83,27 +85,28 @@ public class AuthController {
                 .body(ApiResponse.error("Nicht authentifiziert"));
         }
         
-        // Token dekodieren (vereinfacht)
         String token = authHeader.substring(7);
-        if (!authService.validateToken(token)) {
+        Claims claims = authService.parseToken(token);
+        if (claims == null) {
             return ResponseEntity.status(401)
                 .body(ApiResponse.error("Ungueltiger Token"));
         }
         
-        // Payload aus Token extrahieren
-        try {
-            String[] parts = token.split("\\.");
-            if (parts.length >= 3) {
-                String payload = new String(java.util.Base64.getDecoder().decode(parts[2]));
-                return ResponseEntity.ok(ApiResponse.success(
-                    java.util.Map.of("tokenPayload", payload)));
-            }
-        } catch (Exception e) {
-            log.warn("Error decoding token: {}", e.getMessage());
+        // Strukturierte Antwort aus Claims erstellen
+        Map<String, Object> userInfo = new HashMap<>();
+        userInfo.put("sub", claims.getSubject());
+        userInfo.put("name", claims.get("name", String.class));
+        userInfo.put("roles", claims.get("roles"));
+        userInfo.put("exp", claims.getExpiration().getTime() / 1000);
+        if (claims.get("studentId") != null) {
+            userInfo.put("studentId", claims.get("studentId"));
+        }
+        if (claims.get("mandantId") != null) {
+            userInfo.put("mandantId", claims.get("mandantId"));
         }
         
-        return ResponseEntity.status(401)
-            .body(ApiResponse.error("Token konnte nicht dekodiert werden"));
+        return ResponseEntity.ok(ApiResponse.success(
+            Map.of("tokenPayload", userInfo)));
     }
     
     @GetMapping("/grpc-status")

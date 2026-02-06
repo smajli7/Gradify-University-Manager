@@ -1,6 +1,7 @@
 # Gradify - Stop All Services Script
 # Beendet alle laufenden Gradify-Services
 
+Set-Location $PSScriptRoot
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  Gradify - Stop All Services" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
@@ -48,10 +49,10 @@ if ($javaProcesses) {
     }
 }
 
-# Stoppe Docker Compose
+# Stoppe Docker Compose (Dev: Postgres + RabbitMQ)
 Write-Host ""
-Write-Host "Stoppe Docker Compose..." -ForegroundColor Yellow
-docker-compose down 2>$null
+Write-Host "Stoppe Docker Compose (Postgres + RabbitMQ)..." -ForegroundColor Yellow
+docker compose -f docker-compose.dev.yml down 2>$null
 
 if ($stoppedCount -eq 0) {
     Write-Host ""

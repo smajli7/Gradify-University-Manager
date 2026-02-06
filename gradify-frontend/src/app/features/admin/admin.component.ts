@@ -293,8 +293,8 @@ interface ApiResponse<T> {
     }
 
     .tab.active {
-      color: var(--color-primary);
-      border-bottom-color: var(--color-primary);
+      color: var(--text-primary);
+      border-bottom-color: var(--text-primary);
     }
 
     /* Tab Content */
@@ -347,13 +347,13 @@ interface ApiResponse<T> {
     }
 
     .users-icon {
-      background: rgba(99, 102, 241, 0.1);
-      color: #6366f1;
+      background: rgba(148, 163, 184, 0.1);
+      color: #94A3B8;
     }
 
     .mandanten-icon {
-      background: rgba(139, 92, 246, 0.1);
-      color: #8b5cf6;
+      background: rgba(148, 163, 184, 0.1);
+      color: #94A3B8;
     }
 
     .studiengaenge-icon {
@@ -367,8 +367,8 @@ interface ApiResponse<T> {
     }
 
     .modules-icon {
-      background: rgba(0, 242, 255, 0.1);
-      color: var(--color-primary);
+      background: rgba(148, 163, 184, 0.1);
+      color: #94A3B8;
     }
 
     .kpi-content {
@@ -432,8 +432,8 @@ interface ApiResponse<T> {
 
     .quick-link-btn:hover {
       background: var(--bg-elevated);
-      border-color: var(--color-primary);
-      color: var(--color-primary);
+      border-color: var(--text-secondary);
+      color: var(--text-primary);
     }
 
     .quick-link-btn svg {
@@ -479,9 +479,9 @@ interface ApiResponse<T> {
     .role-badge {
       display: inline-block;
       padding: 4px 8px;
-      background: rgba(0, 242, 255, 0.1);
-      border: 1px solid rgba(0, 242, 255, 0.2);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
       border-radius: var(--radius-sm);
       font-size: 0.75rem;
       font-weight: 600;
@@ -537,8 +537,8 @@ interface ApiResponse<T> {
     }
 
     .btn-icon:hover {
-      border-color: var(--color-primary);
-      color: var(--color-primary);
+      border-color: var(--text-secondary);
+      color: var(--text-primary);
     }
 
     .btn-icon svg {
@@ -559,14 +559,14 @@ interface ApiResponse<T> {
     }
 
     .info-box {
-      background: rgba(0, 242, 255, 0.05);
-      border-color: rgba(0, 242, 255, 0.2);
+      background: rgba(255, 255, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.2);
     }
 
     .info-box svg {
       width: 24px;
       height: 24px;
-      color: var(--color-primary);
+      color: var(--text-secondary);
       flex-shrink: 0;
     }
 
@@ -574,7 +574,7 @@ interface ApiResponse<T> {
       width: 48px;
       height: 48px;
       border: 4px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-secondary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -622,8 +622,8 @@ interface ApiResponse<T> {
 
     .secondary-link:hover {
       background: var(--bg-elevated);
-      border-color: var(--color-primary);
-      color: var(--color-primary);
+      border-color: var(--text-secondary);
+      color: var(--text-primary);
     }
 
     .secondary-link svg {

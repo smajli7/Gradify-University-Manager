@@ -80,12 +80,22 @@ public class TenantRegistryConfig {
         }
 
         @Override
+        public long getNextMandantId() {
+            Long next = jdbc.queryForObject("SELECT COALESCE(MAX(mandant_id), 0) + 1 FROM tenant_registry", Long.class);
+            return next != null ? next : 1L;
+        }
+
+        @Override
         public void register(Long mandantId, String suffix, String kuerzel, String name) {
             String s = suffix.trim().toLowerCase();
             jdbc.update("INSERT INTO tenant_registry (mandant_id, suffix, kuerzel, name) VALUES (?,?,?,?) " +
                             "ON CONFLICT (mandant_id) DO UPDATE SET suffix=EXCLUDED.suffix, kuerzel=EXCLUDED.kuerzel, name=EXCLUDED.name",
                     mandantId, s, kuerzel, name);
-            idToSuffixCache = null; // invalidate cache
+            synchronized (this) {
+                idToSuffixCache = null;
+                suffixToIdCache = null;
+                cacheTime = 0;
+            }
         }
 
         @Override

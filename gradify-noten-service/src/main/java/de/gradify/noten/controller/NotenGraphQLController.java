@@ -1,7 +1,11 @@
 package de.gradify.noten.controller;
 
+import de.gradify.noten.dto.CreateNoteRequest;
+import de.gradify.noten.dto.NoteDto;
+import de.gradify.noten.dto.UpdateNoteRequest;
 import de.gradify.noten.entity.Note;
 import de.gradify.noten.repository.NoteRepository;
+import de.gradify.noten.service.NotenService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.Argument;
@@ -11,14 +15,13 @@ import org.springframework.stereotype.Controller;
 
 import java.math.BigDecimal;
 import java.time.LocalDate;
-import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Map;
 
 /**
  * GraphQL Controller fuer Noten-Abfragen und -Mutationen.
- * 
- * Implementiert die Queries und Mutations aus schema.graphqls
+ *
+ * Alle Mutations delegieren an NotenService, damit Validierung und Events konsistent sind.
  */
 @Controller
 @RequiredArgsConstructor
@@ -26,17 +29,17 @@ import java.util.Map;
 public class NotenGraphQLController {
 
     private final NoteRepository noteRepository;
+    private final NotenService notenService;
 
     // ==================== QUERIES ====================
 
     /**
      * Holt alle Noten, optional gefiltert nach Einschreibung oder Modul.
-     * GraphQL: query { noten(einschreibungId: "...", modulId: "...") { id, noteWert, ... } }
      */
     @QueryMapping
     public List<Note> noten(@Argument("einschreibungId") String einschreibungId, @Argument("modulId") String modulId) {
         log.info("GraphQL: Fetching noten - einschreibungId: {}, modulId: {}", einschreibungId, modulId);
-        
+
         if (einschreibungId != null && modulId != null) {
             return noteRepository.findByEinschreibungIdAndModulIdOrderByVersuchDesc(
                     Long.parseLong(einschreibungId), Long.parseLong(modulId));
@@ -50,7 +53,6 @@ public class NotenGraphQLController {
 
     /**
      * Holt eine Note nach ID.
-     * GraphQL: query { note(id: "...") { id, noteWert, ... } }
      */
     @QueryMapping
     public Note note(@Argument("id") String id) {
@@ -60,7 +62,6 @@ public class NotenGraphQLController {
 
     /**
      * Holt alle Noten einer Einschreibung (Student).
-     * GraphQL: query { notenByStudent(einschreibungId: "...") { ... } }
      */
     @QueryMapping
     public List<Note> notenByStudent(@Argument("einschreibungId") String einschreibungId) {
@@ -70,7 +71,6 @@ public class NotenGraphQLController {
 
     /**
      * Holt alle Noten eines Moduls.
-     * GraphQL: query { notenByModul(modulId: "...") { ... } }
      */
     @QueryMapping
     public List<Note> notenByModul(@Argument("modulId") String modulId) {
@@ -80,43 +80,36 @@ public class NotenGraphQLController {
 
     /**
      * Berechnet die Durchschnittsnote einer Einschreibung.
-     * GraphQL: query { durchschnittsnote(einschreibungId: "...") }
      */
     @QueryMapping
     public Double durchschnittsnote(@Argument("einschreibungId") String einschreibungId) {
         log.info("GraphQL: Calculating durchschnittsnote for: {}", einschreibungId);
         List<Note> noten = noteRepository.findByEinschreibungId(Long.parseLong(einschreibungId));
-        
-        if (noten.isEmpty()) {
-            return null;
-        }
-        
-        // Nur bestandene Noten mit Notenwert beruecksichtigen
+
+        if (noten.isEmpty()) return null;
+
         List<Note> benotet = noten.stream()
                 .filter(n -> n.getNoteWert() != null)
                 .filter(n -> Boolean.TRUE.equals(n.getBestanden()))
                 .toList();
-        
-        if (benotet.isEmpty()) {
-            return null;
-        }
-        
+
+        if (benotet.isEmpty()) return null;
+
         double sum = benotet.stream()
                 .mapToDouble(n -> n.getNoteWert().doubleValue())
                 .sum();
-        
-        return Math.round((sum / benotet.size()) * 10.0) / 10.0; // Auf 1 Dezimalstelle runden
+
+        return Math.round((sum / benotet.size()) * 10.0) / 10.0;
     }
 
     /**
      * Zaehlt die bestandenen Module einer Einschreibung.
-     * GraphQL: query { bestandeneModule(einschreibungId: "...") }
      */
     @QueryMapping
     public Integer bestandeneModule(@Argument("einschreibungId") String einschreibungId) {
         log.info("GraphQL: Counting bestandene Module for: {}", einschreibungId);
         List<Note> noten = noteRepository.findByEinschreibungId(Long.parseLong(einschreibungId));
-        
+
         return (int) noten.stream()
                 .filter(n -> Boolean.TRUE.equals(n.getBestanden()))
                 .map(Note::getModulId)
@@ -124,130 +117,91 @@ public class NotenGraphQLController {
                 .count();
     }
 
-    // ==================== MUTATIONS ====================
+    // ==================== MUTATIONS (delegated to NotenService) ====================
 
     /**
-     * Erstellt eine neue Note.
-     * GraphQL: mutation { createNote(input: {...}) { id, ... } }
+     * Erstellt eine neue Note - delegiert an NotenService fuer Validierung und Events.
      */
     @MutationMapping
     public Note createNote(@Argument("input") Map<String, Object> input) {
         log.info("GraphQL: Creating note for modul: {}", input.get("modulId"));
-        
-        // Notenwert parsen
+
         BigDecimal noteWert = null;
         if (input.get("noteWert") != null) {
             noteWert = new BigDecimal(input.get("noteWert").toString());
         }
-        
-        // Bestanden ermitteln
-        Boolean bestanden = (Boolean) input.get("bestanden");
-        if (bestanden == null && noteWert != null) {
-            bestanden = noteWert.doubleValue() <= 4.0;
-        }
-        
-        Note note = Note.builder()
+
+        int versuch = input.get("versuch") != null ? (Integer) input.get("versuch") : 0;
+
+        CreateNoteRequest request = CreateNoteRequest.builder()
                 .einschreibungId(Long.parseLong((String) input.get("einschreibungId")))
                 .modulId(Long.parseLong((String) input.get("modulId")))
-                .erfasstVon(Long.parseLong((String) input.get("erfasstVon")))
                 .noteWert(noteWert)
-                .bestanden(bestanden)
-                .versuch((Integer) input.get("versuch"))
+                .bestanden((Boolean) input.get("bestanden"))
+                .versuch(versuch)
                 .pruefungsdatum(LocalDate.parse((String) input.get("pruefungsdatum")))
                 .kommentar((String) input.get("kommentar"))
-                .status(Note.NoteStatus.ERFASST)
                 .build();
-        
-        return noteRepository.save(note);
+
+        Long erfasstVon = Long.parseLong((String) input.get("erfasstVon"));
+
+        NoteDto dto = notenService.createNote(request, erfasstVon);
+        return noteRepository.findById(dto.getId()).orElse(null);
     }
 
     /**
-     * Aktualisiert eine Note.
-     * GraphQL: mutation { updateNote(id: "...", input: {...}) { id, ... } }
+     * Aktualisiert eine Note - delegiert an NotenService.
      */
     @MutationMapping
     public Note updateNote(@Argument("id") String id, @Argument("input") Map<String, Object> input) {
         log.info("GraphQL: Updating note: {}", id);
-        
-        return noteRepository.findById(Long.parseLong(id)).map(note -> {
-            if (note.getStatus() != Note.NoteStatus.ERFASST) {
-                throw new IllegalStateException("Note kann nur im Status ERFASST bearbeitet werden");
-            }
-            
-            if (input.containsKey("noteWert") && input.get("noteWert") != null) {
-                note.setNoteWert(new BigDecimal(input.get("noteWert").toString()));
-            }
-            if (input.containsKey("bestanden")) {
-                note.setBestanden((Boolean) input.get("bestanden"));
-            }
-            if (input.containsKey("versuch")) {
-                note.setVersuch((Integer) input.get("versuch"));
-            }
-            if (input.containsKey("pruefungsdatum") && input.get("pruefungsdatum") != null) {
-                note.setPruefungsdatum(LocalDate.parse((String) input.get("pruefungsdatum")));
-            }
-            if (input.containsKey("kommentar")) {
-                note.setKommentar((String) input.get("kommentar"));
-            }
-            
-            return noteRepository.save(note);
-        }).orElseThrow(() -> new IllegalArgumentException("Note not found: " + id));
+
+        UpdateNoteRequest request = new UpdateNoteRequest();
+        if (input.containsKey("noteWert") && input.get("noteWert") != null) {
+            request.setNoteWert(new BigDecimal(input.get("noteWert").toString()));
+        }
+        if (input.containsKey("bestanden")) {
+            request.setBestanden((Boolean) input.get("bestanden"));
+        }
+        if (input.containsKey("pruefungsdatum") && input.get("pruefungsdatum") != null) {
+            request.setPruefungsdatum(LocalDate.parse((String) input.get("pruefungsdatum")));
+        }
+        if (input.containsKey("kommentar")) {
+            request.setKommentar((String) input.get("kommentar"));
+        }
+
+        notenService.updateNote(Long.parseLong(id), request);
+        return noteRepository.findById(Long.parseLong(id)).orElse(null);
     }
 
     /**
-     * Validiert eine Note (Pruefungsamt).
-     * GraphQL: mutation { validateNote(id: "...", validatorId: "...") { id, status } }
+     * Validiert eine Note - delegiert an NotenService.
      */
     @MutationMapping
     public Note validateNote(@Argument("id") String id, @Argument("validatorId") String validatorId) {
         log.info("GraphQL: Validating note: {} by: {}", id, validatorId);
-        
-        return noteRepository.findById(Long.parseLong(id)).map(note -> {
-            if (note.getStatus() != Note.NoteStatus.ERFASST) {
-                throw new IllegalStateException("Nur ERFASST-Noten koennen validiert werden");
-            }
-            
-            note.setStatus(Note.NoteStatus.VALIDIERT);
-            note.setValidiertVon(Long.parseLong(validatorId));
-            note.setValidiertAm(LocalDateTime.now());
-            
-            return noteRepository.save(note);
-        }).orElseThrow(() -> new IllegalArgumentException("Note not found: " + id));
+
+        notenService.validateNote(Long.parseLong(id), Long.parseLong(validatorId), null);
+        return noteRepository.findById(Long.parseLong(id)).orElse(null);
     }
 
     /**
-     * Gibt eine Note frei (fuer Student sichtbar).
-     * GraphQL: mutation { releaseNote(id: "...") { id, status } }
+     * Gibt eine Note frei - delegiert an NotenService.
      */
     @MutationMapping
     public Note releaseNote(@Argument("id") String id) {
         log.info("GraphQL: Releasing note: {}", id);
-        
-        return noteRepository.findById(Long.parseLong(id)).map(note -> {
-            if (note.getStatus() != Note.NoteStatus.VALIDIERT) {
-                throw new IllegalStateException("Nur VALIDIERT-Noten koennen freigegeben werden");
-            }
-            
-            note.setStatus(Note.NoteStatus.FREIGEGEBEN);
-            return noteRepository.save(note);
-        }).orElseThrow(() -> new IllegalArgumentException("Note not found: " + id));
+
+        notenService.releaseNote(Long.parseLong(id));
+        return noteRepository.findById(Long.parseLong(id)).orElse(null);
     }
 
     /**
-     * Loescht eine Note.
-     * GraphQL: mutation { deleteNote(id: "...") }
+     * Loescht eine Note - delegiert an NotenService.
      */
     @MutationMapping
     public Boolean deleteNote(@Argument("id") String id) {
         log.info("GraphQL: Deleting note: {}", id);
-        
-        return noteRepository.findById(Long.parseLong(id)).map(note -> {
-            if (note.getStatus() != Note.NoteStatus.ERFASST) {
-                throw new IllegalStateException("Nur ERFASST-Noten koennen geloescht werden");
-            }
-            noteRepository.delete(note);
-            return true;
-        }).orElse(false);
+        return notenService.deleteNote(Long.parseLong(id));
     }
 }
-

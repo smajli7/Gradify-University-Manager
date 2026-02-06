@@ -5,6 +5,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Apollo, gql } from 'apollo-angular';
 import { firstValueFrom } from 'rxjs';
+import { ToastService } from '../../../core/services/toast.service';
+import { SkeletonCardComponent } from '../../../shared/components/skeleton-card/skeleton-card.component';
 
 const GET_ALL_MANDANTEN_WITH_STUDIENGAENGE = gql`
   query GetAllMandantenWithStudiengaenge {
@@ -52,7 +54,7 @@ interface ImportResult {
 @Component({
   selector: 'app-mandanten',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonCardComponent],
   template: `
     <div class="page">
       <header class="page-header">
@@ -63,10 +65,7 @@ interface ImportResult {
       </header>
 
       @if (loading()) {
-        <div class="loading-card card">
-          <div class="spinner-large"></div>
-          <p>Lade Daten...</p>
-        </div>
+        <app-skeleton-card [lines]="6" />
       }
 
       @if (!loading()) {
@@ -422,8 +421,8 @@ interface ImportResult {
 
     .mandant-card:hover {
       transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0, 242, 255, 0.2);
-      border-color: var(--color-primary);
+      box-shadow: 0 4px 12px rgba(255, 255, 255, 0.2);
+      border-color: var(--text-primary);
     }
 
     .mandant-header {
@@ -435,9 +434,9 @@ interface ImportResult {
 
     .mandant-badge {
       padding: 6px 12px;
-      background: rgba(0, 242, 255, 0.1);
-      border: 1px solid rgba(0, 242, 255, 0.2);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
       border-radius: var(--radius-md);
       font-size: 0.875rem;
       font-weight: 700;
@@ -452,7 +451,7 @@ interface ImportResult {
 
     .status-dot.active {
       background: var(--color-success);
-      box-shadow: 0 0 8px var(--color-success);
+      box-shadow: none;
     }
 
     .mandant-card h3 {
@@ -470,7 +469,7 @@ interface ImportResult {
 
     .spinner-large, .spinner {
       border: 4px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-primary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -526,9 +525,9 @@ interface ImportResult {
     .sg-badge {
       display: inline-block;
       padding: 4px 8px;
-      background: rgba(0, 242, 255, 0.1);
-      border: 1px solid rgba(0, 242, 255, 0.2);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
       border-radius: var(--radius-full);
       font-size: 0.75rem;
       font-weight: 600;
@@ -578,8 +577,8 @@ interface ImportResult {
     .form-error {
       margin-top: var(--spacing-md);
       padding: var(--spacing-sm);
-      background: rgba(255, 0, 85, 0.1);
-      border: 1px solid rgba(255, 0, 85, 0.3);
+      background: rgba(239, 68, 68, 0.1);
+      border: 1px solid rgba(239, 68, 68, 0.3);
       color: var(--color-danger);
       border-radius: var(--radius-md);
       font-size: var(--font-size-sm);
@@ -591,8 +590,8 @@ interface ImportResult {
     }
 
     .mandant-card.selected {
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 1px var(--color-primary), 0 4px 12px rgba(0, 242, 255, 0.2);
+      border-color: var(--text-primary);
+      box-shadow: 0 0 0 1px var(--text-primary), 0 4px 12px rgba(255, 255, 255, 0.2);
     }
 
     .btn {
@@ -608,7 +607,7 @@ interface ImportResult {
     }
 
     .btn--primary {
-      background: var(--color-primary);
+      background: var(--text-primary);
       color: var(--bg-deep);
     }
 
@@ -737,7 +736,7 @@ interface ImportResult {
 
     .form-input:focus {
       outline: none;
-      border-color: var(--color-primary);
+      border-color: var(--text-primary);
     }
 
     .form-input:disabled {
@@ -811,17 +810,17 @@ interface ImportResult {
     }
 
     .col-tag--sg {
-      background: rgba(0, 242, 255, 0.15);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--text-primary);
     }
 
     .col-tag--po {
-      background: rgba(112, 0, 255, 0.15);
-      color: var(--color-secondary);
+      background: rgba(148, 163, 184, 0.15);
+      color: var(--text-secondary);
     }
 
     .col-tag--mod {
-      background: rgba(0, 255, 136, 0.15);
+      background: rgba(34, 197, 94, 0.15);
       color: var(--color-success);
     }
 
@@ -853,13 +852,13 @@ interface ImportResult {
     }
 
     .upload-area:hover {
-      border-color: var(--color-primary);
-      background: rgba(0, 242, 255, 0.05);
+      border-color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.05);
     }
 
     .upload-area--dragover {
-      border-color: var(--color-primary);
-      background: rgba(0, 242, 255, 0.1);
+      border-color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.1);
     }
 
     .upload-icon {
@@ -891,7 +890,7 @@ interface ImportResult {
 
     .remove-file:hover {
       color: var(--color-danger);
-      background: rgba(255, 0, 85, 0.1);
+      background: rgba(239, 68, 68, 0.1);
     }
 
     /* Import Result */
@@ -904,8 +903,8 @@ interface ImportResult {
     }
 
     .import-result--success {
-      border-color: rgba(0, 255, 136, 0.3);
-      background: rgba(0, 255, 136, 0.05);
+      border-color: rgba(34, 197, 94, 0.3);
+      background: rgba(34, 197, 94, 0.05);
     }
 
     .import-result h4 {
@@ -943,6 +942,7 @@ export class MandantenComponent implements OnInit {
   private readonly apollo = inject(Apollo);
   private readonly http = inject(HttpClient);
   readonly authService = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
   // State
   loading = signal(false);
@@ -1102,7 +1102,7 @@ export class MandantenComponent implements OnInit {
 
   handleFile(file: File): void {
     if (!file.name.endsWith('.csv')) {
-      alert('Bitte nur CSV-Dateien hochladen');
+      this.toast.warning('Bitte nur CSV-Dateien hochladen');
       return;
     }
     this.selectedFile.set(file);
@@ -1131,7 +1131,7 @@ export class MandantenComponent implements OnInit {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Template download failed:', error);
-      alert('Vorlage konnte nicht heruntergeladen werden. Ist der Studiengang-Service gestartet?');
+      this.toast.error('Vorlage konnte nicht heruntergeladen werden. Ist der Studiengang-Service gestartet?');
     }
   }
 
@@ -1161,7 +1161,7 @@ export class MandantenComponent implements OnInit {
 
     } catch (error: any) {
       console.error('Import error:', error);
-      alert('Import fehlgeschlagen: ' + (error.error?.message || error.message || 'Unbekannter Fehler'));
+      this.toast.error('Import fehlgeschlagen: ' + (error.error?.message || error.message || 'Unbekannter Fehler'));
     } finally {
       this.saving.set(false);
     }
@@ -1185,7 +1185,7 @@ export class MandantenComponent implements OnInit {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export fehlgeschlagen. Ist der Studiengang-Service gestartet?');
+      this.toast.error('Export fehlgeschlagen. Ist der Studiengang-Service gestartet?');
     }
   }
 }

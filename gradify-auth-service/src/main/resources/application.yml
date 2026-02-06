@@ -28,7 +28,7 @@ spring:
 # JWT Konfiguration
 jwt:
   secret: gradify-secret-key-change-in-production-min-256-bit
-  access-token-expiration: 900000  # 15 Minuten in Millisekunden
+  access-token-expiration: 10800000  # 3 Stunden in Millisekunden
   refresh-token-expiration: 604800000  # 7 Tage in Millisekunden
 
 # gRPC Client Konfiguration (für User-Service)
@@ -37,6 +37,7 @@ grpc:
     user-service:
       address: static://localhost:9082
       negotiationType: PLAINTEXT
+      deadlineAfter: 5000
 
 # Actuator
 management:

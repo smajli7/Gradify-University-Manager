@@ -15,37 +15,40 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
         <button 
           class="menu-btn hide-desktop"
           (click)="menuToggle.emit()"
-          aria-label="Menu oeffnen">
+          aria-label="Menü öffnen">
           <span class="material-icons-outlined">menu</span>
         </button>
 
-        <!-- Logo -->
+        <!-- Logo (einheitlich mit Login-Screen) -->
         <a routerLink="/dashboard" class="logo">
-          <svg class="logo-svg" viewBox="0 0 180 50" fill="none" xmlns="http://www.w3.org/2000/svg">
-            <!-- Rahmen -->
-            <rect x="2" y="4" width="90" height="32" rx="8" ry="8" 
-                  stroke="url(#headerLogoGradient)" stroke-width="1.5" fill="none"/>
-            
-            <!-- Text 1.0 | 1.3 -->
-            <text x="47" y="26" font-family="DM Sans, sans-serif" font-size="13" font-weight="600" 
-                  fill="#E6EDF3" text-anchor="middle">
-              <tspan>1.0</tspan>
-              <tspan fill="#8B949E" font-weight="300"> | </tspan>
-              <tspan>1.3</tspan>
-            </text>
-            
-            <!-- Gradify Text -->
-            <text x="138" y="28" font-family="DM Sans, sans-serif" font-size="18" font-weight="600" 
-                  fill="#E6EDF3" text-anchor="middle" letter-spacing="0.5">Gradify</text>
-            
-            <!-- Gradient Definition -->
-            <defs>
-              <linearGradient id="headerLogoGradient" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="#00F2FF"/>
-                <stop offset="100%" stop-color="#7000FF"/>
-              </linearGradient>
-            </defs>
-          </svg>
+          <div class="logo-frame-container">
+            <svg class="logo-frame-svg" viewBox="0 0 200 52" fill="none" xmlns="http://www.w3.org/2000/svg">
+              <defs>
+                <linearGradient id="headerLogoFrameGrad" x1="0%" y1="0%" x2="100%" y2="0%">
+                  <stop offset="0%" stop-color="rgba(200, 210, 220, 0.7)"/>
+                  <stop offset="30%" stop-color="rgba(180, 190, 200, 0.6)"/>
+                  <stop offset="50%" stop-color="rgba(160, 170, 180, 0.55)"/>
+                  <stop offset="70%" stop-color="rgba(180, 190, 200, 0.6)"/>
+                  <stop offset="100%" stop-color="rgba(200, 210, 220, 0.7)"/>
+                </linearGradient>
+              </defs>
+              <rect class="logo-frame-rect" x="2" y="2" width="196" height="48" rx="10" ry="10"
+                    stroke="url(#headerLogoFrameGrad)" stroke-width="2" fill="none"/>
+            </svg>
+            <div class="logo-content">
+              <div class="version-group version-left">
+                <span class="char">1</span><span class="char">.</span><span class="char">0</span>
+              </div>
+              <div class="version-divider"></div>
+              <div class="version-group version-right">
+                <span class="char">1</span><span class="char">.</span><span class="char">3</span>
+              </div>
+            </div>
+          </div>
+          <div class="logo-title">
+            <span class="letter">G</span><span class="letter">r</span><span class="letter">a</span>
+            <span class="letter">d</span><span class="letter">i</span><span class="letter">f</span><span class="letter">y</span>
+          </div>
         </a>
 
         <!-- Spacer -->
@@ -112,7 +115,7 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
       position: sticky;
       top: 0;
       z-index: var(--z-header);
-      background: rgba(22, 27, 34, 0.85);
+      background: rgba(18, 18, 18, 0.94);
       backdrop-filter: blur(20px);
       -webkit-backdrop-filter: blur(20px);
       border-bottom: 1px solid var(--border-color);
@@ -122,10 +125,8 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
       display: flex;
       align-items: center;
       gap: var(--spacing-md);
-      max-width: 1400px;
-      margin: 0 auto;
       padding: var(--spacing-sm) var(--spacing-lg);
-      height: 64px;
+      height: 60px;
     }
 
     /* Menu Button (Mobile) */
@@ -147,16 +148,66 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
       background: var(--bg-hover);
     }
 
-    /* Logo */
+    /* Logo (einheitlich mit Login) */
     .logo {
       display: flex;
       align-items: center;
+      gap: 12px;
       text-decoration: none;
     }
 
-    .logo-svg {
-      width: 160px;
-      height: 44px;
+    .logo-frame-container {
+      position: relative;
+      width: 120px;
+      height: 32px;
+    }
+
+    .logo-frame-svg {
+      position: absolute;
+      top: 0;
+      left: 0;
+      width: 100%;
+      height: 100%;
+    }
+
+    .logo-frame-rect {
+      stroke-dasharray: 500;
+      stroke-dashoffset: 0;
+    }
+
+    .logo-content {
+      position: absolute;
+      top: 50%;
+      left: 50%;
+      transform: translate(-50%, -50%);
+      display: flex;
+      align-items: center;
+      font-family: var(--font-family);
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-primary);
+    }
+
+    .version-group { display: flex; }
+
+    .version-divider {
+      width: 2px;
+      height: 18px;
+      background: linear-gradient(to top, transparent, var(--text-muted) 20%, var(--text-muted) 80%, transparent);
+      margin: 0 8px;
+    }
+
+    .logo-title {
+      display: flex;
+      font-family: var(--font-family);
+      font-size: 18px;
+      font-weight: 500;
+      letter-spacing: 2px;
+      color: var(--text-primary);
+    }
+
+    .logo-title .letter {
+      color: var(--text-primary);
     }
 
     .spacer {
@@ -190,33 +241,33 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
     }
 
     .badge--admin {
-      background: rgba(var(--color-danger-rgb), 0.15);
-      color: var(--color-danger);
-      border-color: rgba(var(--color-danger-rgb), 0.3);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      border-color: var(--border-color);
     }
 
     .badge--hochschul_verwalter {
-      background: rgba(34, 197, 94, 0.15);
-      color: #22c55e;
-      border-color: rgba(34, 197, 94, 0.3);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      border-color: var(--border-color);
     }
 
-    .badge--dozent {
-      background: rgba(var(--color-secondary-rgb), 0.15);
-      color: #a855f7;
-      border-color: rgba(var(--color-secondary-rgb), 0.3);
+    .badge--dozent, .badge--lehrender {
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      border-color: var(--border-color);
     }
 
     .badge--pruefungsamt {
-      background: rgba(var(--color-warning-rgb), 0.15);
-      color: var(--color-warning);
-      border-color: rgba(var(--color-warning-rgb), 0.3);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      border-color: var(--border-color);
     }
 
     .badge--student {
-      background: rgba(var(--color-primary-rgb), 0.15);
-      color: var(--color-primary);
-      border-color: rgba(var(--color-primary-rgb), 0.3);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      border-color: var(--border-color);
     }
 
     /* Avatar */
@@ -235,8 +286,7 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
     }
 
     .user-avatar:hover {
-      border-color: var(--color-primary);
-      box-shadow: 0 0 12px rgba(var(--color-primary-rgb), 0.3);
+      border-color: var(--text-secondary);
     }
 
     .avatar-img {
@@ -333,13 +383,13 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
     .debug-btn:hover {
       background: rgba(255,255,255,0.12);
       color: var(--text-primary);
-      border-color: var(--color-primary);
+      border-color: var(--text-secondary);
     }
 
     .debug-btn.active {
-      background: rgba(var(--color-primary-rgb), 0.15);
-      color: var(--color-primary);
-      border-color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.12);
+      color: var(--text-primary);
+      border-color: var(--text-primary);
     }
 
     .debug-btn .material-icons-outlined {
@@ -356,9 +406,14 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
         padding: var(--spacing-sm) var(--spacing-md);
       }
 
-      .logo-text {
-        font-size: var(--font-size-md);
+      .logo-frame-container {
+        width: 100px;
+        height: 28px;
       }
+
+      .logo-content { font-size: 12px; }
+
+      .logo-title { font-size: 16px; letter-spacing: 1px; }
     }
   `]
 })

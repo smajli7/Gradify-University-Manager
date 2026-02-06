@@ -62,6 +62,10 @@ springdoc:
     path: /swagger-ui.html
     operationsSorter: method
 
+# JWT (gleicher Secret wie Auth-Service fuer Signatur-Verifikation)
+jwt:
+  secret: gradify-secret-key-change-in-production-min-256-bit
+
 # Logging
 logging:
   level:

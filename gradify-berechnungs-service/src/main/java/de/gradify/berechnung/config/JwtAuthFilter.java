@@ -2,10 +2,12 @@ package de.gradify.berechnung.config;
 
 import de.gradify.shared.security.GradifyTokenParser;
 import de.gradify.shared.security.GradifyTokenParser.ParsedToken;
+import jakarta.annotation.PostConstruct;
 import jakarta.servlet.FilterChain;
 import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.security.authentication.UsernamePasswordAuthenticationToken;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.core.context.SecurityContextHolder;
@@ -17,6 +19,14 @@ import java.util.stream.Collectors;
 
 @Component
 public class JwtAuthFilter extends OncePerRequestFilter {
+
+    @Value("${jwt.secret:gradify-secret-key-change-in-production-min-256-bit}")
+    private String jwtSecret;
+
+    @PostConstruct
+    public void init() {
+        GradifyTokenParser.configureSecret(jwtSecret);
+    }
 
     @Override
     protected void doFilterInternal(HttpServletRequest request, HttpServletResponse response,

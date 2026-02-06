@@ -6,6 +6,7 @@ import { firstValueFrom } from 'rxjs';
 import { HttpClient } from '@angular/common/http';
 import { Apollo, gql } from 'apollo-angular';
 import { AuthService } from '../../../core/services/auth.service';
+import { SkeletonStateComponent } from '../../../shared/components/skeleton-state/skeleton-state.component';
 
 const LOAD_TIMEOUT_MS = 15000;
 
@@ -107,7 +108,7 @@ interface UserInfo {
 @Component({
   selector: 'app-validation',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonStateComponent],
   template: `
     <div class="page animate-slide-up">
       <!-- Header -->
@@ -169,10 +170,7 @@ interface UserInfo {
 
       <!-- Loading State -->
       @if (loading()) {
-        <div class="loading-state">
-          <div class="spinner-lg"></div>
-          <p>Lade Noten...</p>
-        </div>
+        <app-skeleton-state [lineCount]="8" />
       }
 
       <!-- Error State -->
@@ -492,7 +490,7 @@ interface UserInfo {
 
     .filter-select:focus {
       outline: none;
-      border-color: var(--color-primary);
+      border-color: var(--text-secondary);
     }
 
     .search-wrapper {
@@ -523,8 +521,8 @@ interface UserInfo {
 
     .search-input:focus {
       outline: none;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px rgba(0, 242, 255, 0.1);
+      border-color: var(--text-secondary);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
     }
 
     .search-input::placeholder {
@@ -556,7 +554,7 @@ interface UserInfo {
     }
 
     .btn--primary {
-      background: var(--color-primary);
+      background: var(--text-primary);
       color: var(--bg-primary);
     }
 
@@ -600,7 +598,7 @@ interface UserInfo {
       width: 40px;
       height: 40px;
       border: 3px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-secondary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: var(--spacing-md);
@@ -656,7 +654,7 @@ interface UserInfo {
     }
 
     .data-table tbody tr.selected {
-      background: rgba(0, 242, 255, 0.05);
+      background: rgba(255, 255, 255, 0.05);
     }
 
     .data-table tbody tr.status-erfasst {
@@ -755,11 +753,11 @@ interface UserInfo {
 
     .action-btn:hover:not(:disabled) {
       background: var(--bg-hover);
-      color: var(--color-primary);
+      color: var(--text-primary);
     }
 
     .action-btn--validate:hover:not(:disabled) {
-      color: var(--color-primary);
+      color: var(--text-primary);
     }
 
     .action-btn--release:hover:not(:disabled) {

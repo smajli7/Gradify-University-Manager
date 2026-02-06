@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Apollo, gql } from 'apollo-angular';
 import { AuthService } from '../../../core/services/auth.service';
+import { ToastService } from '../../../core/services/toast.service';
+import { SkeletonCardComponent } from '../../../shared/components/skeleton-card/skeleton-card.component';
 import { firstValueFrom } from 'rxjs';
 
 // GraphQL Queries
@@ -110,7 +112,7 @@ interface StudentWithGrade extends StudentInfo {
 @Component({
   selector: 'app-grade-entry',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonCardComponent],
   template: `
     <div class="grade-entry-page">
       <header class="page-header">
@@ -121,10 +123,7 @@ interface StudentWithGrade extends StudentInfo {
       </header>
 
       @if (loading()) {
-        <div class="loading-card card">
-          <div class="spinner-large"></div>
-          <p>Lade Ihre Module...</p>
-        </div>
+        <app-skeleton-card [lines]="5" />
       }
 
       @if (error()) {
@@ -345,7 +344,7 @@ interface StudentWithGrade extends StudentInfo {
       width: 48px;
       height: 48px;
       border: 4px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-secondary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -373,7 +372,7 @@ interface StudentWithGrade extends StudentInfo {
     .modul-nr {
       display: inline-block;
       padding: 4px 8px;
-      background: var(--color-primary);
+      background: var(--text-secondary);
       color: white;
       border-radius: var(--radius-sm);
       font-size: 0.75rem;
@@ -408,7 +407,7 @@ interface StudentWithGrade extends StudentInfo {
 
     .spinner, .spinner-small {
       border: 2px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-secondary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -480,8 +479,8 @@ interface StudentWithGrade extends StudentInfo {
 
     .grade-input:focus, .versuch-select:focus, .date-input:focus, .bemerkung-input:focus {
       outline: none;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 2px rgba(0, 242, 255, 0.1);
+      border-color: var(--text-secondary);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
     }
 
     .versuch-select {
@@ -516,13 +515,12 @@ interface StudentWithGrade extends StudentInfo {
     }
 
     .btn-primary {
-      background: var(--color-primary);
-      color: white;
+      background: var(--text-primary);
+      color: var(--bg-surface);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--color-primary);
-      filter: brightness(1.1);
+      background: var(--text-secondary);
     }
 
     .btn:disabled {
@@ -558,12 +556,12 @@ interface StudentWithGrade extends StudentInfo {
     }
 
     .btn-icon.btn-primary {
-      background: rgba(0, 242, 255, 0.15);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.15);
+      color: var(--text-primary);
     }
 
     .btn-icon.btn-primary:hover:not(:disabled) {
-      background: rgba(0, 242, 255, 0.25);
+      background: rgba(255, 255, 255, 0.25);
     }
 
     .action-bar {
@@ -580,6 +578,7 @@ export class GradeEntryComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly apollo = inject(Apollo);
   private readonly authService = inject(AuthService);
+  private readonly toast = inject(ToastService);
 
   // State
   loading = signal(false);
@@ -772,7 +771,7 @@ export class GradeEntryComponent implements OnInit {
 
     } catch (err: any) {
       console.error('Error saving grade:', err);
-      alert('Fehler beim Speichern: ' + (err.error?.message || err.message || 'Unbekannter Fehler'));
+      this.toast.error('Fehler beim Speichern: ' + (err.error?.message || err.message || 'Unbekannter Fehler'));
     } finally {
       student.saving = false;
     }

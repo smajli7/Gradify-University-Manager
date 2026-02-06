@@ -1,0 +1,80 @@
+# Gateway-Konfiguration fuer Docker (Service-Namen statt localhost)
+spring:
+  cloud:
+    gateway:
+      # CORS Konfiguration (Requests kommen via Nginx, aber fuer direkte API-Aufrufe)
+      globalcors:
+        cors-configurations:
+          '[/**]':
+            allowedOrigins:
+              - "http://localhost"
+              - "http://localhost:80"
+              - "http://localhost:4200"
+              - "http://127.0.0.1:4200"
+            allowedMethods:
+              - GET
+              - POST
+              - PUT
+              - DELETE
+              - OPTIONS
+            allowedHeaders:
+              - "*"
+            allowCredentials: true
+            maxAge: 3600
+
+      routes:
+        - id: auth-service
+          uri: http://auth-service:8081
+          predicates:
+            - Path=/api/auth/**
+          filters:
+            - StripPrefix=0
+
+        - id: user-service
+          uri: http://user-service:8082
+          predicates:
+            - Path=/api/users/**,/api/students/**
+          filters:
+            - StripPrefix=0
+
+        - id: studiengang-service
+          uri: http://studiengang-service:8083
+          predicates:
+            - Path=/api/mandanten/**,/api/studiengaenge/**,/api/module/**,/api/module-zuweisungen/**,/api/pruefungsordnungen/**,/api/einschreibungen/**,/api/import/**
+          filters:
+            - StripPrefix=0
+
+        - id: noten-service
+          uri: http://noten-service:8084
+          predicates:
+            - Path=/api/noten/**
+          filters:
+            - StripPrefix=0
+
+        - id: berechnungs-service
+          uri: http://berechnungs-service:8085
+          predicates:
+            - Path=/api/berechnungen/**
+          filters:
+            - StripPrefix=0
+
+        - id: graphql-user
+          uri: http://user-service:8082
+          predicates:
+            - Path=/graphql/user,/graphql/user/**
+          filters:
+            - RewritePath=/graphql/user(?<segment>/?.*),/graphql${segment}
+
+        - id: graphql-studiengang
+          uri: http://studiengang-service:8083
+          predicates:
+            - Path=/graphql/studiengang,/graphql/studiengang/**
+          filters:
+            - RewritePath=/graphql/studiengang(?<segment>/?.*),/graphql${segment}
+
+        - id: graphql-noten
+          uri: http://noten-service:8084
+          predicates:
+            - Path=/graphql/noten,/graphql/noten/**
+          filters:
+            - RewritePath=/graphql/noten(?<segment>/?.*),/graphql${segment}

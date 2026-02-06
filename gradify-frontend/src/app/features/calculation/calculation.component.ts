@@ -2,6 +2,7 @@ import { Component, OnInit, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { Apollo, gql } from 'apollo-angular';
+import { SkeletonStateComponent } from '../../shared/components/skeleton-state/skeleton-state.component';
 
 // Query für alle Studenten (User-Service)
 const GET_STUDENTS_QUERY = gql`
@@ -98,7 +99,7 @@ interface ModulMitNote {
 @Component({
   selector: 'app-calculation',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonStateComponent],
   template: `
     <div class="page animate-slide-up">
       <div class="page-header">
@@ -149,10 +150,7 @@ interface ModulMitNote {
 
       <!-- Loading -->
       @if (loadingStudents() || loading()) {
-        <div class="loading-state">
-          <div class="spinner-lg"></div>
-          <p>{{ loadingStudents() ? 'Lade Studenten...' : 'Berechne Gesamtnote...' }}</p>
-        </div>
+        <app-skeleton-state [lineCount]="6" />
       }
 
       <!-- Error -->
@@ -379,7 +377,7 @@ interface ModulMitNote {
       width: 40px;
       height: 40px;
       border: 3px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-primary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: var(--spacing-md);
@@ -404,7 +402,7 @@ interface ModulMitNote {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(255, 0, 85, 0.15);
+      background: rgba(239, 68, 68, 0.15);
       color: var(--color-danger);
       border-radius: 50%;
       font-size: 24px;
@@ -458,7 +456,7 @@ interface ModulMitNote {
     }
 
     .result-grade--success { color: var(--color-success); }
-    .result-grade--info { color: var(--color-primary); }
+    .result-grade--info { color: var(--text-primary); }
     .result-grade--warning { color: var(--color-warning); }
     .result-grade--danger { color: var(--color-danger); }
 
@@ -566,10 +564,10 @@ interface ModulMitNote {
       font-weight: 600;
     }
 
-    .note-badge--success { background: rgba(0, 255, 136, 0.15); color: var(--color-success); }
-    .note-badge--info { background: rgba(0, 242, 255, 0.15); color: var(--color-primary); }
+    .note-badge--success { background: rgba(34, 197, 94, 0.15); color: var(--color-success); }
+    .note-badge--info { background: rgba(255, 255, 255, 0.15); color: var(--text-primary); }
     .note-badge--warning { background: rgba(255, 184, 0, 0.15); color: var(--color-warning); }
-    .note-badge--danger { background: rgba(255, 0, 85, 0.15); color: var(--color-danger); }
+    .note-badge--danger { background: rgba(239, 68, 68, 0.15); color: var(--color-danger); }
     .note-badge--muted { background: var(--bg-hover); color: var(--text-muted); }
 
     .weight-badge {
@@ -591,8 +589,8 @@ interface ModulMitNote {
       display: flex;
       gap: var(--spacing-md);
       padding: var(--spacing-md);
-      background: rgba(0, 242, 255, 0.05);
-      border: 1px solid rgba(0, 242, 255, 0.2);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: var(--radius-lg);
     }
 
@@ -602,8 +600,8 @@ interface ModulMitNote {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(0, 242, 255, 0.2);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
       border-radius: 50%;
       font-weight: bold;
       flex-shrink: 0;
@@ -625,7 +623,7 @@ interface ModulMitNote {
     }
 
     .btn--primary {
-      background: var(--color-primary);
+      background: var(--text-primary);
       color: var(--bg-deep);
     }
 

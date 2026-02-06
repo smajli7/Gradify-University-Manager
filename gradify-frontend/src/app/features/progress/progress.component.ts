@@ -1,9 +1,11 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
+import { RouterLink } from '@angular/router';
 import { Apollo, gql } from 'apollo-angular';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { SkeletonStateComponent } from '../../shared/components/skeleton-state/skeleton-state.component';
 
 // Query für alle Studenten (User-Service)
 const GET_STUDENTS_QUERY = gql`
@@ -103,7 +105,7 @@ interface SemesterProgress {
 @Component({
   selector: 'app-progress',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink, SkeletonStateComponent],
   template: `
     <div class="page animate-slide-up">
       <div class="page-header">
@@ -173,10 +175,7 @@ interface SemesterProgress {
 
       <!-- Loading -->
       @if (loadingStudents() || loading()) {
-        <div class="loading-state">
-          <div class="spinner-lg"></div>
-          <p>{{ loadingStudents() ? 'Lade Studenten...' : 'Lade Fortschritt...' }}</p>
-        </div>
+        <app-skeleton-state [lineCount]="6" />
       }
 
       <!-- Error -->
@@ -240,9 +239,9 @@ interface SemesterProgress {
           </div>
         </div>
 
-        <!-- Main Progress Section -->
+        <!-- Main Progress Section: Donut + 3 Kernwerte -->
         <div class="progress-section">
-          <h2>ECTS-Fortschritt</h2>
+          <h2 class="section-title">ECTS-Fortschritt</h2>
           
           <div class="progress-display">
             <div class="progress-circle">
@@ -268,15 +267,11 @@ interface SemesterProgress {
                 <span class="detail-value detail-value--success">{{ ectsErreicht() }}</span>
               </div>
               <div class="detail-row">
-                <span class="detail-label">Gesamt ECTS</span>
-                <span class="detail-value">{{ totalEcts() }}</span>
-              </div>
-              <div class="detail-row">
                 <span class="detail-label">Offene ECTS</span>
-                <span class="detail-value detail-value--warning">{{ totalEcts() - ectsErreicht() }}</span>
+                <span class="detail-value detail-value--muted">{{ totalEcts() - ectsErreicht() }}</span>
               </div>
               <div class="detail-row">
-                <span class="detail-label">Bestandene Module</span>
+                <span class="detail-label">Bestanden</span>
                 <span class="detail-value">{{ bestandenCount() }} / {{ totalModules() }}</span>
               </div>
             </div>
@@ -285,7 +280,7 @@ interface SemesterProgress {
 
         <!-- Semester Progress -->
         <div class="semester-section">
-          <h2>Fortschritt pro Semester</h2>
+          <h2 class="section-title">Fortschritt pro Semester</h2>
           
           <div class="semester-bars">
             @for (sem of semesterProgress(); track sem.semester) {
@@ -298,109 +293,56 @@ interface SemesterProgress {
                     [class.semester-bar-fill--complete]="sem.ects >= sem.ectsGesamt">
                   </div>
                 </div>
-                <div class="semester-stats">
-                  <span class="semester-ects">{{ sem.ects }}/{{ sem.ectsGesamt }} ECTS</span>
-                  @if (sem.durchschnitt !== null) {
-                    <span class="semester-avg">Durchschnitt {{ sem.durchschnitt | number:'1.1-1' }}</span>
-                  }
-                </div>
+                <div class="semester-kennzahl">{{ sem.ects }}/{{ sem.ectsGesamt }}</div>
+                @if (sem.durchschnitt !== null) {
+                  <span class="semester-avg-pill">{{ sem.durchschnitt | number:'1.1-1' }}</span>
+                } @else {
+                  <span class="semester-avg-pill semester-avg-pill--empty">–</span>
+                }
               </div>
             }
           </div>
         </div>
 
-        <!-- Status Overview -->
+        <!-- Status Overview: kompakt, Akzent Topline -->
         <div class="status-section">
-          <h2>Modulstatus</h2>
+          <h2 class="section-title">Modulstatus</h2>
           
           <div class="status-grid">
             <div class="status-card status-card--success">
-              <div class="status-count">{{ bestandenCount() }}</div>
-              <div class="status-label">Bestanden</div>
-              <div class="status-bar">
-                <div class="status-bar-fill" [style.width.%]="bestandenPercent()"></div>
-              </div>
+              <span class="status-icon">✓</span>
+              <span class="status-count">{{ bestandenCount() }}</span>
+              <span class="status-label">Bestanden</span>
             </div>
-            
             <div class="status-card status-card--warning">
-              <div class="status-count">{{ inProgressCount() }}</div>
-              <div class="status-label">In Bearbeitung</div>
-              <div class="status-bar">
-                <div class="status-bar-fill" [style.width.%]="inProgressPercent()"></div>
-              </div>
+              <span class="status-icon">○</span>
+              <span class="status-count">{{ inProgressCount() }}</span>
+              <span class="status-label">In Bearbeitung</span>
             </div>
-            
             <div class="status-card status-card--muted">
-              <div class="status-count">{{ offenCount() }}</div>
-              <div class="status-label">Offen</div>
-              <div class="status-bar">
-                <div class="status-bar-fill" [style.width.%]="offenPercent()"></div>
-              </div>
+              <span class="status-icon">–</span>
+              <span class="status-count">{{ offenCount() }}</span>
+              <span class="status-label">Offen</span>
             </div>
-            
             <div class="status-card status-card--danger">
-              <div class="status-count">{{ nichtBestandenCount() }}</div>
-              <div class="status-label">Nicht bestanden</div>
-              <div class="status-bar">
-                <div class="status-bar-fill" [style.width.%]="nichtBestandenPercent()"></div>
-              </div>
+              <span class="status-icon">✕</span>
+              <span class="status-count">{{ nichtBestandenCount() }}</span>
+              <span class="status-label">Nicht bestanden</span>
             </div>
           </div>
         </div>
 
-        <!-- Prognose -->
+        <!-- Prognose: dezenter Hinweis + CTA -->
         <div class="prognose-section">
-          <h2>Prognose</h2>
-          
-          <div class="prognose-card">
-            <div class="prognose-item">
-              <span class="prognose-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <circle cx="12" cy="12" r="10"/>
-                  <path d="M12 6v6l4 2"/>
-                </svg>
-              </span>
-              <div class="prognose-content">
-                <span class="prognose-label">Voraussichtlicher Abschluss</span>
-                <span class="prognose-value">
-                  @if (semesterBisAbschluss() > 0) {
-                    In {{ semesterBisAbschluss() }} Semestern
-                  } @else {
-                    Abschluss möglich
-                  }
-                </span>
-              </div>
-            </div>
-            
-            <div class="prognose-item">
-              <span class="prognose-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M3 3v18h18"/>
-                  <path d="M18 17V9"/>
-                  <path d="M13 17V5"/>
-                  <path d="M8 17v-3"/>
-                </svg>
-              </span>
-              <div class="prognose-content">
-                <span class="prognose-label">Erwartete Endnote</span>
-                <span class="prognose-value prognose-value--{{ getGradeColor(durchschnitt()) }}">
-                  {{ durchschnitt() | number:'1.2-2' }}
-                </span>
-              </div>
-            </div>
-            
-            <div class="prognose-item">
-              <span class="prognose-icon">
-                <svg width="32" height="32" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                  <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-                </svg>
-              </span>
-              <div class="prognose-content">
-                <span class="prognose-label">ECTS pro Semester (Durchschnitt)</span>
-                <span class="prognose-value">{{ ectsProSemester() | number:'1.0-0' }}</span>
-              </div>
-            </div>
-          </div>
+          <p class="prognose-hinweis">
+            @if (semesterBisAbschluss() > 0) {
+              Voraussichtlicher Abschluss in {{ semesterBisAbschluss() }} Semestern
+              (Ø {{ ectsProSemester() | number:'1.0-0' }} ECTS/Sem).
+            } @else {
+              Abschluss bei aktuellem Tempo möglich.
+            }
+            <a routerLink="/study-plan" class="prognose-cta">Offene Module priorisieren</a>
+          </p>
         </div>
       }
 
@@ -433,7 +375,13 @@ interface SemesterProgress {
     .page-header h1 {
       margin: 0 0 var(--spacing-xs) 0;
       font-size: 1.75rem;
-      font-weight: 600;
+      font-weight: 700;
+    }
+
+    .page-header .text-muted {
+      color: var(--text-muted);
+      margin: 0;
+      font-size: var(--font-size-sm);
     }
 
     /* Selection Controls */
@@ -491,7 +439,7 @@ interface SemesterProgress {
       width: 40px;
       height: 40px;
       border: 3px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-primary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: var(--spacing-md);
@@ -516,7 +464,7 @@ interface SemesterProgress {
       display: flex;
       align-items: center;
       justify-content: center;
-      background: rgba(255, 0, 85, 0.15);
+      background: rgba(239, 68, 68, 0.15);
       color: var(--color-danger);
       border-radius: 50%;
       font-size: 24px;
@@ -553,12 +501,12 @@ interface SemesterProgress {
     }
 
     .overview-card--primary {
-      border-color: rgba(0, 242, 255, 0.3);
-      background: rgba(0, 242, 255, 0.05);
+      border-color: rgba(255, 255, 255, 0.3);
+      background: rgba(255, 255, 255, 0.05);
     }
 
     .card-icon {
-      color: var(--color-primary);
+      color: var(--text-secondary);
     }
 
     .card-content {
@@ -573,11 +521,18 @@ interface SemesterProgress {
     }
 
     .card-label {
-      font-size: var(--font-size-sm);
+      font-size: var(--font-size-xs);
       color: var(--text-muted);
     }
 
-    /* Progress Section */
+    /* Section titles: stärkere Hierarchie */
+    .section-title {
+      margin: 0 0 var(--spacing-md) 0;
+      font-size: 1.25rem;
+      font-weight: 700;
+      color: var(--text-primary);
+    }
+
     .progress-section,
     .semester-section,
     .status-section,
@@ -587,14 +542,6 @@ interface SemesterProgress {
       border-radius: var(--radius-xl);
       padding: var(--spacing-lg);
       margin-bottom: var(--spacing-lg);
-    }
-
-    .progress-section h2,
-    .semester-section h2,
-    .status-section h2,
-    .prognose-section h2 {
-      margin: 0 0 var(--spacing-lg) 0;
-      font-size: 1.1rem;
     }
 
     .progress-display {
@@ -622,7 +569,7 @@ interface SemesterProgress {
 
     .progress-fill {
       fill: none;
-      stroke: var(--color-primary);
+      stroke: #CBD5E1;
       stroke-width: 8;
       stroke-linecap: round;
       transition: stroke-dashoffset 0.5s ease;
@@ -650,14 +597,20 @@ interface SemesterProgress {
 
     .progress-details {
       flex: 1;
-      min-width: 200px;
+      min-width: 0;
+      max-width: 240px;
+      display: flex;
+      flex-direction: column;
+      gap: 0;
     }
 
     .detail-row {
       display: flex;
       justify-content: space-between;
-      padding: var(--spacing-sm) 0;
-      border-bottom: 1px solid var(--border-color);
+      align-items: baseline;
+      gap: 16px;
+      padding: 6px 0;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
     }
 
     .detail-row:last-child {
@@ -665,37 +618,43 @@ interface SemesterProgress {
     }
 
     .detail-label {
-      color: var(--text-secondary);
+      font-size: var(--font-size-sm);
+      color: var(--text-muted);
+      flex-shrink: 0;
     }
 
     .detail-value {
-      font-weight: 600;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      flex-shrink: 0;
     }
 
     .detail-value--success { color: var(--color-success); }
-    .detail-value--warning { color: var(--color-warning); }
+    .detail-value--muted { color: var(--text-muted); }
 
-    /* Semester Bars */
+    /* Semester Bars: Track grau, nur Füllung grün; Kennzahl rechts */
     .semester-bars {
       display: flex;
       flex-direction: column;
-      gap: var(--spacing-md);
+      gap: 10px;
     }
 
     .semester-bar-container {
       display: grid;
-      grid-template-columns: 80px 1fr 120px;
-      gap: var(--spacing-md);
+      grid-template-columns: 72px 1fr 56px 44px;
+      gap: 12px;
       align-items: center;
     }
 
     .semester-label {
+      font-size: var(--font-size-sm);
       font-weight: 500;
-      color: var(--text-secondary);
+      color: var(--text-muted);
     }
 
     .semester-bar {
-      height: 24px;
+      height: 20px;
       background: var(--bg-deep);
       border-radius: var(--radius-full);
       overflow: hidden;
@@ -703,7 +662,7 @@ interface SemesterProgress {
 
     .semester-bar-fill {
       height: 100%;
-      background: linear-gradient(90deg, var(--color-primary), var(--color-success));
+      background: var(--color-success);
       border-radius: var(--radius-full);
       transition: width 0.5s ease;
     }
@@ -712,37 +671,67 @@ interface SemesterProgress {
       background: var(--color-success);
     }
 
-    .semester-stats {
-      display: flex;
-      flex-direction: column;
-      align-items: flex-end;
+    .semester-kennzahl {
       font-size: var(--font-size-sm);
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      color: var(--text-primary);
     }
 
-    .semester-ects { font-weight: 500; }
-    .semester-avg { color: var(--text-muted); }
-
-    /* Status Grid */
-    .status-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
-      gap: var(--spacing-md);
-    }
-
-    .status-card {
-      padding: var(--spacing-md);
-      border-radius: var(--radius-lg);
+    .semester-avg-pill {
+      font-size: 11px;
+      font-weight: 600;
+      font-variant-numeric: tabular-nums;
+      padding: 2px 6px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-secondary);
       text-align: center;
     }
 
-    .status-card--success { background: rgba(0, 255, 136, 0.1); border: 1px solid rgba(0, 255, 136, 0.3); }
-    .status-card--warning { background: rgba(255, 184, 0, 0.1); border: 1px solid rgba(255, 184, 0, 0.3); }
-    .status-card--muted { background: var(--bg-hover); border: 1px solid var(--border-color); }
-    .status-card--danger { background: rgba(255, 0, 85, 0.1); border: 1px solid rgba(255, 0, 85, 0.3); }
+    .semester-avg-pill--empty {
+      color: var(--text-muted);
+    }
+
+    /* Status Grid: kompakt, Akzent Topline */
+    .status-grid {
+      display: grid;
+      grid-template-columns: repeat(4, 1fr);
+      gap: var(--spacing-sm);
+    }
+
+    .status-card {
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
+      border-radius: var(--radius-md);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-top: 3px solid transparent;
+      background: var(--bg-hover);
+    }
+
+    .status-card--success { border-top-color: var(--color-success); }
+    .status-card--warning { border-top-color: var(--color-warning); }
+    .status-card--muted { border-top-color: var(--text-muted); }
+    .status-card--danger { border-top-color: var(--color-danger); }
+
+    .status-icon {
+      font-size: 14px;
+      font-weight: 700;
+      flex-shrink: 0;
+    }
+
+    .status-card--success .status-icon { color: var(--color-success); }
+    .status-card--warning .status-icon { color: var(--color-warning); }
+    .status-card--muted .status-icon { color: var(--text-muted); }
+    .status-card--danger .status-icon { color: var(--color-danger); }
 
     .status-count {
-      font-size: 2rem;
+      font-size: 1.25rem;
       font-weight: 700;
+      font-variant-numeric: tabular-nums;
     }
 
     .status-card--success .status-count { color: var(--color-success); }
@@ -751,60 +740,36 @@ interface SemesterProgress {
     .status-card--danger .status-count { color: var(--color-danger); }
 
     .status-label {
-      font-size: var(--font-size-sm);
-      color: var(--text-secondary);
-      margin-bottom: var(--spacing-sm);
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      margin-left: auto;
+      white-space: nowrap;
     }
 
-    .status-bar {
-      height: 4px;
-      background: rgba(255, 255, 255, 0.1);
-      border-radius: var(--radius-full);
-      overflow: hidden;
+    /* Prognose: dezenter Hinweis + CTA */
+    .prognose-section {
+      padding: var(--spacing-md) var(--spacing-lg);
     }
 
-    .status-bar-fill { height: 100%; border-radius: var(--radius-full); }
-    .status-card--success .status-bar-fill { background: var(--color-success); }
-    .status-card--warning .status-bar-fill { background: var(--color-warning); }
-    .status-card--muted .status-bar-fill { background: var(--text-muted); }
-    .status-card--danger .status-bar-fill { background: var(--color-danger); }
-
-    /* Prognose */
-    .prognose-card {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: var(--spacing-lg);
-    }
-
-    .prognose-item {
-      display: flex;
-      gap: var(--spacing-md);
-      align-items: center;
-    }
-
-    .prognose-icon {
-      color: var(--color-primary);
-    }
-
-    .prognose-content {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .prognose-label {
+    .prognose-hinweis {
+      margin: 0;
       font-size: var(--font-size-sm);
       color: var(--text-muted);
+      line-height: 1.5;
     }
 
-    .prognose-value {
-      font-size: 1.25rem;
-      font-weight: 600;
+    .prognose-cta {
+      display: inline-block;
+      margin-left: 8px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      text-decoration: none;
     }
 
-    .prognose-value--success { color: var(--color-success); }
-    .prognose-value--info { color: var(--color-primary); }
-    .prognose-value--warning { color: var(--color-warning); }
-    .prognose-value--danger { color: var(--color-danger); }
+    .prognose-cta:hover {
+      color: var(--text-primary);
+      text-decoration: underline;
+    }
 
     /* Buttons */
     .btn {
@@ -819,8 +784,9 @@ interface SemesterProgress {
     }
 
     .btn--primary {
-      background: var(--color-primary);
-      color: var(--bg-deep);
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
+      border: 1px solid rgba(255, 255, 255, 0.2);
     }
 
     .btn--primary:hover:not(:disabled) { filter: brightness(1.1); }
@@ -829,13 +795,13 @@ interface SemesterProgress {
     /* Responsive */
     @media (max-width: 768px) {
       .progress-display { flex-direction: column; }
+      .progress-details { max-width: none; }
       .semester-bar-container {
-        grid-template-columns: 60px 1fr;
+        grid-template-columns: 60px 1fr 48px 40px;
+        gap: 8px;
       }
-      .semester-stats {
-        grid-column: 1 / -1;
-        flex-direction: row;
-        justify-content: space-between;
+      .status-grid {
+        grid-template-columns: repeat(2, 1fr);
       }
       .selection-controls { flex-direction: column; }
       .control-group { width: 100%; }

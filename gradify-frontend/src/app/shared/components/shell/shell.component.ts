@@ -29,19 +29,23 @@ import { OverlayService } from '../../../core/services/overlay.service';
         (logout)="onLogout()">
       </app-header>
 
-      <!-- Main Content -->
-      <main class="main-content">
-        <router-outlet></router-outlet>
-      </main>
+      <!-- Body: Sidebar + Content -->
+      <div class="shell-body">
+        <!-- Sidebar (Desktop) -->
+        <app-dock
+          [items]="dockItems"
+          [userRole]="userRole()">
+        </app-dock>
 
-      <!-- Floating Dock (Desktop) - ausgeblendet wenn Notenbescheinigung/Overlay offen -->
-      <app-dock
-        [items]="dockItems"
-        [userRole]="userRole()"
-        [isHidden]="overlayService.overlayOpen()">
-      </app-dock>
+        <!-- Main Content (zentriert neben Sidebar) -->
+        <main class="main-content">
+          <div class="main-content-inner">
+            <router-outlet></router-outlet>
+          </div>
+        </main>
+      </div>
 
-      <!-- Mobile Menu -->
+      <!-- Mobile Menu (slide-in overlay) -->
       <app-mobile-menu
         [items]="dockItems"
         [userRole]="userRole()"
@@ -54,25 +58,53 @@ import { OverlayService } from '../../../core/services/overlay.service';
   styles: [`
     .shell {
       min-height: 100vh;
-      min-height: 100dvh; /* Dynamic viewport height for mobile */
+      min-height: 100dvh;
       display: flex;
       flex-direction: column;
       position: relative;
     }
 
+    .shell-body {
+      display: flex;
+      flex: 1;
+      overflow: hidden;
+      min-width: 0;
+    }
+
     .main-content {
       flex: 1;
-      padding: var(--spacing-xl) var(--spacing-lg);
-      padding-bottom: 120px; /* Platz fuer Dock */
-      max-width: 1400px;
-      margin: 0 auto;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      justify-content: flex-start;
+      overflow-y: auto;
+      overflow-x: hidden;
+      height: calc(100vh - 60px);
+      padding: var(--spacing-2xl) var(--spacing-lg) var(--spacing-xl);
+      scrollbar-gutter: stable;
+      box-sizing: border-box;
+    }
+
+    .main-content-inner {
       width: 100%;
+      max-width: 1200px;
+      margin: 0 auto;
+      padding: 0;
+      box-sizing: border-box;
     }
 
     @media (max-width: 768px) {
       .main-content {
         padding: var(--spacing-md);
-        padding-bottom: var(--spacing-xl);
+        height: auto;
+        overflow-y: visible;
+        align-items: stretch;
+        scrollbar-gutter: auto;
+      }
+
+      .main-content-inner {
+        max-width: none;
       }
     }
   `]
@@ -90,74 +122,87 @@ export class ShellComponent {
   showUserMenu = false;
   mobileMenuOpen = false;
 
-  // Navigation Items mit Custom Icons
-  // Icons liegen in: assets/icons/*.png (oder .svg)
-  // Navigation Items mit Custom Icons
-  // Ersetze .svg durch .png wenn du eigene Photoshop-Icons erstellst
+  // Navigation Items – Übersicht immer ganz oben
   dockItems: DockItem[] = [
-    // === ADMIN ===
+    {
+      id: 'dashboard-student',
+      label: 'Übersicht',
+      route: '/dashboard',
+      icon: 'assets/icons/dashboard.svg',
+      roles: ['STUDENT'],
+      section: 'Studium'
+    },
     {
       id: 'admin',
       label: 'Übersicht',
       route: '/admin',
       icon: 'assets/icons/dashboard.svg',
-      roles: ['ADMIN']
+      roles: ['ADMIN'],
+      section: ''
     },
     {
       id: 'mandanten',
       label: 'Hochschulen',
       route: '/admin/mandanten',
       icon: 'assets/icons/stats.svg',
-      roles: ['ADMIN', 'HOCHSCHUL_VERWALTER']
+      roles: ['ADMIN', 'HOCHSCHUL_VERWALTER'],
+      section: 'Verwaltung'
     },
     {
       id: 'users',
       label: 'Benutzer',
       route: '/admin/users',
       icon: 'assets/icons/admin.svg',
-      roles: ['ADMIN']
+      roles: ['ADMIN'],
+      section: 'Verwaltung'
     },
     {
       id: 'assignments',
       label: 'Zuweisungen',
       route: '/admin/assignments',
       icon: 'assets/icons/grades.svg',
-      roles: ['ADMIN']
+      roles: ['ADMIN'],
+      section: 'Verwaltung'
     },
     {
       id: 'students',
       label: 'Studenten',
       route: '/students',
       icon: 'assets/icons/students.svg',
-      roles: ['ADMIN', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER']
+      roles: ['ADMIN', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER'],
+      section: 'Akademisch'
     },
     {
       id: 'validation',
       label: 'Validierung',
       route: '/grades/validation',
       icon: 'assets/icons/validation.svg',
-      roles: ['ADMIN', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER']
+      roles: ['ADMIN', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER'],
+      section: 'Akademisch'
     },
     {
       id: 'calculation',
       label: 'Berechnung',
       route: '/calculation',
       icon: 'assets/icons/calculation.svg',
-      roles: ['ADMIN', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER']
+      roles: ['ADMIN', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER'],
+      section: 'Akademisch'
     },
     {
       id: 'stats',
       label: 'Statistik',
       route: '/stats',
       icon: 'assets/icons/stats.svg',
-      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER']
+      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER'],
+      section: 'Akademisch'
     },
     {
       id: 'study-plan',
       label: 'Studienplan',
       route: '/study-plan',
       icon: 'assets/icons/progress.svg',
-      roles: ['ADMIN', 'PRUEFUNGSAMT', 'STUDENT', 'HOCHSCHUL_VERWALTER']
+      roles: ['ADMIN', 'PRUEFUNGSAMT', 'STUDENT', 'HOCHSCHUL_VERWALTER'],
+      section: 'Studium'
     },
     
     // === DOZENT ===
@@ -166,11 +211,9 @@ export class ShellComponent {
       label: 'Module',
       route: '/dashboard',
       icon: 'assets/icons/grades.svg',
-      roles: ['LEHRENDER']
+      roles: ['LEHRENDER'],
+      section: 'Lehre'
     },
-    
-    // === PRÜFUNGSAMT ===
-    // (nutzt Admin-Items: Students, Validation, Calculation, Stats)
     
     // === STUDENT ===
     {
@@ -178,36 +221,30 @@ export class ShellComponent {
       label: 'Noten',
       route: '/grades',
       icon: 'assets/icons/grades.svg',
-      roles: ['STUDENT']
+      roles: ['STUDENT'],
+      section: 'Leistung'
     },
     {
       id: 'progress',
       label: 'Fortschritt',
       route: '/progress',
       icon: 'assets/icons/progress.svg',
-      roles: ['STUDENT']
+      roles: ['STUDENT'],
+      section: 'Studium'
     },
-    {
-      id: 'dashboard-student',
-      label: 'Studenten Übersicht',
-      route: '/dashboard',
-      icon: 'assets/icons/dashboard.svg',
-      roles: ['STUDENT']
-    },
-    
-    // === ALLE ===
+    // === Konto (alle Rollen) ===
     {
       id: 'profile',
       label: 'Profil',
       route: '/profile',
       icon: 'assets/icons/profile.svg',
-      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER', 'STUDENT']
+      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER', 'STUDENT'],
+      section: 'Konto'
     }
   ];
 
   @HostListener('document:click', ['$event'])
   onDocumentClick(event: MouseEvent): void {
-    // User-Menu schliessen wenn ausserhalb geklickt
     if (this.showUserMenu) {
       this.showUserMenu = false;
     }
@@ -228,7 +265,6 @@ export class ShellComponent {
   }
 
   toggleUserMenu(): void {
-    // Verzoegerung damit Click-Event nicht sofort schliesst
     setTimeout(() => {
       this.showUserMenu = !this.showUserMenu;
     }, 10);

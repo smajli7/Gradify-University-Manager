@@ -67,28 +67,41 @@ public class MandantService {
 
         // Suffix für die neue Hochschule berechnen
         String suffix = kuerzel.trim().toLowerCase().replaceAll("[^a-z0-9_]", "_");
-        
-        // 1. Datenbanken erstellen und Schemas initialisieren
-        tenantDatabaseProvisioning.provisionDatabasesForNewMandant(kuerzel);
 
-        // 2. Mandant in der NEUEN Tenant-DB speichern (nicht in THM!)
-        Mandant mandant = Mandant.builder()
-                .name(request.getName().trim())
-                .kuerzel(kuerzel)
-                .aktiv(true)
-                .build();
-        TenantContext.setTenantSuffix(suffix);
-        try {
-            mandant = mandantRepository.save(mandant);
-        } finally {
-            TenantContext.clear();
-        }
-        
-        // 3. In zentrale Tenant-Registry eintragen (für dynamisches Routing)
-        if (tenantRegistryClient != null) {
+        Mandant mandant;
+
+        // Multi-Tenant: globale mandant_id aus Registry verwenden, um Eintraege nicht zu ueberschreiben
+        if (tenantRegistryClient != null && mandantAggregationService != null) {
+            long nextMandantId = tenantRegistryClient.getNextMandantId();
+
+            // 1. Datenbanken erstellen und Schemas initialisieren
+            tenantDatabaseProvisioning.provisionDatabasesForNewMandant(kuerzel);
+
+            // 2. Mandant mit expliziter ID in neuer Tenant-DB speichern (verhindert ID-Kollision mit bestehenden Mandanten)
+            mandant = mandantAggregationService.insertMandantWithId(suffix, nextMandantId, request.getName().trim(), kuerzel, true);
+
+            // 3. In zentrale Tenant-Registry eintragen
             tenantRegistryClient.register(mandant.getId(), suffix, kuerzel, mandant.getName());
             log.info("Mandant in zentrale Registry eingetragen: {} -> {}", mandant.getId(), suffix);
+        } else {
+            // Fallback: Einzel-Mandant ohne Registry
+            tenantDatabaseProvisioning.provisionDatabasesForNewMandant(kuerzel);
+            mandant = Mandant.builder()
+                    .name(request.getName().trim())
+                    .kuerzel(kuerzel)
+                    .aktiv(true)
+                    .build();
+            TenantContext.setTenantSuffix(suffix);
+            try {
+                mandant = mandantRepository.save(mandant);
+            } finally {
+                TenantContext.clear();
+            }
+            if (tenantRegistryClient != null) {
+                tenantRegistryClient.register(mandant.getId(), suffix, kuerzel, mandant.getName());
+            }
         }
+
         log.info("Mandant erstellt: {} ({}) mit Tenant-Datenbanken", mandant.getName(), mandant.getKuerzel());
         return toDto(mandant);
     }

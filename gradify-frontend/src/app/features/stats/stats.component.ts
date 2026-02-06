@@ -381,10 +381,10 @@ interface ModulStats {
       align-items: center;
       gap: var(--spacing-sm);
       padding: var(--spacing-md);
-      background: rgba(0, 242, 255, 0.1);
-      border: 1px solid rgba(0, 242, 255, 0.3);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.3);
       border-radius: var(--radius-md);
-      color: var(--color-primary);
+      color: var(--text-secondary);
       margin-bottom: var(--spacing-lg);
     }
 
@@ -407,12 +407,12 @@ interface ModulStats {
     }
 
     .btn-primary {
-      background: var(--color-primary);
+      background: var(--text-primary);
       color: white;
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--color-primary-dark);
+      background: var(--text-secondary);
     }
 
     .btn:disabled {
@@ -658,9 +658,9 @@ interface ModulStats {
     .badge {
       display: inline-block;
       padding: 2px 8px;
-      background: rgba(0, 242, 255, 0.1);
-      border: 1px solid rgba(0, 242, 255, 0.2);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-secondary);
       border-radius: var(--radius-full);
       font-size: 0.75rem;
       font-weight: 600;

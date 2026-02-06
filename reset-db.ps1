@@ -5,6 +5,7 @@
 # Hinweis: Alle Services muessen vorher gestoppt sein (stop-all.ps1)!
 
 $ErrorActionPreference = "Stop"
+Set-Location $PSScriptRoot
 
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  Gradify - Datenbank zuruecksetzen" -ForegroundColor Cyan
@@ -13,7 +14,7 @@ Write-Host ""
 
 # PostgreSQL stoppen
 Write-Host "PostgreSQL stoppen..." -ForegroundColor Yellow
-docker-compose stop postgres 2>$null
+docker compose -f docker-compose.dev.yml stop postgres 2>$null
 if ($LASTEXITCODE -ne 0) { Write-Host "Hinweis: postgres lief moeglicherweise nicht." }
 
 # Container entfernen (damit Volume freigegeben wird)
@@ -23,15 +24,15 @@ if (docker ps -a -q -f name=gradify-postgres) {
 }
 
 # Volume loeschen (Name: <verzeichnis>_postgres_data)
-$projectDir = Split-Path -Leaf (Get-Location)
+$projectDir = Split-Path -Leaf $PSScriptRoot
 $volumeName = "${projectDir}_postgres_data"
 Write-Host "Volume '$volumeName' loeschen..." -ForegroundColor Yellow
 $removed = $false
 docker volume rm $volumeName 2>$null
 if ($LASTEXITCODE -eq 0) { $removed = $true }
 if (-not $removed) {
-    # Fallback: erstes postgres_data-Volume finden
-    $vols = docker volume ls -q 2>$null | Where-Object { $_ -match "postgres_data$" }
+    # Fallback: Volume mit Projekt-Praefix finden (z.B. anderes Namensformat)
+    $vols = docker volume ls -q 2>$null | Where-Object { $_ -match [regex]::Escape($projectDir) -and $_ -match "postgres_data" }
     foreach ($v in $vols) {
         docker volume rm $v 2>$null
         if ($LASTEXITCODE -eq 0) {
@@ -47,7 +48,7 @@ if (-not $removed) {
 
 Write-Host ""
 Write-Host "PostgreSQL neu starten (init-databases.sql laeuft automatisch)..." -ForegroundColor Green
-docker-compose up -d postgres
+docker compose -f docker-compose.dev.yml up -d postgres
 
 # Auf Health warten
 Write-Host "Warte auf PostgreSQL (max 30s)..." -ForegroundColor Gray

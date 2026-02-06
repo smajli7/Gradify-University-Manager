@@ -46,11 +46,11 @@ interface DemoUser {
             <svg class="logo-frame-svg" viewBox="0 0 200 52" fill="none" xmlns="http://www.w3.org/2000/svg">
               <defs>
                 <linearGradient id="logoFrameGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                  <stop offset="0%" stop-color="rgba(80, 220, 255, 0.85)"/>
-                  <stop offset="30%" stop-color="rgba(70, 190, 255, 0.75)"/>
-                  <stop offset="50%" stop-color="rgba(90, 160, 255, 0.7)"/>
-                  <stop offset="70%" stop-color="rgba(70, 190, 255, 0.75)"/>
-                  <stop offset="100%" stop-color="rgba(80, 220, 255, 0.85)"/>
+                  <stop offset="0%" stop-color="rgba(200, 210, 220, 0.85)"/>
+                  <stop offset="30%" stop-color="rgba(180, 190, 200, 0.75)"/>
+                  <stop offset="50%" stop-color="rgba(160, 170, 180, 0.7)"/>
+                  <stop offset="70%" stop-color="rgba(180, 190, 200, 0.75)"/>
+                  <stop offset="100%" stop-color="rgba(200, 210, 220, 0.85)"/>
                 </linearGradient>
               </defs>
               <rect class="logo-frame-rect" x="2" y="2" width="196" height="48" rx="10" ry="10"
@@ -91,11 +91,9 @@ interface DemoUser {
           <svg class="card-frame-svg" viewBox="0 0 420 540" preserveAspectRatio="none" fill="none">
             <defs>
               <linearGradient id="cardFrameGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                <stop offset="0%" stop-color="rgba(80, 220, 255, 0.7)"/>
-                <stop offset="30%" stop-color="rgba(70, 190, 255, 0.6)"/>
-                <stop offset="50%" stop-color="rgba(90, 160, 255, 0.55)"/>
-                <stop offset="70%" stop-color="rgba(70, 190, 255, 0.6)"/>
-                <stop offset="100%" stop-color="rgba(80, 220, 255, 0.7)"/>
+                <stop offset="0%" stop-color="rgba(255,255,255,0.12)"/>
+                <stop offset="50%" stop-color="rgba(255,255,255,0.08)"/>
+                <stop offset="100%" stop-color="rgba(255,255,255,0.12)"/>
               </linearGradient>
             </defs>
             <rect class="card-frame-rect" x="1" y="1" width="418" height="538" rx="18" ry="18"
@@ -115,8 +113,8 @@ interface DemoUser {
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                       <defs>
                         <linearGradient id="iconGrad1" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stop-color="#50DCFF"/>
-                          <stop offset="100%" stop-color="#5AA0FF"/>
+                          <stop offset="0%" stop-color="#C8D2DC"/>
+                          <stop offset="100%" stop-color="#94A3B8"/>
                         </linearGradient>
                       </defs>
                       <path d="M12 12c2.21 0 4-1.79 4-4s-1.79-4-4-4-4 1.79-4 4 1.79 4 4 4zm0 2c-2.67 0-8 1.34-8 4v2h16v-2c0-2.66-5.33-4-8-4z" fill="url(#iconGrad1)"/>
@@ -142,8 +140,8 @@ interface DemoUser {
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                       <defs>
                         <linearGradient id="iconGrad2" x1="0%" y1="0%" x2="100%" y2="100%">
-                          <stop offset="0%" stop-color="#50DCFF"/>
-                          <stop offset="100%" stop-color="#5AA0FF"/>
+                          <stop offset="0%" stop-color="#C8D2DC"/>
+                          <stop offset="100%" stop-color="#94A3B8"/>
                         </linearGradient>
                       </defs>
                       <path d="M18 8h-1V6c0-2.76-2.24-5-5-5S7 3.24 7 6v2H6c-1.1 0-2 .9-2 2v10c0 1.1.9 2 2 2h12c1.1 0 2-.9 2-2V10c0-1.1-.9-2-2-2zm-6 9c-1.1 0-2-.9-2-2s.9-2 2-2 2 .9 2 2-.9 2-2 2zm3.1-9H8.9V6c0-1.71 1.39-3.1 3.1-3.1 1.71 0 3.1 1.39 3.1 3.1v2z" fill="url(#iconGrad2)"/>
@@ -166,7 +164,7 @@ interface DemoUser {
                       <path [attr.d]="hidePassword ?
                         'M12 7c2.76 0 5 2.24 5 5 0 .65-.13 1.26-.36 1.83l2.92 2.92c1.51-1.26 2.7-2.89 3.43-4.75-1.73-4.39-6-7.5-11-7.5-1.4 0-2.74.25-3.98.7l2.16 2.16C10.74 7.13 11.35 7 12 7zM2 4.27l2.28 2.28.46.46C3.08 8.3 1.78 10.02 1 12c1.73 4.39 6 7.5 11 7.5 1.55 0 3.03-.3 4.38-.84l.42.42L19.73 22 21 20.73 3.27 3 2 4.27zM7.53 9.8l1.55 1.55c-.05.21-.08.43-.08.65 0 1.66 1.34 3 3 3 .22 0 .44-.03.65-.08l1.55 1.55c-.67.33-1.41.53-2.2.53-2.76 0-5-2.24-5-5 0-.79.2-1.53.53-2.2zm4.31-.78l3.15 3.15.02-.16c0-1.66-1.34-3-3-3l-.17.01z' :
                         'M12 4.5C7 4.5 2.73 7.61 1 12c1.73 4.39 6 7.5 11 7.5s9.27-3.11 11-7.5c-1.73-4.39-6-7.5-11-7.5zM12 17c-2.76 0-5-2.24-5-5s2.24-5 5-5 5 2.24 5 5-2.24 5-5 5zm0-8c-1.66 0-3 1.34-3 3s1.34 3 3 3 3-1.34 3-3-1.34-3-3-3z'"
-                        fill="#8B949E"/>
+                        fill="currentColor"/>
                     </svg>
                   </button>
                 </div>
@@ -188,8 +186,8 @@ interface DemoUser {
                   <svg class="btn-arrow" width="20" height="20" viewBox="0 0 24 24" fill="none">
                     <defs>
                       <linearGradient id="arrowGrad" x1="0%" y1="0%" x2="100%" y2="0%">
-                        <stop offset="0%" stop-color="#50DCFF"/>
-                        <stop offset="100%" stop-color="#5AA0FF"/>
+                        <stop offset="0%" stop-color="#E2E8F0"/>
+                        <stop offset="100%" stop-color="#CBD5E1"/>
                       </linearGradient>
                     </defs>
                     <path d="M12 4l-1.41 1.41L16.17 11H4v2h12.17l-5.58 5.59L12 20l8-8z" fill="url(#arrowGrad)"/>
@@ -312,7 +310,7 @@ interface DemoUser {
       left: 0;
       width: 100%;
       height: 100%;
-      filter: drop-shadow(0 0 12px rgba(80, 200, 255, 0.3));
+      filter: drop-shadow(0 0 8px rgba(200, 210, 220, 0.15));
     }
 
     .logo-frame-rect {
@@ -360,7 +358,7 @@ interface DemoUser {
     /* Top left area */
     .beam--1 {
       height: 120px;
-      background: linear-gradient(to bottom, transparent, #00F2FF, transparent);
+      background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.15), transparent);
       top: 8%;
       left: 8%;
       transform: rotate(-25deg);
@@ -369,7 +367,7 @@ interface DemoUser {
 
     .beam--2 {
       height: 90px;
-      background: linear-gradient(to bottom, transparent, #7000FF, transparent);
+      background: linear-gradient(to bottom, transparent, rgba(200, 210, 220, 0.12), transparent);
       top: 15%;
       left: 18%;
       transform: rotate(-15deg);
@@ -379,7 +377,7 @@ interface DemoUser {
     /* Top right area */
     .beam--3 {
       height: 110px;
-      background: linear-gradient(to bottom, transparent, #7000FF, transparent);
+      background: linear-gradient(to bottom, transparent, rgba(200, 210, 220, 0.12), transparent);
       top: 5%;
       right: 10%;
       transform: rotate(20deg);
@@ -388,7 +386,7 @@ interface DemoUser {
 
     .beam--4 {
       height: 100px;
-      background: linear-gradient(to bottom, transparent, #00F2FF, transparent);
+      background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.15), transparent);
       top: 12%;
       right: 20%;
       transform: rotate(30deg);
@@ -398,7 +396,7 @@ interface DemoUser {
     /* Left side (avoiding center) */
     .beam--5 {
       height: 80px;
-      background: linear-gradient(to bottom, transparent, #00F2FF, #7000FF, transparent);
+      background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.12), rgba(200, 210, 220, 0.08), transparent);
       top: 35%;
       left: 5%;
       transform: rotate(-20deg);
@@ -407,7 +405,7 @@ interface DemoUser {
 
     .beam--6 {
       height: 70px;
-      background: linear-gradient(to bottom, transparent, #7000FF, transparent);
+      background: linear-gradient(to bottom, transparent, rgba(200, 210, 220, 0.1), transparent);
       top: 65%;
       left: 6%;
       transform: rotate(-10deg);
@@ -417,7 +415,7 @@ interface DemoUser {
     /* Right side (avoiding center) */
     .beam--7 {
       height: 85px;
-      background: linear-gradient(to bottom, transparent, #7000FF, #00F2FF, transparent);
+      background: linear-gradient(to bottom, transparent, rgba(200, 210, 220, 0.1), rgba(255, 255, 255, 0.12), transparent);
       top: 30%;
       right: 4%;
       transform: rotate(15deg);
@@ -426,7 +424,7 @@ interface DemoUser {
 
     .beam--8 {
       height: 75px;
-      background: linear-gradient(to bottom, transparent, #00F2FF, transparent);
+      background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.12), transparent);
       top: 60%;
       right: 7%;
       transform: rotate(25deg);
@@ -436,7 +434,7 @@ interface DemoUser {
     /* Bottom corners */
     .beam--9 {
       height: 95px;
-      background: linear-gradient(to bottom, transparent, #00F2FF, transparent);
+      background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.12), transparent);
       bottom: 15%;
       left: 12%;
       transform: rotate(-30deg);
@@ -445,7 +443,7 @@ interface DemoUser {
 
     .beam--10 {
       height: 85px;
-      background: linear-gradient(to bottom, transparent, #7000FF, transparent);
+      background: linear-gradient(to bottom, transparent, rgba(200, 210, 220, 0.1), transparent);
       bottom: 10%;
       right: 15%;
       transform: rotate(35deg);
@@ -454,7 +452,7 @@ interface DemoUser {
 
     .beam--11 {
       height: 65px;
-      background: linear-gradient(to bottom, transparent, #00F2FF, transparent);
+      background: linear-gradient(to bottom, transparent, rgba(255, 255, 255, 0.1), transparent);
       bottom: 25%;
       left: 3%;
       transform: rotate(-35deg);
@@ -463,7 +461,7 @@ interface DemoUser {
 
     .beam--12 {
       height: 70px;
-      background: linear-gradient(to bottom, transparent, #7000FF, transparent);
+      background: linear-gradient(to bottom, transparent, rgba(200, 210, 220, 0.08), transparent);
       bottom: 20%;
       right: 5%;
       transform: rotate(40deg);
@@ -564,7 +562,7 @@ interface DemoUser {
       opacity: 0;
       transform: translateX(-6px);
       display: inline-block;
-      background: rgba(160, 220, 245, 1);
+      background: rgba(200, 210, 220, 1);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
       background-clip: text;
@@ -593,7 +591,7 @@ interface DemoUser {
     /* Very subtle fade from light blue to white */
     @keyframes letterToWhite {
       0% {
-        background: rgba(180, 230, 250, 1);
+        background: rgba(200, 210, 220, 1);
         -webkit-background-clip: text;
         background-clip: text;
       }
@@ -631,7 +629,7 @@ interface DemoUser {
       height: 100%;
       pointer-events: none;
       z-index: 10;
-      filter: drop-shadow(0 0 12px rgba(80, 200, 255, 0.3));
+      filter: drop-shadow(0 0 6px rgba(0, 0, 0, 0.3));
       opacity: 0;
     }
 
@@ -662,14 +660,15 @@ interface DemoUser {
       animation: fadeInContent 0.4s ease 2.5s forwards;
     }
 
-    /* Login Card - content fades in AFTER frame is drawn */
+    /* Login Card – dunkler Innenbereich */
     .login-card {
-      background: var(--bg-surface);
+      background: var(--bg-deep);
       border-radius: 18px;
       padding: var(--spacing-xl);
       position: relative;
       z-index: 2;
       opacity: 0;
+      border: 1px solid var(--border-color);
     }
 
     .content--visible .login-card {
@@ -717,26 +716,32 @@ interface DemoUser {
       animation: fadeInContent 0.4s ease 2.0s forwards;
     }
 
-    /* Input Wrapper with animated CSS border */
+    /* Input Wrapper – dunkel, klare Kante */
     .input-wrapper {
       position: relative;
       display: flex;
       align-items: center;
       padding: 0 14px;
       height: 52px;
-      background: rgba(11, 14, 20, 0.5);
-      border-radius: 12px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
       opacity: 0;
     }
 
-    /* Animated border for inputs */
+    .input-wrapper:focus-within {
+      border-color: var(--border-color-light);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.04);
+    }
+
+    /* Animated border for inputs (dezent, Theme-Farben) */
     .input-wrapper::before {
       content: '';
       position: absolute;
       inset: 0;
-      border-radius: 12px;
-      padding: 1.5px;
-      background: linear-gradient(90deg, rgba(80, 220, 255, 0.6), rgba(90, 170, 255, 0.5), rgba(80, 220, 255, 0.6));
+      border-radius: 8px;
+      padding: 1px;
+      background: linear-gradient(90deg, rgba(255,255,255,0.12), rgba(255,255,255,0.06), rgba(255,255,255,0.12));
       -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
       mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
       -webkit-mask-composite: xor;
@@ -754,7 +759,7 @@ interface DemoUser {
     .content--visible .input-wrapper::before {
       opacity: 1;
       clip-path: inset(0 0 0 0);
-      animation: drawBorderInput 1.0s cubic-bezier(0.4, 0, 0.2, 1) 0.8s forwards;
+      transition: clip-path 0.5s cubic-bezier(0.4, 0, 0.2, 1);
     }
 
     @keyframes drawBorderInput {
@@ -797,10 +802,6 @@ interface DemoUser {
       color: var(--text-muted);
     }
 
-    .input-wrapper:focus-within {
-      outline: none;
-      box-shadow: none;
-    }
 
     .toggle-password {
       background: none;
@@ -812,10 +813,12 @@ interface DemoUser {
       justify-content: center;
       transition: opacity 0.2s ease;
       margin-left: 8px;
+      color: var(--text-muted);
     }
 
     .toggle-password:hover {
-      opacity: 0.7;
+      opacity: 0.8;
+      color: var(--text-secondary);
     }
 
     .error-banner {
@@ -823,68 +826,48 @@ interface DemoUser {
       align-items: center;
       gap: var(--spacing-sm);
       padding: var(--spacing-sm) var(--spacing-md);
-      background: rgba(255, 0, 85, 0.1);
-      border: 1px solid rgba(255, 0, 85, 0.3);
-      border-radius: 12px;
-      color: #FF0055;
+      background: rgba(var(--color-danger-rgb), 0.12);
+      border: 1px solid rgba(var(--color-danger-rgb), 0.35);
+      border-radius: 8px;
+      color: var(--color-danger);
       font-size: var(--font-size-sm);
       margin-bottom: var(--spacing-md);
     }
 
-    /* Submit Button - no translateY on hover, just glow */
+    /* Submit Button – dunkel, klare Kante */
     .submit-btn {
       position: relative;
       width: 100%;
-      height: 54px;
+      height: 52px;
       margin-top: var(--spacing-lg);
       padding: 0 28px;
-      background: rgba(30, 35, 45, 0.9);
-      border: none;
-      border-radius: 27px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
       cursor: pointer;
       display: flex;
       align-items: center;
       justify-content: center;
       gap: 10px;
-      transition: box-shadow 0.3s ease, background 0.3s ease;
+      transition: border-color 0.2s ease, background 0.2s ease, box-shadow 0.2s ease;
       opacity: 0;
     }
 
-    /* Animated border for submit button */
     .submit-btn::before {
-      content: '';
-      position: absolute;
-      inset: 0;
-      border-radius: 27px;
-      padding: 1.5px;
-      background: linear-gradient(90deg, rgba(80, 220, 255, 0.7), rgba(90, 170, 255, 0.6), rgba(80, 220, 255, 0.7));
-      -webkit-mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      mask: linear-gradient(#fff 0 0) content-box, linear-gradient(#fff 0 0);
-      -webkit-mask-composite: xor;
-      mask-composite: exclude;
-      opacity: 0;
-      clip-path: inset(0 100% 0 0);
-      pointer-events: none;
-      z-index: -1;
+      display: none;
     }
 
     .content--visible .submit-btn {
       animation: fadeInContent 0.4s ease 2.0s forwards;
     }
 
-    .content--visible .submit-btn::before {
-      opacity: 1;
-      clip-path: inset(0 0 0 0);
-      animation: drawBorderInput 1.0s cubic-bezier(0.4, 0, 0.2, 1) 0.8s forwards;
-    }
-
     .submit-btn:hover {
-      box-shadow: 0 0 25px rgba(80, 200, 255, 0.25);
-      background: rgba(35, 40, 50, 0.95);
+      background: var(--bg-hover);
+      border-color: var(--border-color-light);
     }
 
     .submit-btn:active {
-      box-shadow: 0 0 15px rgba(80, 200, 255, 0.2);
+      background: var(--bg-surface);
     }
 
     .submit-btn:disabled {
@@ -895,10 +878,7 @@ interface DemoUser {
     .btn-text {
       font-size: 1rem;
       font-weight: 600;
-      background: linear-gradient(90deg, rgba(80, 220, 255, 1), rgba(100, 180, 255, 1));
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
+      color: var(--text-primary);
     }
 
     .btn-arrow {
@@ -908,8 +888,8 @@ interface DemoUser {
     .spinner {
       width: 20px;
       height: 20px;
-      border: 2px solid rgba(80, 200, 255, 0.3);
-      border-top-color: rgba(80, 220, 255, 1);
+      border: 2px solid rgba(255, 255, 255, 0.2);
+      border-top-color: rgba(255, 255, 255, 0.8);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -963,9 +943,9 @@ interface DemoUser {
       width: 36px;
       height: 36px;
       padding: 0;
-      background: rgba(20, 24, 32, 0.9);
-      border: 1px solid rgba(139, 148, 158, 0.25);
-      border-radius: 10px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color);
+      border-radius: 6px;
       cursor: pointer;
       transition: border-color 0.2s, background 0.2s;
     }
@@ -998,23 +978,36 @@ interface DemoUser {
       width: 100%;
       max-width: 320px;
       margin: 0 auto;
-      padding: 8px 14px;
-      background: rgba(11, 14, 20, 0.5);
-      border: 1px solid rgba(139, 148, 158, 0.3);
-      border-radius: 12px;
+      display: block;
+      padding: 12px 40px 12px 14px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color);
+      border-radius: 8px;
       font-size: var(--font-size-sm);
+      font-family: var(--font-family);
       color: var(--text-primary);
       cursor: pointer;
       outline: none;
+      appearance: none;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      transition: border-color 0.2s ease, background-color 0.2s ease;
     }
 
-    .demo-select:hover, .demo-select:focus {
-      border-color: rgba(80, 220, 255, 0.5);
+    .demo-select:hover {
+      border-color: var(--border-color-light);
+    }
+
+    .demo-select:focus {
+      border-color: var(--border-color-light);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.04);
     }
 
     .demo-select option {
       background: var(--bg-surface);
       color: var(--text-primary);
+      padding: 10px;
     }
 
     /* Footer */

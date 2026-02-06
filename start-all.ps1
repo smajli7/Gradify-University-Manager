@@ -1,6 +1,7 @@
 # Gradify - Start All Services Script
 # Startet alle Microservices in separaten PowerShell-Fenstern
 
+Set-Location $PSScriptRoot
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  Gradify - Start All Services" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
@@ -21,14 +22,14 @@ if (-not $dockerCmd) {
     Write-Host "Stelle sicher, dass PostgreSQL auf Port 5432 läuft." -ForegroundColor Yellow
     Write-Host ""
 } else {
-    Write-Host "Starte Docker Compose (PostgreSQL)..." -ForegroundColor Green
-    docker-compose up -d
+    Write-Host "Starte Docker Compose (Postgres + RabbitMQ)..." -ForegroundColor Green
+    docker compose -f docker-compose.dev.yml up -d
     if ($LASTEXITCODE -ne 0) {
         Write-Host "FEHLER: Docker Compose konnte nicht gestartet werden!" -ForegroundColor Red
         exit 1
     }
-    Write-Host "Warte 3 Sekunden auf PostgreSQL..." -ForegroundColor Yellow
-    Start-Sleep -Seconds 3
+    Write-Host "Warte 5 Sekunden auf Postgres und RabbitMQ..." -ForegroundColor Yellow
+    Start-Sleep -Seconds 5
     Write-Host ""
 }
 

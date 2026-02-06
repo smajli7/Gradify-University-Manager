@@ -1,6 +1,6 @@
 import { Component, OnInit, signal, computed, inject } from '@angular/core';
 import { CommonModule } from '@angular/common';
-import { RouterLink } from '@angular/router';
+import { Router, RouterLink } from '@angular/router';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Apollo, gql } from 'apollo-angular';
@@ -8,6 +8,9 @@ import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
 import { CalculationService, BerechnungDto, FortschrittDto } from '../../core/services/calculation.service';
 import { SystemStatusService } from '../../core/services/system-status.service';
+import { ToastService } from '../../core/services/toast.service';
+import { SkeletonStateComponent } from '../../shared/components/skeleton-state/skeleton-state.component';
+import { SkeletonCardComponent } from '../../shared/components/skeleton-card/skeleton-card.component';
 
 // Query für alle Studenten (User-Service)
 const GET_STUDENTS_QUERY = gql`
@@ -60,6 +63,7 @@ const DASHBOARD_EINSCHREIBUNG_QUERY = gql`
           modulNr
           name
           ects
+          semester
         }
       }
     }
@@ -113,7 +117,7 @@ interface EinschreibungOption {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule],
+  imports: [CommonModule, RouterLink, FormsModule, SkeletonStateComponent, SkeletonCardComponent],
   template: `
     <div class="dashboard-page">
       <div class="page-header animate-slide-up">
@@ -181,10 +185,7 @@ interface EinschreibungOption {
           </div>
 
           @if (loadingDozentenModule()) {
-            <div class="loading-state card">
-              <div class="spinner-lg"></div>
-              <p>Lade Module...</p>
-            </div>
+            <app-skeleton-card [lines]="5" />
           }
 
           @if (!loadingDozentenModule() && dozentenModule().length > 0) {
@@ -217,10 +218,7 @@ interface EinschreibungOption {
                   @if (expandedModul() === modul.id) {
                     <div class="notenerfassung-section">
                       @if (loadingStudentsForModul()) {
-                        <div class="loading-students">
-                          <div class="spinner"></div>
-                          <span>Lade Studierende...</span>
-                        </div>
+                        <app-skeleton-state [lineCount]="4" />
                       }
 
                       @if (!loadingStudentsForModul() && studentsForModul().length === 0) {
@@ -341,18 +339,12 @@ interface EinschreibungOption {
 
       <!-- Loading Students -->
       @if (loadingStudents()) {
-        <div class="loading-state">
-          <div class="spinner-lg"></div>
-          <p>Lade Studenten...</p>
-        </div>
+        <app-skeleton-state [lineCount]="6" />
       }
 
       <!-- Loading Dashboard -->
       @if (loading() && !loadingStudents()) {
-        <div class="loading-state">
-          <div class="spinner-lg"></div>
-          <p>Lade Dashboard...</p>
-        </div>
+        <app-skeleton-state [lineCount]="6" />
       }
 
       <!-- Error State -->
@@ -366,113 +358,109 @@ interface EinschreibungOption {
 
       <!-- Dashboard Content -->
       @if (!loading() && !error() && dataLoaded()) {
-        <!-- Stats Cards -->
-        <div class="stats-grid animate-slide-up">
-          <div class="stat-card" style="animation-delay: 100ms">
-            <div class="stat-icon stat-icon--primary">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M3 3v18h18"/>
-                <path d="M18 17V9"/>
-                <path d="M13 17V5"/>
-                <path d="M8 17v-3"/>
-              </svg>
-            </div>
-            <div class="stat-content">
-              <div class="stat-value-wrapper">
-                <span class="stat-value">
-                  @if (gesamtnote() !== null) {
-                    {{ gesamtnote() | number:'1.1-1' }}
-                  } @else {
-                    -
-                  }
-                </span>
-                @if (gesamtnote() !== null && (gesamtnoteVomService() || grpcBerechnungOk())) {
-                  <span class="stat-verified-icon stat-verified-icon--service tooltip-container">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                      <polyline points="22 4 12 14.01 9 11.01"/>
-                    </svg>
-                    <span class="tooltip-text">Via gRPC berechnet – Berechnungs-Service nach Prüfungsordnung</span>
-                  </span>
-                } @else if (gesamtnote() !== null && berechnungServiceErreichbar()) {
-                  <span class="stat-verified-icon stat-verified-icon--pending tooltip-container">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="12" cy="12" r="10"/>
-                      <polyline points="12 6 12 12 16 14"/>
-                    </svg>
-                    <span class="tooltip-text">Service erreichbar – gRPC-Berechnung ausstehend</span>
-                  </span>
-                } @else if (gesamtnote() !== null) {
-                  <span class="stat-verified-icon stat-verified-icon--fallback tooltip-container">
-                    <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                      <circle cx="12" cy="12" r="10"/>
-                      <line x1="12" y1="8" x2="12" y2="12"/>
-                      <line x1="12" y1="16" x2="12.01" y2="16"/>
-                    </svg>
-                    <span class="tooltip-text">Lokaler Durchschnitt – gRPC/Berechnungs-Service nicht verfügbar</span>
-                  </span>
+        <!-- Hero (Studienfortschritt) + kleinere KPIs -->
+        <div class="dashboard-top animate-slide-up">
+          <div class="hero-card">
+            <div class="hero-accent"></div>
+            <div class="hero-main">
+              <div class="hero-progress-ring" [style.--progress]="progressPercent()">
+                <svg viewBox="0 0 36 36">
+                  <path class="ring-bg" d="M18 2.5 a 15.5 15.5 0 0 1 0 31 a 15.5 15.5 0 0 1 0 -31"/>
+                  <path class="ring-fill" stroke-dasharray="97.4" [attr.stroke-dashoffset]="97.4 - (97.4 * progressPercent()) / 100" d="M18 2.5 a 15.5 15.5 0 0 1 0 31 a 15.5 15.5 0 0 1 0 -31"/>
+                </svg>
+                <span class="hero-percent">{{ progressPercent() | number:'1.0-0' }}%</span>
+              </div>
+              <div class="hero-content">
+                <h2 class="hero-title">Studienfortschritt</h2>
+                <p class="hero-remaining">Noch <span class="hero-remaining-value">{{ ectsOffen() }}</span> ECTS offen</p>
+                <p class="hero-detail">{{ ectsErreicht() }} / {{ totalEcts() }} ECTS</p>
+                <div class="hero-mini">
+                  <span class="hero-mini-item">Gesamtnote: {{ gesamtnote() !== null ? (gesamtnote() | number:'1.1-1') : '–' }}</span>
+                  <span class="hero-mini-item">Offen: {{ offeneModule() }} Module</span>
+                </div>
+              </div>
+              <div class="hero-right">
+                <p class="hero-goal">{{ nextGoalText() }}</p>
+                @if (topOpenModulesWithMeta().length > 0) {
+                  <p class="hero-list-label">Top offene Module</p>
+                  <ul class="hero-module-list">
+                    @for (m of topOpenModulesWithMeta(); track m.name) {
+                      <li class="hero-module-line"><span class="hero-module-marker" aria-hidden="true"></span><div class="hero-module-block"><span class="hero-module-name">{{ m.name }}</span><span class="hero-module-meta">{{ m.ects }} ECTS · {{ m.semester > 0 ? m.semester + '. Sem' : 'k.A.' }}</span></div></li>
+                    }
+                  </ul>
                 }
               </div>
-              <span class="stat-label">Gesamtnote</span>
             </div>
           </div>
-
-          <div class="stat-card" style="animation-delay: 200ms">
-            <div class="stat-icon stat-icon--success">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M20 6L9 17l-5-5"/>
-              </svg>
+          <div class="kpi-single">
+            <div class="kpi-row kpi-row--highlight">
+              <span class="kpi-label">Offene Module</span>
+              <span class="kpi-value">{{ offeneModule() }}</span>
             </div>
-            <div class="stat-content">
-              <span class="stat-value">{{ bestandenCount() }}</span>
-              <span class="stat-label">Bestandene Module</span>
+            <div class="kpi-row">
+              <span class="kpi-label">Gesamtnote</span>
+              <span class="kpi-value">{{ gesamtnote() !== null ? (gesamtnote() | number:'1.1-1') : '–' }}</span>
             </div>
-          </div>
-
-          <div class="stat-card" style="animation-delay: 300ms">
-            <div class="stat-icon stat-icon--secondary">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
-              </svg>
-            </div>
-            <div class="stat-content">
-              <span class="stat-value">{{ ectsErreicht() }}</span>
-              <span class="stat-label">ECTS erreicht</span>
-            </div>
-          </div>
-
-          <div class="stat-card" style="animation-delay: 400ms">
-            <div class="stat-icon stat-icon--warning">
-              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <circle cx="12" cy="12" r="10"/>
-                <polyline points="12 6 12 12 16 14"/>
-              </svg>
-            </div>
-            <div class="stat-content">
-              <span class="stat-value">{{ offeneModule() }}</span>
-              <span class="stat-label">Offene Module</span>
+            <div class="kpi-row">
+              <span class="kpi-label">Bestanden</span>
+              <span class="kpi-value">{{ bestandenCount() }}</span>
             </div>
           </div>
         </div>
 
-        <!-- Progress Bar -->
-        <div class="progress-section animate-slide-up" style="animation-delay: 450ms">
-          <div class="progress-header">
-            <span>Studienfortschritt</span>
-            <span>{{ ectsErreicht() }} / {{ totalEcts() }} ECTS ({{ progressPercent() | number:'1.0-0' }}%)</span>
-          </div>
-          <div class="progress-bar">
-            <div class="progress-fill" [style.width.%]="progressPercent()"></div>
-          </div>
-        </div>
+        @if (offeneModule() > 0 || pendingValidierung() > 0 || lastValidatedNote() || gesamtnote() !== null) {
+          <section class="section section--next animate-slide-up" style="animation-delay: 100ms">
+            <h2 class="section-title">Als Nächstes</h2>
+            <ul class="next-task-list">
+              @if (offeneModule() > 0) {
+                <li>
+                  <a routerLink="/study-plan" class="next-task next-task--open">
+                    <span class="next-task-badge" aria-hidden="true"></span>
+                    <span class="next-task-text">{{ offeneModule() }} offene Module – priorisiert nach ECTS / Semester</span>
+                    <span class="next-task-cta">Zum Studienplan</span>
+                    <span class="next-task-chevron" aria-hidden="true">›</span>
+                  </a>
+                </li>
+              }
+              @if (pendingValidierung() > 0) {
+                <li>
+                  <a routerLink="/grades/validation" class="next-task next-task--action">
+                    <span class="next-task-badge next-task-badge--orange" aria-hidden="true"></span>
+                    <span class="next-task-text">Zuletzt eingetragene Note prüfen ({{ pendingValidierung() }} ausstehend)</span>
+                    <span class="next-task-cta">Zur Validierung</span>
+                    <span class="next-task-chevron" aria-hidden="true">›</span>
+                  </a>
+                </li>
+              }
+              @if (lastValidatedNote(); as last) {
+                <li>
+                  <a routerLink="/grades" class="next-task next-task--validated">
+                    <span class="next-task-badge next-task-badge--blue" aria-hidden="true"></span>
+                    <span class="next-task-text">Zuletzt validiert: {{ last.modulName }}</span>
+                    <span class="next-task-cta">Eintrag öffnen</span>
+                    <span class="next-task-chevron" aria-hidden="true">›</span>
+                  </a>
+                </li>
+              }
+              @if (gesamtnote() !== null) {
+                <li>
+                  <a routerLink="/grades" class="next-task next-task--info">
+                    <span class="next-task-badge next-task-badge--neutral" aria-hidden="true"></span>
+                    <span class="next-task-heading"><span class="next-task-title">Ø Note aktuell</span><span class="next-task-value">{{ gesamtnote() | number:'1.1-1' }}</span></span>
+                    <span class="next-task-cta">Notenverlauf</span>
+                    <span class="next-task-chevron" aria-hidden="true">›</span>
+                  </a>
+                </li>
+              }
+            </ul>
+          </section>
+        }
 
         <!-- Recent Grades -->
-        <section class="section animate-slide-up" style="animation-delay: 500ms">
+        <section class="section section--grades animate-slide-up" style="animation-delay: 150ms">
           <div class="section-header">
-            <h2>Letzte Noten</h2>
-            <a routerLink="/grades" class="btn btn--secondary btn--sm">
-              Alle anzeigen
-            </a>
+            <h2 class="section-title">Letzte Noten</h2>
+            <a routerLink="/grades" class="btn btn--secondary btn--sm">Alle Noten</a>
           </div>
 
           <div class="table-container">
@@ -481,21 +469,22 @@ interface EinschreibungOption {
                 <tr>
                   <th>Modul</th>
                   <th>Datum</th>
-                  <th>Note</th>
+                  <th class="th-note">Note</th>
                   <th>Status</th>
+                  <th class="th-action"></th>
                 </tr>
               </thead>
               <tbody>
                 @for (note of recentNoten(); track note.id) {
-                  <tr>
+                  <tr class="table-row-clickable" (click)="navigateToGrades()">
                     <td>
                       <div class="module-info">
                         <span class="module-name">{{ getModulName(note.modulId) }}</span>
                         <span class="module-code">{{ getModulNr(note.modulId) }}</span>
                       </div>
                     </td>
-                    <td>{{ formatDate(note.pruefungsdatum) }}</td>
-                    <td>
+                    <td class="td-date">{{ formatDate(note.pruefungsdatum) }}</td>
+                    <td class="td-note">
                       <span class="grade grade--{{ getNoteColor(note.noteWert) }}">
                         {{ formatNote(note.noteWert) }}
                       </span>
@@ -505,10 +494,13 @@ interface EinschreibungOption {
                         {{ getStatusLabel(note.status) }}
                       </span>
                     </td>
+                    <td class="td-action">
+                      <span class="table-row-arrow" aria-hidden="true">→</span>
+                    </td>
                   </tr>
                 } @empty {
                   <tr>
-                    <td colspan="4" class="empty-cell">Noch keine Noten vorhanden</td>
+                    <td colspan="5" class="empty-cell">Noch keine Noten vorhanden</td>
                   </tr>
                 }
               </tbody>
@@ -542,18 +534,396 @@ interface EinschreibungOption {
     }
 
     .page-header {
-      margin-bottom: var(--spacing-lg);
+      margin-bottom: 24px;
     }
 
     .page-header h1 {
       margin: 0 0 var(--spacing-xs) 0;
-      font-size: 1.75rem;
-      font-weight: 600;
+      font-size: 2rem;
+      font-weight: 700;
     }
 
     .page-subtitle {
       color: var(--text-muted);
       margin: 0;
+      font-size: var(--font-size-sm);
+    }
+
+    /* Spacing-Rhythmus: 8/12/16/24/32 */
+    .dashboard-top {
+      display: grid;
+      grid-template-columns: 1fr 200px;
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: 16px;
+    }
+    @media (max-width: 900px) {
+      .dashboard-top {
+        grid-template-columns: 1fr;
+      }
+      .kpi-single {
+        flex-direction: row;
+        flex-wrap: wrap;
+      }
+      .kpi-row {
+        flex: 1;
+        min-width: 100px;
+      }
+      .kpi-row--highlight {
+        border-left: none;
+        border-top: 3px solid rgba(249, 115, 22, 0.5);
+      }
+    }
+    @media (max-width: 640px) {
+      .hero-main {
+        flex-wrap: wrap;
+      }
+      .hero-right {
+        width: 100%;
+        padding-left: 0;
+        padding-top: 16px;
+        margin-top: 16px;
+        border-left: none;
+        border-top: 1px solid rgba(255, 255, 255, 0.08);
+      }
+    }
+
+    .hero-card {
+      position: relative;
+      background: var(--bg-surface);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: none;
+    }
+    .hero-accent {
+      position: absolute;
+      top: 0;
+      left: 0;
+      right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, rgba(249, 115, 22, 0.08), rgba(234, 88, 12, 0.04));
+      opacity: 1;
+    }
+    .hero-main {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 12px 20px;
+    }
+    .hero-progress-ring {
+      position: relative;
+      width: 100px;
+      height: 100px;
+      flex-shrink: 0;
+    }
+    .hero-progress-ring svg {
+      width: 100%;
+      height: 100%;
+      transform: rotate(-90deg);
+    }
+    .hero-progress-ring .ring-bg {
+      fill: none;
+      stroke: rgba(255, 255, 255, 0.08);
+      stroke-width: 3;
+    }
+    .hero-progress-ring .ring-fill {
+      fill: none;
+      stroke: rgba(249, 115, 22, 0.85);
+      stroke-width: 3;
+      stroke-linecap: round;
+      transition: stroke-dashoffset 0.5s ease;
+    }
+    .hero-percent {
+      position: absolute;
+      inset: 0;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      font-size: 1.35rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary);
+    }
+    .hero-content {
+      flex: 1;
+      min-width: 0;
+    }
+    .hero-title {
+      font-size: 1.2rem;
+      font-weight: 600;
+      margin: 0 0 2px 0;
+      color: var(--text-primary);
+    }
+    .hero-remaining {
+      font-size: var(--font-size-md);
+      color: var(--text-muted);
+      margin: 0 0 2px 0;
+    }
+    .hero-remaining-value {
+      font-weight: 700;
+      font-size: 1.2rem;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary);
+    }
+    .hero-detail {
+      font-size: var(--font-size-sm);
+      font-variant-numeric: tabular-nums;
+      color: var(--text-muted);
+      margin: 0 0 6px 0;
+    }
+    .hero-mini {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-sm);
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+    }
+    .hero-mini-item {
+      padding-right: var(--spacing-sm);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .hero-mini-item:last-child {
+      border-right: none;
+      padding-right: 0;
+    }
+    .hero-right {
+      min-width: 0;
+      width: 200px;
+      padding: 16px 16px 16px 20px;
+      margin-left: 20px;
+      background: rgba(0, 0, 0, 0.18);
+      border-radius: 0 14px 14px 0;
+    }
+    .hero-goal {
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+      color: var(--text-secondary);
+      margin: 0 0 12px 0;
+      line-height: 1.4;
+    }
+    .hero-list-label {
+      font-size: 11px;
+      font-weight: 700;
+      text-transform: uppercase;
+      letter-spacing: 0.05em;
+      color: var(--text-primary);
+      margin: 0 0 8px 0;
+    }
+    .hero-module-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      font-size: var(--font-size-sm);
+      line-height: 1.6;
+    }
+    .hero-module-line {
+      display: flex;
+      align-items: flex-start;
+      gap: 8px;
+      margin-bottom: 10px;
+    }
+    .hero-module-line:last-child {
+      margin-bottom: 0;
+    }
+    .hero-module-marker {
+      flex-shrink: 0;
+      width: 3px;
+      height: 3px;
+      border-radius: 50%;
+      background: rgba(255, 255, 255, 0.4);
+      margin-top: 7px;
+    }
+    .hero-module-block {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+      min-width: 0;
+    }
+    .hero-module-name {
+      font-weight: 700;
+      font-size: var(--font-size-sm);
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+    .hero-module-meta {
+      display: block;
+      color: var(--text-muted);
+      font-size: 11px;
+      line-height: 1.3;
+    }
+
+    /* KPI: eine Card, gleiche Höhe wie Hero, drei Zeilen teilen sich die Höhe gleichmäßig */
+    .kpi-single {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      min-width: 160px;
+      background: var(--bg-surface);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: none;
+    }
+    .kpi-row {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 16px;
+      flex: 1;
+      min-height: 52px;
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      box-sizing: border-box;
+    }
+    .kpi-row:last-child {
+      border-bottom: none;
+    }
+    .kpi-row--highlight {
+      background: rgba(249, 115, 22, 0.06);
+      border-left: 3px solid rgba(249, 115, 22, 0.5);
+    }
+    .kpi-single .kpi-label {
+      font-size: 10px;
+      margin: 0;
+      white-space: nowrap;
+    }
+    .kpi-row--highlight .kpi-label {
+      color: var(--text-secondary);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .kpi-row:not(.kpi-row--highlight) .kpi-label {
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+    .kpi-single .kpi-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      min-width: 3ch;
+      flex-shrink: 0;
+      margin-left: auto;
+    }
+    .kpi-row:not(.kpi-row--highlight) .kpi-value {
+      color: var(--text-secondary);
+    }
+
+    /* Als Nächstes – ganze Zeile klickbar, Buttons sekundär */
+    .section--next {
+      margin-bottom: 24px;
+    }
+    .section--next .section-title {
+      margin-bottom: 6px;
+    }
+    .next-task-list {
+      list-style: none;
+      margin: 0;
+      padding: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 8px;
+    }
+    .next-task {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 12px;
+      padding: 12px 16px;
+      background: rgba(255, 255, 255, 0.04);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: 14px;
+      text-decoration: none;
+      color: inherit;
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, box-shadow 0.15s;
+    }
+    .next-task:focus-visible {
+      outline: 2px solid rgba(249, 115, 22, 0.5);
+      outline-offset: 2px;
+    }
+    .next-task:hover {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(249, 115, 22, 0.35);
+      box-shadow: 0 2px 8px rgba(0, 0, 0, 0.25);
+    }
+    .next-task-chevron {
+      flex-shrink: 0;
+      font-size: 1.15rem;
+      font-weight: 600;
+      color: rgba(249, 115, 22, 0.9);
+      opacity: 0;
+      transform: translateX(-6px);
+      transition: opacity 0.2s, transform 0.2s;
+    }
+    .next-task:hover .next-task-chevron {
+      opacity: 1;
+      transform: translateX(0);
+    }
+    .next-task-badge {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+      background: var(--text-muted);
+    }
+    .next-task-badge--orange {
+      background: #F97316;
+    }
+    .next-task-badge--blue {
+      background: #3B82F6;
+    }
+    .next-task-badge--neutral {
+      background: var(--text-secondary);
+    }
+    .next-task--open .next-task-badge:not([class*="--"]) {
+      background: #F97316;
+    }
+    .next-task-text {
+      flex: 1;
+      min-width: 0;
+      font-size: var(--font-size-sm);
+      color: var(--text-primary);
+    }
+    .next-task-heading {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      align-items: baseline;
+      gap: 12px;
+    }
+    .next-task-title {
+      font-weight: 600;
+      font-size: var(--font-size-sm);
+      color: var(--text-muted);
+    }
+    .next-task-value {
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary);
+      display: inline-block;
+      padding: 2px 8px;
+      border-radius: 6px;
+      background: rgba(255, 255, 255, 0.08);
+      font-size: var(--font-size-sm);
+    }
+    .next-task-cta {
+      flex-shrink: 0;
+      font-size: 11px;
+      font-weight: 500;
+      color: var(--text-secondary);
+      padding: 5px 12px;
+      border-radius: 8px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.18);
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .next-task:hover .next-task-cta {
+      color: var(--text-primary);
+      background: rgba(255, 255, 255, 0.14);
+      border-color: rgba(249, 115, 22, 0.5);
     }
 
     /* Selection Controls */
@@ -602,9 +972,9 @@ interface EinschreibungOption {
       justify-content: center;
       min-width: 60px;
       padding: 8px 12px;
-      background: rgba(0, 242, 255, 0.1);
-      border: 1px solid rgba(0, 242, 255, 0.2);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.08);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      color: var(--text-primary);
       border-radius: var(--radius-md);
       font-size: 0.875rem;
       font-weight: 700;
@@ -674,8 +1044,8 @@ interface EinschreibungOption {
 
     .btn-toggle:hover {
       background: var(--bg-elevated);
-      border-color: var(--color-primary);
-      color: var(--color-primary);
+      border-color: var(--text-secondary);
+      color: var(--text-primary);
     }
 
     .btn-toggle svg {
@@ -724,7 +1094,7 @@ interface EinschreibungOption {
 
     .spinner, .spinner-tiny {
       border: 2px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-primary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
     }
@@ -788,7 +1158,7 @@ interface EinschreibungOption {
 
     .note-input:focus, .versuch-select:focus, .date-input:focus {
       outline: none;
-      border-color: var(--color-primary);
+      border-color: var(--text-secondary);
     }
 
     .versuch-select {
@@ -818,14 +1188,14 @@ interface EinschreibungOption {
     }
 
     .btn-save:hover:not(:disabled) {
-      border-color: var(--color-primary);
-      color: var(--color-primary);
+      border-color: var(--text-secondary);
+      color: var(--text-primary);
     }
 
     .btn-save.has-changes {
-      border-color: var(--color-success);
-      color: var(--color-success);
-      background: rgba(0, 255, 136, 0.05);
+      border-color: #22C55E;
+      color: #22C55E;
+      background: rgba(34, 197, 94, 0.05);
     }
 
     .btn-save:disabled {
@@ -874,7 +1244,7 @@ interface EinschreibungOption {
 
     .select-input:focus {
       outline: none;
-      border-color: var(--color-primary);
+      border-color: var(--text-secondary);
     }
 
     .select-input:disabled {
@@ -898,7 +1268,7 @@ interface EinschreibungOption {
       width: 40px;
       height: 40px;
       border: 3px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-primary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: var(--spacing-md);
@@ -975,23 +1345,23 @@ interface EinschreibungOption {
     }
 
     .stat-icon--primary {
-      background: rgba(0, 242, 255, 0.15);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
     }
 
     .stat-icon--success {
-      background: rgba(0, 255, 136, 0.15);
-      color: var(--color-success);
+      background: rgba(34, 197, 94, 0.15);
+      color: #22C55E;
     }
 
     .stat-icon--secondary {
-      background: rgba(112, 0, 255, 0.15);
-      color: var(--color-secondary);
+      background: rgba(148, 163, 184, 0.15);
+      color: #94A3B8;
     }
 
     .stat-icon--warning {
-      background: rgba(255, 184, 0, 0.15);
-      color: var(--color-warning);
+      background: rgba(234, 88, 12, 0.25);
+      color: #F97316;
     }
 
     .stat-content {
@@ -1031,7 +1401,7 @@ interface EinschreibungOption {
     }
 
     .stat-verified-icon--service {
-      color: var(--color-success);
+      color: #22C55E;
     }
 
     .stat-verified-icon--fallback {
@@ -1039,7 +1409,7 @@ interface EinschreibungOption {
     }
 
     .stat-verified-icon--pending {
-      color: var(--color-primary);
+      color: var(--text-secondary);
     }
 
     /* Tooltip */
@@ -1109,21 +1479,24 @@ interface EinschreibungOption {
 
     .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, var(--color-primary), var(--color-success));
+      background: linear-gradient(90deg, #CBD5E1, #E2E8F0);
       border-radius: var(--radius-full);
       transition: width 0.5s ease;
     }
 
-    /* Section */
+    /* Section – einheitlicher Abstand 24px */
     .section {
-      margin-bottom: var(--spacing-lg);
+      margin-bottom: 24px;
+    }
+    .section:last-child {
+      margin-bottom: 0;
     }
 
     .section-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      margin-bottom: var(--spacing-md);
+      margin-bottom: 16px;
     }
 
     .section-header h2 {
@@ -1134,8 +1507,8 @@ interface EinschreibungOption {
     /* Table */
     .table-container {
       background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
       overflow: hidden;
     }
 
@@ -1145,26 +1518,59 @@ interface EinschreibungOption {
     }
 
     .table th {
-      padding: var(--spacing-md);
+      padding: 12px 16px;
       text-align: left;
-      font-weight: 500;
-      font-size: var(--font-size-sm);
-      color: var(--text-muted);
-      background: rgba(0, 0, 0, 0.2);
+      font-variant-numeric: tabular-nums;
+      font-weight: 600;
+      font-size: var(--font-size-xs);
+      text-transform: uppercase;
+      letter-spacing: 0.06em;
+      color: var(--text-primary);
+      background: var(--bg-elevated);
       border-bottom: 1px solid var(--border-color);
     }
 
     .table td {
-      padding: var(--spacing-md);
+      padding: 12px 16px;
       border-bottom: 1px solid var(--border-color);
     }
 
     .table tr:last-child td {
       border-bottom: none;
     }
-
+    .table th.th-note,
+    .table td.td-note {
+      text-align: right;
+    }
+    .table .td-date {
+      font-variant-numeric: tabular-nums;
+    }
+    .table-row-clickable {
+      cursor: pointer;
+      transition: background 0.15s, color 0.15s;
+    }
+    .table-row-clickable:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
     .table tr:hover {
       background: var(--bg-hover);
+    }
+    .th-action, .td-action {
+      width: 40px;
+      text-align: right;
+      padding-right: 16px;
+    }
+    .table-row-arrow {
+      opacity: 0;
+      font-size: 14px;
+      font-weight: 600;
+      color: var(--text-secondary);
+      transition: opacity 0.15s, transform 0.15s;
+    }
+    .table-row-clickable:hover .table-row-arrow {
+      opacity: 1;
+      transform: translateX(2px);
+      color: rgba(249, 115, 22, 0.9);
     }
 
     .module-info {
@@ -1185,28 +1591,47 @@ interface EinschreibungOption {
 
     .grade {
       display: inline-block;
-      padding: 4px 10px;
-      border-radius: var(--radius-md);
+      min-width: 2.8em;
+      padding: 2px 8px;
+      border-radius: 6px;
       font-weight: 600;
+      font-size: var(--font-size-xs);
+      font-variant-numeric: tabular-nums;
+      text-align: center;
     }
 
-    .grade--success { background: rgba(0, 255, 136, 0.15); color: var(--color-success); }
-    .grade--info { background: rgba(0, 242, 255, 0.15); color: var(--color-primary); }
+    .grade--success { background: rgba(34, 197, 94, 0.15); color: #22C55E; }
+    .grade--info { background: rgba(255, 255, 255, 0.1); color: var(--text-primary); }
     .grade--warning { background: rgba(255, 184, 0, 0.15); color: var(--color-warning); }
     .grade--danger { background: rgba(255, 0, 85, 0.15); color: var(--color-danger); }
     .grade--muted { background: var(--bg-hover); color: var(--text-muted); }
 
     .badge {
       display: inline-block;
-      padding: 4px 10px;
-      border-radius: var(--radius-full);
-      font-size: var(--font-size-xs);
+      padding: 2px 8px;
+      border-radius: 999px;
+      font-size: 11px;
       font-weight: 500;
     }
+    .th-sort {
+      white-space: nowrap;
+    }
+    .sort-icon {
+      opacity: 0.25;
+      font-size: 10px;
+      margin-left: 4px;
+      font-weight: normal;
+    }
+    .th-sort--active .sort-icon {
+      opacity: 0.7;
+      color: rgba(249, 115, 22, 0.9);
+    }
 
-    .badge--success { background: rgba(0, 255, 136, 0.15); color: var(--color-success); }
+    .badge--success { background: rgba(34, 197, 94, 0.15); color: #22C55E; }
     .badge--warning { background: rgba(255, 184, 0, 0.15); color: var(--color-warning); }
-    .badge--info { background: rgba(0, 242, 255, 0.15); color: var(--color-primary); }
+    .badge--info { background: rgba(59, 130, 246, 0.15); color: #3B82F6; }
+    .badge--open { background: rgba(249, 115, 22, 0.15); color: #F97316; }
+    .badge--muted { background: rgba(255, 255, 255, 0.08); color: var(--text-muted); }
 
     .empty-cell {
       text-align: center;
@@ -1236,12 +1661,12 @@ interface EinschreibungOption {
     }
 
     .quick-link:hover {
-      border-color: var(--color-primary);
+      border-color: var(--text-secondary);
       transform: translateY(-2px);
     }
 
     .quick-icon {
-      color: var(--color-primary);
+      color: var(--text-secondary);
     }
 
     .quick-text {
@@ -1263,7 +1688,7 @@ interface EinschreibungOption {
     }
 
     .btn--primary {
-      background: var(--color-primary);
+      background: var(--text-primary);
       color: var(--bg-deep);
     }
 
@@ -1448,6 +1873,12 @@ export class DashboardComponent implements OnInit {
     if (total === 0) return 0;
     return (erreicht / total) * 100;
   });
+
+  ectsOffen = computed(() => Math.max(0, this.totalEcts() - this.ectsErreicht()));
+
+  pendingValidierung = computed(() =>
+    this.noten().filter(n => n.status === 'ERFASST' || n.status === 'EINGEREICHT').length
+  );
   
   recentNoten = computed(() => {
     return [...this.noten()]
@@ -1455,9 +1886,54 @@ export class DashboardComponent implements OnInit {
       .slice(0, 5);
   });
 
+  /** Zuletzt validierte Note (für „Als Nächstes“) */
+  lastValidatedNote = computed(() => {
+    const list = [...this.noten()]
+      .filter(n => n.status === 'VALIDIERT' || n.status === 'FREIGEGEBEN')
+      .sort((a, b) => new Date(b.pruefungsdatum).getTime() - new Date(a.pruefungsdatum).getTime());
+    if (list.length === 0) return null;
+    const n = list[0];
+    return { modulName: this.getModulName(n.modulId) };
+  });
+
+  /** Top 2 offene Module mit ECTS/Semester für Hero-Mini-Liste */
+  topOpenModulesWithMeta = computed(() => {
+    const bestandeneModulIds = new Set(
+      this.noten()
+        .filter(n => n.bestanden === true || n.status === 'FREIGEGEBEN' || n.status === 'VALIDIERT')
+        .map(n => String(n.modulId))
+    );
+    return this.module()
+      .filter(m => !bestandeneModulIds.has(String(m.id)))
+      .filter(m => {
+        const raw = ((m.bezeichnung || m.name || m.modulNr) as string) || '';
+        const t = raw.trim();
+        return t.length > 0 && t !== '|';
+      })
+      .sort((a, b) => (a.semester || 99) - (b.semester || 99) || (b.ects || 0) - (a.ects || 0))
+      .slice(0, 2)
+      .map(m => {
+        const name = (m.bezeichnung || m.name || m.modulNr || 'Modul') as string;
+        return {
+          name: name.length > 24 ? name.substring(0, 24) + '…' : name,
+          ects: m.ects ?? 0,
+          semester: m.semester ?? 0
+        };
+      });
+  });
+
+  /** Nächstes Ziel: z. B. „6. Semester abschließen“ */
+  nextGoalText = computed(() => {
+    const sem = this.currentSemester();
+    const next = sem + 1;
+    return `Nächstes Ziel: ${next}. Semester abschließen`;
+  });
+
   private readonly calculationService = inject(CalculationService);
   private readonly systemStatusService = inject(SystemStatusService);
   private readonly http = inject(HttpClient);
+  private readonly toast = inject(ToastService);
+  private readonly router = inject(Router);
   
   constructor(private readonly apollo: Apollo) {}
 
@@ -1721,6 +2197,10 @@ export class DashboardComponent implements OnInit {
     }
   }
 
+  navigateToGrades(): void {
+    this.router.navigate(['/grades']);
+  }
+
   formatNote(noteWert: number | null): string {
     if (noteWert === null || noteWert === undefined) return '-';
     return noteWert.toFixed(1).replace('.', ',');
@@ -1737,15 +2217,18 @@ export class DashboardComponent implements OnInit {
   getStatusLabel(status: string): string {
     const labels: Record<string, string> = {
       'ERFASST': 'Erfasst',
+      'EINGEREICHT': 'Eingereicht',
       'VALIDIERT': 'Validiert',
       'FREIGEGEBEN': 'Bestanden'
     };
     return labels[status] || status;
   }
 
+  /** Status-System: Grün = bestanden, Blau = validiert, Orange = offen/Handlungsbedarf */
   getStatusColor(status: string): string {
     const colors: Record<string, string> = {
-      'ERFASST': 'warning',
+      'ERFASST': 'open',
+      'EINGEREICHT': 'open',
       'VALIDIERT': 'info',
       'FREIGEGEBEN': 'success'
     };
@@ -1985,7 +2468,7 @@ export class DashboardComponent implements OnInit {
 
     } catch (err: any) {
       console.error('Error saving grade:', err);
-      alert('Fehler beim Speichern: ' + (err.error?.message || err.message));
+      this.toast.error('Fehler beim Speichern: ' + (err.error?.message || err.message));
     } finally {
       student.saving = false;
       this.studentsForModul.set([...this.studentsForModul()]);

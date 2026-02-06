@@ -8,6 +8,7 @@ import jakarta.servlet.ServletException;
 import jakarta.servlet.http.HttpServletRequest;
 import jakarta.servlet.http.HttpServletResponse;
 import lombok.RequiredArgsConstructor;
+import lombok.extern.slf4j.Slf4j;
 import org.springframework.boot.autoconfigure.condition.ConditionalOnProperty;
 import org.springframework.core.Ordered;
 import org.springframework.core.annotation.Order;
@@ -20,6 +21,7 @@ import java.io.IOException;
 @Order(Ordered.HIGHEST_PRECEDENCE)
 @RequiredArgsConstructor
 @ConditionalOnProperty(name = "gradify.tenant-routing.enabled", havingValue = "true")
+@Slf4j
 public class TenantContextFilter extends OncePerRequestFilter {
 
     private final TenantSuffixResolver tenantSuffixResolver;
@@ -50,7 +52,9 @@ public class TenantContextFilter extends OncePerRequestFilter {
                 }
             }
             if (TenantContext.getTenantSuffix() == null && !tenantSuffixResolver.getAllSuffixes().isEmpty()) {
-                TenantContext.setTenantSuffix(tenantSuffixResolver.getAllSuffixes().get(0));
+                String fallback = tenantSuffixResolver.getAllSuffixes().get(0);
+                log.debug("TenantContext fallback to '{}' for {} {}", fallback, request.getMethod(), request.getRequestURI());
+                TenantContext.setTenantSuffix(fallback);
             }
             filterChain.doFilter(request, response);
         } finally {

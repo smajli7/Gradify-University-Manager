@@ -73,16 +73,34 @@ public class BerechnungsService {
         log.info("Calculating Gesamtnote for einschreibung: {}, PO: {}", einschreibungId, poId);
 
         // 1. Noten via gRPC abrufen
-        var notenResult = notenGrpcClient.getNotenFuerBerechnung(einschreibungId);
-        List<NoteData> notenDaten = notenResult.noten();
-        log.info("gRPC Noten-Service: {} - {} Noten erhalten", 
-                notenResult.status().available() ? "OK" : "FEHLER", notenDaten.size());
+        List<NoteData> notenDaten;
+        try {
+            var notenResult = notenGrpcClient.getNotenFuerBerechnung(einschreibungId);
+            notenDaten = notenResult.noten();
+            log.info("gRPC Noten-Service: {} - {} Noten erhalten",
+                    notenResult.status().available() ? "OK" : "FEHLER", notenDaten.size());
+            if (!notenResult.status().available()) {
+                log.warn("Noten-Service nicht erreichbar: {}", notenResult.status().message());
+            }
+        } catch (Exception e) {
+            log.error("gRPC-Fehler beim Abrufen der Noten fuer Einschreibung {}: {}", einschreibungId, e.getMessage());
+            throw new IllegalStateException("Noten-Service nicht erreichbar. Bitte spaeter erneut versuchen.", e);
+        }
 
         // 2. Modul-Gewichtungen via gRPC abrufen
-        var gewichtungenResult = studiengangGrpcClient.getModulGewichtungen(poId);
-        List<ModulGewichtung> gewichtungen = gewichtungenResult.gewichtungen();
-        log.info("gRPC Studiengang-Service: {} - {} Module erhalten", 
-                gewichtungenResult.status().available() ? "OK" : "FEHLER", gewichtungen.size());
+        List<ModulGewichtung> gewichtungen;
+        try {
+            var gewichtungenResult = studiengangGrpcClient.getModulGewichtungen(poId);
+            gewichtungen = gewichtungenResult.gewichtungen();
+            log.info("gRPC Studiengang-Service: {} - {} Module erhalten",
+                    gewichtungenResult.status().available() ? "OK" : "FEHLER", gewichtungen.size());
+            if (!gewichtungenResult.status().available()) {
+                log.warn("Studiengang-Service nicht erreichbar: {}", gewichtungenResult.status().message());
+            }
+        } catch (Exception e) {
+            log.error("gRPC-Fehler beim Abrufen der Gewichtungen fuer PO {}: {}", poId, e.getMessage());
+            throw new IllegalStateException("Studiengang-Service nicht erreichbar. Bitte spaeter erneut versuchen.", e);
+        }
 
         // 3. Regelwerk abrufen
         var regelwerkResult = studiengangGrpcClient.getRegelwerk(poId);
@@ -296,11 +314,19 @@ public class BerechnungsService {
                 .divide(new BigDecimal("3"), 3, RoundingMode.HALF_UP);
     }
 
+    /**
+     * Erkennt Thesis-Module anhand von Gewichtung (> 1) oder Modulname.
+     * Gewichtung ist das zuverlaessigste Merkmal: Thesis-Module haben in der PO
+     * typischerweise Gewichtung 2 oder hoeher (z.B. FSA: Masterarbeit = 2.0).
+     */
     private static boolean isThesisModul(ModulBerechnung m) {
-        String nr = m.getModulNr() != null ? m.getModulNr().toUpperCase() : "";
+        // Primaeres Kriterium: Gewichtung >= 2 deutet auf Thesis hin
+        if (m.getGewichtung() != null && m.getGewichtung().compareTo(new BigDecimal("1.5")) > 0) {
+            return true;
+        }
+        // Sekundaeres Kriterium: Modulname enthaelt Thesis/Masterarbeit/Bachelorarbeit
         String name = m.getModulName() != null ? m.getModulName().toLowerCase() : "";
-        return nr.contains("TH") || nr.endsWith("-12") || nr.equals("12")
-                || name.contains("thesis") || name.contains("masterarbeit");
+        return name.contains("thesis") || name.contains("masterarbeit") || name.contains("bachelorarbeit");
     }
 
     /**

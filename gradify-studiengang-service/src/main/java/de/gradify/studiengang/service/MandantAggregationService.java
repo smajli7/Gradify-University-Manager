@@ -51,6 +51,29 @@ public class MandantAggregationService {
         return result;
     }
 
+    /**
+     * Fuegt einen Mandanten mit expliziter ID in die angegebene Tenant-DB ein.
+     * Verwendet globale mandant_id aus tenant_registry, um Ueberschreibungen zu vermeiden.
+     */
+    /**
+     * Fuegt einen Mandanten mit expliziter ID in die angegebene Tenant-DB ein.
+     * Setzt die Sequence auf mindestens id+1, damit zukuenftige Inserts keine Konflikte verursachen.
+     */
+    public Mandant insertMandantWithId(String suffix, Long id, String name, String kuerzel, boolean aktiv) {
+        JdbcTemplate jdbc = jdbcForSuffix(suffix);
+        jdbc.update(
+                "INSERT INTO mandanten (id, name, kuerzel, aktiv, erstellt_am, aktualisiert_am) VALUES (?, ?, ?, ?, CURRENT_TIMESTAMP, CURRENT_TIMESTAMP)",
+                id, name, kuerzel, aktiv);
+        // Setze Sequence auf max(aktueller Wert, id) damit zukuenftige IDENTITY-Inserts keine Konflikte verursachen
+        jdbc.execute("SELECT setval('mandanten_id_seq', GREATEST((SELECT COALESCE(MAX(id), 0) FROM mandanten), " + id + "))");
+        return Mandant.builder()
+                .id(id)
+                .name(name)
+                .kuerzel(kuerzel)
+                .aktiv(aktiv)
+                .build();
+    }
+
     public Optional<Mandant> findById(Long id) {
         if (tenantRegistryClient.isPresent()) {
             String suffix = tenantRegistryClient.get().getAllIdToSuffix().get(id);

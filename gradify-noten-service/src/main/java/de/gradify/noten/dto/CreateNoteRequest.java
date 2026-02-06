@@ -30,7 +30,7 @@ public class CreateNoteRequest {
     @NotNull(message = "Prüfungsdatum darf nicht leer sein")
     private LocalDate pruefungsdatum;
     
-    @Min(value = 1, message = "Versuch muss mindestens 1 sein")
+    @Min(value = 0, message = "Versuch muss mindestens 0 sein (0 = automatisch)")
     @Max(value = 4, message = "Versuch darf maximal 4 sein")
     private int versuch;
     

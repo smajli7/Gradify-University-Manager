@@ -45,8 +45,6 @@ import { DockItem } from '../dock/dock.component';
             </div>
             
             <span class="menu-label">{{ item.label }}</span>
-            
-            <span class="material-icons-outlined menu-arrow">chevron_right</span>
           </a>
         }
       </div>
@@ -154,8 +152,8 @@ import { DockItem } from '../dock/dock.component';
       gap: var(--spacing-md);
       padding: var(--spacing-md);
       text-decoration: none;
-      color: var(--text-primary);
-      border-radius: var(--radius-lg);
+      color: var(--text-secondary);
+      border-radius: var(--radius-md);
       margin-bottom: var(--spacing-xs);
       transition: all var(--transition-fast);
       border: none;
@@ -164,61 +162,54 @@ import { DockItem } from '../dock/dock.component';
       cursor: pointer;
       font-size: var(--font-size-md);
       font-family: var(--font-family);
+      border-left: 3px solid transparent;
     }
 
     .menu-item:hover {
       background: var(--bg-hover);
+      color: var(--text-primary);
     }
 
     .menu-item--active {
-      background: rgba(var(--color-primary-rgb), 0.1);
-      color: var(--color-primary);
-    }
-
-    .menu-item--active .menu-icon {
-      background: rgba(var(--color-primary-rgb), 0.15);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-primary);
+      border-left-color: var(--text-primary);
     }
 
     .menu-item--active .menu-icon-img {
-      filter: brightness(1.3) drop-shadow(0 0 4px rgba(var(--color-primary-rgb), 0.5));
+      filter: brightness(1.4);
     }
 
     .menu-icon {
-      width: 40px;
-      height: 40px;
+      width: 32px;
+      height: 32px;
       display: flex;
       align-items: center;
       justify-content: center;
-      background: var(--bg-elevated);
-      border-radius: var(--radius-md);
       flex-shrink: 0;
     }
 
     .menu-icon-img {
-      width: 24px;
-      height: 24px;
+      width: 20px;
+      height: 20px;
       object-fit: contain;
+      filter: brightness(0.7);
     }
 
     .menu-icon-fallback {
-      font-size: 16px;
+      font-size: 14px;
       font-weight: 600;
       color: var(--text-muted);
     }
 
     .menu-icon .material-icons-outlined {
-      font-size: 22px;
+      font-size: 20px;
       color: var(--text-muted);
     }
 
     .menu-label {
       flex: 1;
       text-align: left;
-    }
-
-    .menu-arrow {
-      color: var(--text-muted);
-      font-size: 20px;
     }
 
     /* Footer */

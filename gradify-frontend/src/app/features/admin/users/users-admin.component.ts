@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Apollo, gql } from 'apollo-angular';
 import { firstValueFrom } from 'rxjs';
+import { ToastService } from '../../../core/services/toast.service';
+import { SkeletonCardComponent } from '../../../shared/components/skeleton-card/skeleton-card.component';
 
 const GET_ALL_USERS = gql`
   query GetAllUsers {
@@ -69,6 +71,7 @@ interface UserFormData {
   nachname: string;
   email: string;
   rolle: string;
+  mandantId: string;
   aktiv: boolean;
 }
 
@@ -87,7 +90,7 @@ interface ImportResult {
 @Component({
   selector: 'app-users-admin',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonCardComponent],
   template: `
     <div class="page">
       <header class="page-header">
@@ -126,10 +129,7 @@ interface ImportResult {
       </header>
 
       @if (loading()) {
-        <div class="loading-card card">
-          <div class="spinner-large"></div>
-          <p>Lade Benutzer...</p>
-        </div>
+        <app-skeleton-card [lines]="6" />
       }
 
       @if (!loading()) {
@@ -318,6 +318,19 @@ interface ImportResult {
                   </select>
                 </div>
 
+                @if (!editMode() && (formData.rolle === 'ROLE_HOCHSCHUL_VERWALTER' || formData.rolle === 'ROLE_PRUEFUNGSAMT')) {
+                  <div class="form-group full-width">
+                    <label>Hochschule*</label>
+                    <select class="form-input" [(ngModel)]="formData.mandantId" required>
+                      <option value="">-- Hochschule wählen --</option>
+                      @for (m of mandanten(); track m.id) {
+                        <option [value]="m.id">{{ m.name }} ({{ m.kuerzel }})</option>
+                      }
+                    </select>
+                    <span class="form-hint">Für Hochschul-Verwalter und Prüfungsamt muss die zugeordnete Hochschule gewählt werden.</span>
+                  </div>
+                }
+
                 <div class="form-group">
                   <label class="checkbox-label">
                     <input 
@@ -495,7 +508,7 @@ interface ImportResult {
       width: 48px;
       height: 48px;
       border: 4px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-primary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: var(--spacing-md);
@@ -542,9 +555,9 @@ interface ImportResult {
       font-family: 'JetBrains Mono', monospace;
       font-size: 0.875rem;
       padding: 4px 8px;
-      background: rgba(0, 242, 255, 0.1);
-      border: 1px solid rgba(0, 242, 255, 0.2);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
       border-radius: var(--radius-sm);
       font-weight: 600;
     }
@@ -563,28 +576,28 @@ interface ImportResult {
     }
 
     .role-badge.role-admin {
-      background: rgba(239, 68, 68, 0.15);
-      color: #ef4444;
+      background: rgba(220, 38, 38, 0.12);
+      color: #DC2626;
     }
 
     .role-badge.role-hochschul {
-      background: rgba(34, 197, 94, 0.15);
-      color: #22c55e;
+      background: rgba(22, 163, 74, 0.12);
+      color: #16A34A;
     }
 
     .role-badge.role-dozent {
-      background: rgba(168, 85, 247, 0.15);
-      color: #a855f7;
+      background: rgba(147, 51, 234, 0.12);
+      color: #9333EA;
     }
 
     .role-badge.role-pruefungsamt {
-      background: rgba(245, 158, 11, 0.15);
-      color: #f59e0b;
+      background: rgba(202, 138, 4, 0.12);
+      color: #CA8A04;
     }
 
     .role-badge.role-student {
-      background: rgba(0, 242, 255, 0.15);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.08);
+      color: var(--text-secondary);
     }
 
     .status-badge {
@@ -636,7 +649,7 @@ interface ImportResult {
 
     .btn-secondary:hover {
       background: var(--bg-elevated);
-      border-color: var(--color-primary);
+      border-color: var(--text-secondary);
     }
 
     .btn-icon {
@@ -653,8 +666,8 @@ interface ImportResult {
     }
 
     .btn-icon:hover {
-      border-color: var(--color-primary);
-      color: var(--color-primary);
+      border-color: var(--text-secondary);
+      color: var(--text-primary);
     }
 
     .btn-icon.btn-toggle:hover {
@@ -789,14 +802,21 @@ interface ImportResult {
 
     .form-input:focus {
       outline: none;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 2px rgba(0, 242, 255, 0.1);
+      border-color: var(--text-secondary);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
     }
 
     .form-input:disabled {
       background: var(--bg-hover);
       color: var(--text-muted);
       cursor: not-allowed;
+    }
+
+    .form-hint {
+      display: block;
+      margin-top: var(--spacing-xs);
+      font-size: var(--font-size-sm);
+      color: var(--text-muted);
     }
 
     .checkbox-label {
@@ -893,16 +913,16 @@ interface ImportResult {
 
     .col-tag {
       padding: 2px 8px;
-      background: rgba(0, 242, 255, 0.15);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-primary);
       border-radius: var(--radius-sm);
       font-size: 0.75rem;
       font-family: 'JetBrains Mono', monospace;
     }
 
     .col-tag--role {
-      background: rgba(168, 85, 247, 0.15);
-      color: #a855f7;
+      background: rgba(147, 51, 234, 0.12);
+      color: #9333EA;
     }
 
     .col-tag--pw {
@@ -928,13 +948,13 @@ interface ImportResult {
     }
 
     .upload-area:hover {
-      border-color: var(--color-primary);
-      background: rgba(0, 242, 255, 0.05);
+      border-color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.03);
     }
 
     .upload-area--dragover {
-      border-color: var(--color-primary);
-      background: rgba(0, 242, 255, 0.1);
+      border-color: var(--text-secondary);
+      background: rgba(255, 255, 255, 0.06);
     }
 
     .upload-icon {
@@ -1018,6 +1038,7 @@ interface ImportResult {
 export class UsersAdminComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly apollo = inject(Apollo);
+  private readonly toast = inject(ToastService);
 
   // State
   loading = signal(false);
@@ -1126,7 +1147,7 @@ export class UsersAdminComponent implements OnInit {
       this.users.set(result.data?.users || []);
     } catch (error) {
       console.error('Error loading users:', error);
-      alert('Fehler beim Laden der Benutzer');
+      this.toast.error('Fehler beim Laden der Benutzer');
     } finally {
       this.loading.set(false);
     }
@@ -1148,6 +1169,7 @@ export class UsersAdminComponent implements OnInit {
       nachname: user.nachname,
       email: user.email,
       rolle: user.rollen.length > 0 ? user.rollen[0].name : '',
+      mandantId: user.mandantId ?? '',
       aktiv: user.aktiv
     };
     this.showModal.set(true);
@@ -1196,7 +1218,8 @@ export class UsersAdminComponent implements OnInit {
       rollenIds: roleId != null ? [roleId] : []
     };
     if (!isUpdate) {
-      payload['mandantId'] = this.DEFAULT_MANDANT_ID;
+      const mandantId = this.formData.mandantId?.trim();
+      payload['mandantId'] = mandantId ? Number(mandantId) : this.DEFAULT_MANDANT_ID;
       payload['passwort'] = this.formData.password ?? '';
     } else if (this.formData.password && this.formData.password.length >= 8) {
       payload['passwort'] = this.formData.password;
@@ -1227,7 +1250,7 @@ export class UsersAdminComponent implements OnInit {
     } catch (error: any) {
       console.error('Error saving user:', error);
       const msg = this.extractErrorMessage(error);
-      alert('Fehler beim Speichern: ' + msg);
+      this.toast.error('Fehler beim Speichern: ' + msg);
     }
   }
 
@@ -1239,7 +1262,7 @@ export class UsersAdminComponent implements OnInit {
       await this.loadUsers();
     } catch (error: any) {
       console.error('Error toggling user status:', error);
-      alert('Fehler: ' + (error.error?.message || error.message));
+      this.toast.error('Fehler: ' + (error.error?.message || error.message));
     }
   }
 
@@ -1249,6 +1272,11 @@ export class UsersAdminComponent implements OnInit {
       return false;
     }
     if (!this.editMode() && !this.formData.password) {
+      return false;
+    }
+    const needsMandant = !this.editMode() && 
+      (this.formData.rolle === 'ROLE_HOCHSCHUL_VERWALTER' || this.formData.rolle === 'ROLE_PRUEFUNGSAMT');
+    if (needsMandant && !this.formData.mandantId?.trim()) {
       return false;
     }
     return true;
@@ -1279,6 +1307,7 @@ export class UsersAdminComponent implements OnInit {
       nachname: '',
       email: '',
       rolle: '',
+      mandantId: '',
       aktiv: true
     };
   }
@@ -1299,7 +1328,7 @@ export class UsersAdminComponent implements OnInit {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export fehlgeschlagen. Ist der User-Service gestartet?');
+      this.toast.error('Export fehlgeschlagen. Ist der User-Service gestartet?');
     }
   }
 
@@ -1332,7 +1361,7 @@ export class UsersAdminComponent implements OnInit {
       window.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Template download failed:', error);
-      alert('Vorlage konnte nicht heruntergeladen werden.');
+      this.toast.error('Vorlage konnte nicht heruntergeladen werden.');
     }
   }
 
@@ -1368,7 +1397,7 @@ export class UsersAdminComponent implements OnInit {
 
   handleFile(file: File): void {
     if (!file.name.endsWith('.csv')) {
-      alert('Bitte nur CSV-Dateien hochladen');
+      this.toast.warning('Bitte nur CSV-Dateien hochladen');
       return;
     }
     this.selectedFile.set(file);
@@ -1400,7 +1429,7 @@ export class UsersAdminComponent implements OnInit {
 
     } catch (error: any) {
       console.error('Import error:', error);
-      alert('Import fehlgeschlagen: ' + (error.error?.message || error.message || 'Unbekannter Fehler'));
+      this.toast.error('Import fehlgeschlagen: ' + (error.error?.message || error.message || 'Unbekannter Fehler'));
     } finally {
       this.importing.set(false);
     }

@@ -4,11 +4,12 @@ import { FormsModule } from '@angular/forms';
 import { Router } from '@angular/router';
 import { StudentService } from '../../core/services/student.service';
 import { Student, StudentStatus } from '../../types';
+import { SkeletonStateComponent } from '../../shared/components/skeleton-state/skeleton-state.component';
 
 @Component({
   selector: 'app-students',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonStateComponent],
   template: `
     <div class="page animate-slide-up">
       <!-- Header -->
@@ -54,10 +55,7 @@ import { Student, StudentStatus } from '../../types';
 
       <!-- Loading State -->
       @if (studentService.loading()) {
-        <div class="loading-state">
-          <div class="spinner-lg"></div>
-          <p>Lade Studenten...</p>
-        </div>
+        <app-skeleton-state [lineCount]="8" />
       }
 
       <!-- Error State -->
@@ -263,8 +261,8 @@ import { Student, StudentStatus } from '../../types';
 
     .search-input:focus {
       outline: none;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 3px rgba(0, 242, 255, 0.1);
+      border-color: var(--text-secondary);
+      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
     }
 
     .search-input::placeholder {
@@ -307,7 +305,7 @@ import { Student, StudentStatus } from '../../types';
 
     .filter-select:focus {
       outline: none;
-      border-color: var(--color-primary);
+      border-color: var(--text-secondary);
     }
 
     /* Loading & Error States */
@@ -325,7 +323,7 @@ import { Student, StudentStatus } from '../../types';
       width: 40px;
       height: 40px;
       border: 3px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-secondary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: var(--spacing-md);
@@ -394,10 +392,10 @@ import { Student, StudentStatus } from '../../types';
       font-family: 'JetBrains Mono', monospace;
       font-size: var(--font-size-sm);
       padding: 4px 8px;
-      background: rgba(0, 242, 255, 0.1);
-      border: 1px solid rgba(0, 242, 255, 0.2);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: var(--radius-md);
-      color: var(--color-primary);
+      color: var(--text-secondary);
     }
 
     .name-cell {
@@ -410,7 +408,7 @@ import { Student, StudentStatus } from '../../types';
       width: 36px;
       height: 36px;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      background: linear-gradient(135deg, #64748B, #94A3B8);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -458,7 +456,7 @@ import { Student, StudentStatus } from '../../types';
 
     .action-btn:hover {
       background: var(--bg-hover);
-      color: var(--color-primary);
+      color: var(--text-primary);
     }
 
     .empty-state {
@@ -559,7 +557,7 @@ import { Student, StudentStatus } from '../../types';
       width: 72px;
       height: 72px;
       border-radius: 50%;
-      background: linear-gradient(135deg, var(--color-primary), var(--color-secondary));
+      background: linear-gradient(135deg, #64748B, #94A3B8);
       display: flex;
       align-items: center;
       justify-content: center;
@@ -618,9 +616,9 @@ import { Student, StudentStatus } from '../../types';
     }
 
     .btn--primary {
-      background: var(--color-primary);
+      background: #64748B;
       border: none;
-      color: var(--bg-deep);
+      color: #FFFFFF;
     }
 
     .btn--primary:hover {

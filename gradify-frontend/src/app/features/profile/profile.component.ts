@@ -4,6 +4,7 @@ import { FormsModule } from '@angular/forms';
 import { Apollo, gql } from 'apollo-angular';
 import { firstValueFrom } from 'rxjs';
 import { AuthService } from '../../core/services/auth.service';
+import { SkeletonStateComponent } from '../../shared/components/skeleton-state/skeleton-state.component';
 
 // Query für Studentendaten (User-Service)
 const GET_STUDENT_QUERY = gql`
@@ -95,7 +96,7 @@ interface EinschreibungData {
 @Component({
   selector: 'app-profile',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonStateComponent],
   template: `
     <div class="page animate-slide-up">
       <div class="page-header">
@@ -107,10 +108,7 @@ interface EinschreibungData {
 
       <!-- Loading State -->
       @if (loading()) {
-        <div class="loading-state">
-          <div class="spinner-lg"></div>
-          <p>Lade Profildaten...</p>
-        </div>
+        <app-skeleton-state [lineCount]="6" />
       }
 
       <!-- Error State -->
@@ -148,7 +146,7 @@ interface EinschreibungData {
                   <span class="info-label">Rollen</span>
                   <span class="info-value">
                     @for (role of authService.currentUser()?.roles || []; track role) {
-                      <span class="role-badge">{{ formatRole(role) }}</span>
+                      <span class="role-badge" [ngClass]="getRoleBadgeClass(role)">{{ formatRole(role) }}</span>
                     }
                   </span>
                 </div>
@@ -287,7 +285,7 @@ interface EinschreibungData {
       width: 40px;
       height: 40px;
       border: 3px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-primary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: var(--spacing-md);
@@ -365,12 +363,42 @@ interface EinschreibungData {
     .role-badge {
       display: inline-block;
       padding: 4px 12px;
-      background: rgba(0, 242, 255, 0.15);
-      color: var(--color-primary);
-      border: 1px solid rgba(0, 242, 255, 0.3);
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-secondary);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: var(--radius-full);
       font-size: var(--font-size-xs);
       font-weight: 500;
+    }
+
+    .role-badge--admin {
+      background: rgba(220, 38, 38, 0.15);
+      color: #DC2626;
+      border-color: rgba(220, 38, 38, 0.3);
+    }
+
+    .role-badge--hv {
+      background: rgba(22, 163, 74, 0.15);
+      color: #16A34A;
+      border-color: rgba(22, 163, 74, 0.3);
+    }
+
+    .role-badge--dozent {
+      background: rgba(147, 51, 234, 0.15);
+      color: #9333EA;
+      border-color: rgba(147, 51, 234, 0.3);
+    }
+
+    .role-badge--pa {
+      background: rgba(202, 138, 4, 0.15);
+      color: #CA8A04;
+      border-color: rgba(202, 138, 4, 0.3);
+    }
+
+    .role-badge--student {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-secondary);
+      border-color: rgba(255, 255, 255, 0.2);
     }
 
     /* Status Badge */
@@ -383,9 +411,9 @@ interface EinschreibungData {
     }
 
     .status-badge--aktiv {
-      background: rgba(0, 255, 136, 0.15);
-      color: var(--color-success);
-      border: 1px solid rgba(0, 255, 136, 0.3);
+      background: rgba(34, 197, 94, 0.15);
+      color: #22C55E;
+      border: 1px solid rgba(34, 197, 94, 0.3);
     }
 
     .status-badge--beurlaubt {
@@ -395,9 +423,9 @@ interface EinschreibungData {
     }
 
     .status-badge--exmatrikuliert {
-      background: rgba(255, 0, 85, 0.15);
-      color: var(--color-danger);
-      border: 1px solid rgba(255, 0, 85, 0.3);
+      background: rgba(239, 68, 68, 0.15);
+      color: #EF4444;
+      border: 1px solid rgba(239, 68, 68, 0.3);
     }
 
     /* Einschreibungen */
@@ -474,18 +502,19 @@ interface EinschreibungData {
       font-weight: 500;
       cursor: pointer;
       transition: all 0.15s ease;
-      border: none;
-      background: var(--color-primary);
-      color: var(--bg-deep);
+      border: 1px solid var(--border-color);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
     }
 
     .btn--primary {
-      background: var(--color-primary);
+      background: var(--text-primary);
       color: var(--bg-deep);
+      border-color: var(--text-primary);
     }
 
     .btn--primary:hover:not(:disabled) {
-      filter: brightness(1.1);
+      opacity: 0.9;
     }
 
     /* Responsive */
@@ -602,6 +631,18 @@ export class ProfileComponent implements OnInit {
 
   formatRole(role: string): string {
     return role.replace('ROLE_', '');
+  }
+
+  getRoleBadgeClass(role: string): string {
+    const r = role.replace('ROLE_', '').toLowerCase();
+    const classMap: Record<string, string> = {
+      'admin': 'role-badge--admin',
+      'hv': 'role-badge--hv',
+      'dozent': 'role-badge--dozent',
+      'pa': 'role-badge--pa',
+      'student': 'role-badge--student'
+    };
+    return classMap[r] || '';
   }
 
   formatStatus(status: string): string {

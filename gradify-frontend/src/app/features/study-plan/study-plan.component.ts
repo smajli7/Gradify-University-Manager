@@ -6,6 +6,8 @@ import { Apollo, gql } from 'apollo-angular';
 import { firstValueFrom } from 'rxjs';
 import { Modul, Note } from '../../types';
 import { AuthService } from '../../core/services/auth.service';
+import { ToastService } from '../../core/services/toast.service';
+import { SkeletonStateComponent } from '../../shared/components/skeleton-state/skeleton-state.component';
 
 interface ModulMitNote extends Modul {
   note?: Note;
@@ -100,7 +102,7 @@ const NOTEN_QUERY = gql`
 @Component({
   selector: 'app-study-plan',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonStateComponent],
   template: `
     <div class="page animate-slide-up">
       <!-- Header -->
@@ -113,25 +115,16 @@ const NOTEN_QUERY = gql`
         @if (totalEcts() > 0) {
           <div class="header-stats">
             <div class="stat-card stat-card--primary">
-              <span class="stat-icon">📊</span>
-              <div class="stat-info">
-                <span class="stat-value">{{ durchschnitt() | number:'1.2-2' }}</span>
-                <span class="stat-label">Durchschnitt</span>
-              </div>
+              <span class="stat-label">Durchschnitt</span>
+              <span class="stat-value">{{ durchschnitt() !== null ? (durchschnitt() | number:'1.2-2') : '–' }}</span>
             </div>
             <div class="stat-card stat-card--success">
-              <span class="stat-icon">✓</span>
-              <div class="stat-info">
-                <span class="stat-value">{{ bestandenEcts() }} / {{ totalEcts() }}</span>
-                <span class="stat-label">ECTS</span>
-              </div>
+              <span class="stat-label">ECTS</span>
+              <span class="stat-value">{{ bestandenEcts() }} / {{ totalEcts() }}</span>
             </div>
             <div class="stat-card stat-card--info">
-              <span class="stat-icon">📈</span>
-              <div class="stat-info">
-                <span class="stat-value">{{ progressPercent() | number:'1.0-0' }}%</span>
-                <span class="stat-label">Fortschritt</span>
-              </div>
+              <span class="stat-label">Fortschritt</span>
+              <span class="stat-value">{{ progressPercent() | number:'1.0-0' }}%</span>
             </div>
           </div>
         }
@@ -203,10 +196,7 @@ const NOTEN_QUERY = gql`
 
       <!-- Loading State -->
       @if (loading()) {
-        <div class="loading-state">
-          <div class="spinner-lg"></div>
-          <p>Lade Studienverlaufsplan...</p>
-        </div>
+        <app-skeleton-state [lineCount]="8" />
       }
 
       <!-- Error State -->
@@ -221,29 +211,33 @@ const NOTEN_QUERY = gql`
       <!-- Study Plan Grid -->
       @if (!loading() && !error() && semesterRows().length > 0) {
         <div class="study-plan-container">
-          <!-- Legend -->
+          <!-- Legend (klickbar = Filter) -->
           <div class="legend">
-            <div class="legend-item">
+            <button type="button" class="legend-item" [class.legend-item--active]="statusFilter() === 'all'" (click)="setStatusFilter('all')">
+              <span class="legend-dot legend-dot--all"></span>
+              <span>Alle</span>
+            </button>
+            <button type="button" class="legend-item" [class.legend-item--active]="statusFilter() === 'bestanden'" (click)="setStatusFilter('bestanden')">
               <span class="legend-dot legend-dot--bestanden"></span>
               <span>Bestanden</span>
-            </div>
-            <div class="legend-item">
+            </button>
+            <button type="button" class="legend-item" [class.legend-item--active]="statusFilter() === 'offen'" (click)="setStatusFilter('offen')">
               <span class="legend-dot legend-dot--offen"></span>
               <span>Offen</span>
-            </div>
-            <div class="legend-item">
-              <span class="legend-dot legend-dot--nicht-bestanden"></span>
-              <span>Nicht bestanden</span>
-            </div>
-            <div class="legend-item">
+            </button>
+            <button type="button" class="legend-item" [class.legend-item--active]="statusFilter() === 'in-bearbeitung'" (click)="setStatusFilter('in-bearbeitung')">
               <span class="legend-dot legend-dot--in-bearbeitung"></span>
               <span>In Bearbeitung</span>
-            </div>
+            </button>
+            <button type="button" class="legend-item" [class.legend-item--active]="statusFilter() === 'nicht-bestanden'" (click)="setStatusFilter('nicht-bestanden')">
+              <span class="legend-dot legend-dot--nicht-bestanden"></span>
+              <span>Nicht bestanden</span>
+            </button>
           </div>
 
           <!-- Grid -->
           <div class="semester-grid">
-            @for (row of semesterRows(); track row.semester) {
+            @for (row of filteredSemesterRows(); track row.semester) {
               <div class="semester-row">
                 <!-- Semester Label -->
                 <div class="semester-label">
@@ -261,20 +255,31 @@ const NOTEN_QUERY = gql`
                       class="module-card module-card--{{ modul.status }}"
                       [class.module-card--wahlpflicht]="modul.modultyp === 'WAHLPFLICHT'"
                       [class.module-card--current]="isCurrentSemester(row.semester)"
+                      [title]="getModuleTooltip(modul)"
                       (click)="openModulDetail(modul)">
                       
                       <div class="module-header">
                         <span class="module-ects">{{ modul.ects }} CP</span>
                         <span class="module-nr">{{ modul.modulNr }}</span>
+                        @if (modul.status === 'in-bearbeitung') {
+                          <span class="module-icon-clock" aria-hidden="true">🕐</span>
+                        }
+                        @if (modul.status === 'bestanden') {
+                          <span class="module-icon-check" aria-hidden="true">✓</span>
+                        }
                       </div>
                       
                       <div class="module-name">{{ modul.name }}</div>
                       
-                      @if (modul.note?.noteWert) {
-                        <div class="module-note">{{ formatNote(modul.note!.noteWert) }}</div>
-                      } @else if (modul.bewertungsart === 'BESTANDEN_NICHT_BESTANDEN' && modul.note?.bestanden) {
-                        <div class="module-note module-note--bestanden">✓</div>
-                      }
+                      <div class="module-note-pill">
+                        @if (modul.note?.noteWert) {
+                          <span class="module-note">{{ formatNote(modul.note!.noteWert) }}</span>
+                        } @else if (modul.bewertungsart === 'BESTANDEN_NICHT_BESTANDEN' && modul.note?.bestanden) {
+                          <span class="module-note module-note--bestanden">✓</span>
+                        } @else {
+                          <span class="module-note module-note--empty">—</span>
+                        }
+                      </div>
                       
                       @if (modul.modultyp === 'WAHLPFLICHT' && !modul.note) {
                         <div class="module-wahlpflicht">WP</div>
@@ -449,46 +454,46 @@ const NOTEN_QUERY = gql`
 
     .header-stats {
       display: flex;
-      gap: var(--spacing-sm);
+      gap: var(--spacing-md);
     }
 
     .stat-card {
       display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-sm) var(--spacing-md);
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-    }
-
-    .stat-card--primary { border-color: rgba(0, 242, 255, 0.3); }
-    .stat-card--primary .stat-icon,
-    .stat-card--primary .stat-value { color: var(--color-primary); }
-
-    .stat-card--success { border-color: rgba(0, 255, 136, 0.3); }
-    .stat-card--success .stat-icon,
-    .stat-card--success .stat-value { color: var(--color-success); }
-
-    .stat-card--info { border-color: rgba(112, 0, 255, 0.3); }
-    .stat-card--info .stat-icon,
-    .stat-card--info .stat-value { color: var(--color-secondary); }
-
-    .stat-icon { font-size: 1.25rem; }
-
-    .stat-info {
-      display: flex;
       flex-direction: column;
+      align-items: flex-end;
+      justify-content: center;
+      flex: 1;
+      min-width: 100px;
+      min-height: 64px;
+      padding: 12px 16px;
+      background: var(--bg-surface);
+      border: 1px solid rgba(255, 255, 255, 0.14);
+      border-radius: var(--radius-lg);
+      box-sizing: border-box;
     }
 
-    .stat-value {
-      font-size: 1.25rem;
-      font-weight: 600;
-    }
+    .stat-card--primary { border-color: rgba(255, 255, 255, 0.25); }
+    .stat-card--primary .stat-value { color: var(--text-primary); }
+
+    .stat-card--success { border-color: rgba(34, 197, 94, 0.5); }
+    .stat-card--success .stat-value { color: #22C55E; }
+
+    .stat-card--info { border-color: rgba(255, 255, 255, 0.25); }
+    .stat-card--info .stat-value { color: var(--text-secondary); }
 
     .stat-label {
       font-size: var(--font-size-xs);
       color: var(--text-muted);
+      margin-bottom: 4px;
+      text-transform: uppercase;
+      letter-spacing: 0.03em;
+    }
+
+    .stat-value {
+      font-size: 1.25rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
     }
 
     /* Demo Controls */
@@ -500,7 +505,7 @@ const NOTEN_QUERY = gql`
       margin-bottom: var(--spacing-lg);
       padding: var(--spacing-md);
       background: var(--bg-surface);
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: var(--radius-lg);
     }
 
@@ -520,7 +525,7 @@ const NOTEN_QUERY = gql`
       width: 100%;
       padding: 10px 14px;
       background: var(--bg-deep);
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: var(--radius-md);
       color: var(--text-primary);
       font-size: 0.95rem;
@@ -539,7 +544,7 @@ const NOTEN_QUERY = gql`
     .demo-input {
       padding: 10px 14px;
       background: var(--bg-deep);
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: var(--radius-md);
       color: var(--text-primary);
       font-size: 0.95rem;
@@ -548,7 +553,7 @@ const NOTEN_QUERY = gql`
 
     .demo-input:focus {
       outline: none;
-      border-color: var(--color-primary);
+      border-color: var(--text-secondary);
     }
 
     .role-badge {
@@ -562,9 +567,9 @@ const NOTEN_QUERY = gql`
     }
 
     .role-badge--admin {
-      background: rgba(112, 0, 255, 0.15);
-      color: var(--color-secondary);
-      border: 1px solid rgba(112, 0, 255, 0.3);
+      background: rgba(148, 163, 184, 0.15);
+      color: var(--text-secondary);
+      border: 1px solid rgba(148, 163, 184, 0.3);
     }
 
     /* Loading & Error States */
@@ -583,7 +588,7 @@ const NOTEN_QUERY = gql`
       width: 40px;
       height: 40px;
       border: 3px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-secondary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: var(--spacing-md);
@@ -610,54 +615,76 @@ const NOTEN_QUERY = gql`
       color: var(--text-primary);
     }
 
-    /* Study Plan Container */
+    /* Study Plan Container – kräftigere Ränder */
     .study-plan-container {
       background: var(--bg-surface);
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: var(--radius-xl);
       padding: var(--spacing-lg);
       overflow-x: auto;
     }
 
-    /* Legend */
+    /* Legend (klickbar, Filter) */
     .legend {
       display: flex;
-      gap: var(--spacing-lg);
-      margin-bottom: var(--spacing-lg);
+      flex-wrap: wrap;
+      gap: var(--spacing-sm);
+      margin-bottom: var(--spacing-md);
       padding-bottom: var(--spacing-md);
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
     }
 
     .legend-item {
       display: flex;
       align-items: center;
-      gap: var(--spacing-xs);
+      gap: 8px;
+      padding: 6px 12px;
       font-size: var(--font-size-sm);
+      font-weight: 500;
       color: var(--text-secondary);
+      background: transparent;
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+
+    .legend-item:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
+    }
+
+    .legend-item--active {
+      background: rgba(255, 255, 255, 0.1);
+      border-color: rgba(255, 255, 255, 0.25);
+      color: var(--text-primary);
     }
 
     .legend-dot {
-      width: 12px;
-      height: 12px;
+      width: 10px;
+      height: 10px;
       border-radius: 3px;
+      flex-shrink: 0;
     }
 
-    .legend-dot--bestanden { background: var(--color-success); }
-    .legend-dot--offen { background: var(--bg-hover); border: 1px solid var(--border-color); }
-    .legend-dot--nicht-bestanden { background: var(--color-danger); }
-    .legend-dot--in-bearbeitung { background: var(--color-warning); }
+    .legend-dot--all { background: var(--text-muted); }
+    .legend-dot--bestanden { background: #22C55E; box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.5); }
+    .legend-dot--offen { background: #F97316; border: 1px solid rgba(249, 115, 22, 0.6); }
+    .legend-dot--nicht-bestanden { background: #EF4444; box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.5); }
+    .legend-dot--in-bearbeitung { background: #EAB308; box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.5); }
 
-    /* Semester Grid */
+    /* Semester Grid – klare Row-Struktur, kompaktere Abstände */
     .semester-grid {
       display: flex;
       flex-direction: column;
-      gap: var(--spacing-sm);
+      gap: 8px;
     }
 
     .semester-row {
       display: flex;
       align-items: stretch;
-      gap: var(--spacing-sm);
+      gap: 12px;
       min-height: 90px;
     }
 
@@ -671,7 +698,7 @@ const NOTEN_QUERY = gql`
       min-width: 80px;
       padding: var(--spacing-sm);
       background: var(--bg-elevated);
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: var(--radius-md);
     }
 
@@ -687,7 +714,7 @@ const NOTEN_QUERY = gql`
     .semester-number {
       font-size: 1.5rem;
       font-weight: 700;
-      color: var(--color-primary);
+      color: var(--text-primary);
       line-height: 1;
     }
 
@@ -705,46 +732,48 @@ const NOTEN_QUERY = gql`
       align-content: flex-start;
     }
 
-    /* Module Card */
+    /* Module Card – einheitliche Höhe, Status-Rand, Grün/Orange/Gelb/Rot */
     .module-card {
       position: relative;
       display: flex;
       flex-direction: column;
       min-width: 140px;
       max-width: 180px;
+      min-height: 100px;
       flex: 1;
       padding: var(--spacing-sm);
       background: var(--bg-hover);
-      border: 1px solid var(--border-color);
+      border: 2px solid rgba(255, 255, 255, 0.12);
       border-radius: var(--radius-md);
       cursor: pointer;
       transition: all 0.2s ease;
+      box-sizing: border-box;
     }
 
     .module-card:hover {
       transform: translateY(-2px);
       box-shadow: var(--shadow-lg);
-      border-color: var(--color-primary);
+      border-color: rgba(255, 255, 255, 0.25);
     }
 
     .module-card--bestanden {
-      background: rgba(0, 255, 136, 0.08);
-      border-color: rgba(0, 255, 136, 0.3);
+      background: rgba(34, 197, 94, 0.1);
+      border-color: rgba(34, 197, 94, 0.6);
     }
 
     .module-card--nicht-bestanden {
-      background: rgba(255, 0, 85, 0.08);
-      border-color: rgba(255, 0, 85, 0.3);
+      background: rgba(239, 68, 68, 0.1);
+      border-color: rgba(239, 68, 68, 0.6);
     }
 
     .module-card--in-bearbeitung {
-      background: rgba(255, 184, 0, 0.08);
-      border-color: rgba(255, 184, 0, 0.3);
+      background: rgba(234, 179, 8, 0.12);
+      border-color: rgba(234, 179, 8, 0.6);
     }
 
     .module-card--offen {
       background: var(--bg-hover);
-      border-color: var(--border-color);
+      border-color: rgba(255, 255, 255, 0.14);
     }
 
     .module-card--wahlpflicht {
@@ -752,7 +781,7 @@ const NOTEN_QUERY = gql`
     }
 
     .module-card--current {
-      box-shadow: 0 0 0 2px rgba(0, 242, 255, 0.3);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.35);
     }
 
     .module-header {
@@ -760,18 +789,31 @@ const NOTEN_QUERY = gql`
       justify-content: space-between;
       align-items: center;
       margin-bottom: 4px;
+      flex-wrap: wrap;
+      gap: 2px;
     }
 
     .module-ects {
       font-size: var(--font-size-xs);
       font-weight: 600;
-      color: var(--color-primary);
+      color: var(--text-secondary);
     }
 
     .module-nr {
       font-size: var(--font-size-xs);
       font-family: 'JetBrains Mono', monospace;
       color: var(--text-muted);
+    }
+
+    .module-icon-check {
+      color: #22C55E;
+      font-size: 12px;
+      font-weight: 700;
+    }
+
+    .module-icon-clock {
+      font-size: 11px;
+      opacity: 0.9;
     }
 
     .module-name {
@@ -786,30 +828,43 @@ const NOTEN_QUERY = gql`
       overflow: hidden;
     }
 
+    .module-note-pill {
+      margin-top: auto;
+      padding-top: 6px;
+      display: flex;
+      justify-content: flex-end;
+    }
+
     .module-note {
-      position: absolute;
-      bottom: var(--spacing-xs);
-      right: var(--spacing-xs);
       font-size: var(--font-size-sm);
       font-weight: 700;
+      font-variant-numeric: tabular-nums;
       color: var(--text-primary);
-      background: rgba(0, 0, 0, 0.4);
-      padding: 2px 6px;
-      border-radius: var(--radius-sm);
+      background: rgba(0, 0, 0, 0.35);
+      padding: 2px 8px;
+      min-width: 2.4em;
+      text-align: center;
+      border-radius: 6px;
+      box-sizing: border-box;
     }
 
     .module-note--bestanden {
-      color: var(--color-success);
+      color: #22C55E;
+    }
+
+    .module-note--empty {
+      color: var(--text-muted);
+      font-weight: 500;
     }
 
     .module-wahlpflicht {
       position: absolute;
       bottom: var(--spacing-xs);
-      right: var(--spacing-xs);
+      left: var(--spacing-xs);
       font-size: 10px;
       font-weight: 700;
-      color: var(--color-secondary);
-      background: rgba(112, 0, 255, 0.2);
+      color: var(--text-secondary);
+      background: rgba(148, 163, 184, 0.2);
       padding: 1px 4px;
       border-radius: 3px;
     }
@@ -823,13 +878,14 @@ const NOTEN_QUERY = gql`
       min-width: 60px;
       padding: var(--spacing-sm);
       background: var(--bg-elevated);
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: var(--radius-md);
     }
 
     .summary-progress {
       font-size: var(--font-size-sm);
-      font-weight: 600;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
       color: var(--text-secondary);
     }
 
@@ -838,7 +894,7 @@ const NOTEN_QUERY = gql`
       margin-top: var(--spacing-lg);
       padding: var(--spacing-md);
       background: var(--bg-surface);
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: var(--radius-lg);
     }
 
@@ -859,7 +915,7 @@ const NOTEN_QUERY = gql`
 
     .progress-fill {
       height: 100%;
-      background: linear-gradient(90deg, var(--color-primary), var(--color-success));
+      background: #CBD5E1;
       border-radius: var(--radius-full);
       transition: width 0.5s ease;
     }
@@ -883,7 +939,7 @@ const NOTEN_QUERY = gql`
 
     .modal-content {
       background: var(--bg-surface);
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: var(--radius-xl);
       width: 100%;
       max-width: 560px;
@@ -908,7 +964,7 @@ const NOTEN_QUERY = gql`
       justify-content: space-between;
       align-items: flex-start;
       padding: var(--spacing-lg);
-      border-bottom: 1px solid var(--border-color);
+      border-bottom: 1px solid rgba(255, 255, 255, 0.14);
     }
 
     .modal-title {
@@ -920,7 +976,7 @@ const NOTEN_QUERY = gql`
     .modal-module-nr {
       font-size: var(--font-size-xs);
       font-family: 'JetBrains Mono', monospace;
-      color: var(--color-primary);
+      color: var(--text-secondary);
     }
 
     .modal-header h2 {
@@ -930,7 +986,7 @@ const NOTEN_QUERY = gql`
 
     .close-btn {
       background: var(--bg-hover);
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       color: var(--text-muted);
       cursor: pointer;
       padding: 8px;
@@ -961,23 +1017,23 @@ const NOTEN_QUERY = gql`
     }
 
     .status-display--bestanden {
-      background: rgba(0, 255, 136, 0.1);
-      border: 1px solid rgba(0, 255, 136, 0.3);
+      background: rgba(34, 197, 94, 0.12);
+      border: 1px solid rgba(34, 197, 94, 0.55);
     }
 
     .status-display--nicht-bestanden {
-      background: rgba(255, 0, 85, 0.1);
-      border: 1px solid rgba(255, 0, 85, 0.3);
+      background: rgba(239, 68, 68, 0.12);
+      border: 1px solid rgba(239, 68, 68, 0.55);
     }
 
     .status-display--in-bearbeitung {
-      background: rgba(255, 184, 0, 0.1);
-      border: 1px solid rgba(255, 184, 0, 0.3);
+      background: rgba(245, 158, 11, 0.12);
+      border: 1px solid rgba(245, 158, 11, 0.55);
     }
 
     .status-display--offen {
       background: var(--bg-elevated);
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255, 255, 255, 0.14);
     }
 
     .status-note {
@@ -1024,12 +1080,12 @@ const NOTEN_QUERY = gql`
     .note-entry-section {
       margin-top: var(--spacing-lg);
       padding-top: var(--spacing-lg);
-      border-top: 1px solid var(--border-color);
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
     }
 
     .note-entry-section h4 {
       margin: 0 0 var(--spacing-md) 0;
-      color: var(--color-secondary);
+      color: var(--text-secondary);
     }
 
     .note-entry-form {
@@ -1049,7 +1105,7 @@ const NOTEN_QUERY = gql`
       width: 100%;
       padding: 10px 14px;
       background: var(--bg-deep);
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255, 255, 255, 0.14);
       border-radius: var(--radius-md);
       color: var(--text-primary);
       font-size: 1rem;
@@ -1057,7 +1113,7 @@ const NOTEN_QUERY = gql`
 
     .note-input:focus {
       outline: none;
-      border-color: var(--color-primary);
+      border-color: var(--text-secondary);
     }
 
     .modal-footer {
@@ -1065,7 +1121,7 @@ const NOTEN_QUERY = gql`
       justify-content: flex-end;
       gap: var(--spacing-sm);
       padding: var(--spacing-lg);
-      border-top: 1px solid var(--border-color);
+      border-top: 1px solid rgba(255, 255, 255, 0.14);
     }
 
     /* Buttons */
@@ -1083,7 +1139,7 @@ const NOTEN_QUERY = gql`
     }
 
     .btn--primary {
-      background: var(--color-primary);
+      background: var(--text-primary);
       color: var(--bg-deep);
     }
 
@@ -1098,7 +1154,7 @@ const NOTEN_QUERY = gql`
 
     .btn--secondary {
       background: transparent;
-      border: 1px solid var(--border-color);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       color: var(--text-primary);
     }
 
@@ -1162,6 +1218,7 @@ const NOTEN_QUERY = gql`
 })
 export class StudyPlanComponent implements OnInit {
   private readonly authService = inject(AuthService);
+  private readonly toast = inject(ToastService);
   
   // State
   loadingStudents = signal(false);
@@ -1182,6 +1239,13 @@ export class StudyPlanComponent implements OnInit {
   noten = signal<Note[]>([]);
   einschreibung = signal<any>(null);
   
+  // Filter: Legende klickbar
+  statusFilter = signal<'all' | 'bestanden' | 'offen' | 'in-bearbeitung' | 'nicht-bestanden'>('all');
+
+  setStatusFilter(filter: 'all' | 'bestanden' | 'offen' | 'in-bearbeitung' | 'nicht-bestanden'): void {
+    this.statusFilter.set(filter);
+  }
+
   // Modal
   selectedModul = signal<ModulMitNote | null>(null);
   newNoteValue = '';
@@ -1233,6 +1297,24 @@ export class StudyPlanComponent implements OnInit {
     }
 
     return rows;
+  });
+
+  filteredSemesterRows = computed(() => {
+    const rows = this.semesterRows();
+    const filter = this.statusFilter();
+    if (filter === 'all') return rows;
+    return rows
+      .map(row => {
+        const moduleFiltered = row.module.filter(m => m.status === filter);
+        const bestandenInFiltered = moduleFiltered.filter(m => m.status === 'bestanden').length;
+        return {
+          ...row,
+          module: moduleFiltered,
+          bestandenCount: bestandenInFiltered,
+          totalCount: moduleFiltered.length
+        };
+      })
+      .filter(row => row.module.length > 0);
   });
 
   totalEcts = computed(() => {
@@ -1573,6 +1655,27 @@ export class StudyPlanComponent implements OnInit {
     return Number.parseInt(semester, 10) === this.currentSemester();
   }
 
+  getModuleTooltip(modul: ModulMitNote): string {
+    const parts = [
+      `${modul.modulNr} · ${modul.ects} CP`,
+      modul.note?.noteWert != null ? `Note: ${this.formatNote(modul.note.noteWert)}` : null,
+      modul.note?.versuch ? `${modul.note.versuch}. Versuch` : null,
+      modul.note?.pruefungsdatum ? this.formatDate(modul.note.pruefungsdatum) : null,
+      this.getStatusLabel(modul.status)
+    ].filter(Boolean);
+    return parts.join(' · ');
+  }
+
+  getStatusLabel(status: string): string {
+    const labels: Record<string, string> = {
+      'bestanden': 'Bestanden',
+      'offen': 'Offen',
+      'in-bearbeitung': 'In Bearbeitung',
+      'nicht-bestanden': 'Nicht bestanden'
+    };
+    return labels[status] ?? status;
+  }
+
   formatNote(note: number | null | undefined): string {
     if (note === null || note === undefined) return '-';
     return note.toFixed(1).replace('.', ',');
@@ -1625,7 +1728,7 @@ export class StudyPlanComponent implements OnInit {
     
     const noteWert = Number.parseFloat(this.newNoteValue);
     if (Number.isNaN(noteWert) || noteWert < 1 || noteWert > 5) {
-      alert('Bitte geben Sie eine gültige Note zwischen 1.0 und 5.0 ein.');
+      this.toast.warning('Bitte geben Sie eine gültige Note zwischen 1.0 und 5.0 ein.');
       return;
     }
     
@@ -1652,7 +1755,7 @@ export class StudyPlanComponent implements OnInit {
       
     } catch (error: any) {
       console.error('Fehler beim Speichern der Note:', error);
-      alert('Fehler beim Speichern: ' + (error.error?.message || error.message || 'Unbekannter Fehler'));
+      this.toast.error('Fehler beim Speichern: ' + (error.error?.message || error.message || 'Unbekannter Fehler'));
     } finally {
       this.savingNote.set(false);
     }

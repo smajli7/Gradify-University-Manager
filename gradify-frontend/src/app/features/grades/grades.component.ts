@@ -7,6 +7,8 @@ import { GradeService } from '../../core/services/grade.service';
 import { ModuleService } from '../../core/services/module.service';
 import { AuthService } from '../../core/services/auth.service';
 import { OverlayService } from '../../core/services/overlay.service';
+import { ToastService } from '../../core/services/toast.service';
+import { SkeletonStateComponent } from '../../shared/components/skeleton-state/skeleton-state.component';
 import { Note } from '../../types';
 import jsPDF from 'jspdf';
 
@@ -49,7 +51,7 @@ interface EinschreibungOption {
 @Component({
   selector: 'app-grades',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonStateComponent],
   template: `
     <div class="page animate-slide-up">
       <!-- Header -->
@@ -132,10 +134,7 @@ interface EinschreibungOption {
 
       <!-- Loading State -->
       @if (gradeService.loading()) {
-        <div class="loading-state">
-          <div class="spinner-lg"></div>
-          <p>Lade Noten...</p>
-        </div>
+        <app-skeleton-state [lineCount]="8" />
       }
 
       <!-- Error State -->
@@ -1005,12 +1004,12 @@ interface EinschreibungOption {
     }
 
     .stat-card--primary {
-      border-color: rgba(0, 242, 255, 0.3);
+      border-color: rgba(255, 255, 255, 0.3);
     }
 
     .stat-card--primary .stat-icon,
     .stat-card--primary .stat-value {
-      color: var(--color-primary);
+      color: var(--text-primary);
     }
 
     .stat-card--success {
@@ -1087,7 +1086,7 @@ interface EinschreibungOption {
 
     .select-input:focus {
       outline: none;
-      border-color: var(--color-primary);
+      border-color: var(--text-secondary);
     }
 
     /* Loading & Error States */
@@ -1106,7 +1105,7 @@ interface EinschreibungOption {
       width: 40px;
       height: 40px;
       border: 3px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-secondary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: var(--spacing-md);
@@ -1227,7 +1226,7 @@ interface EinschreibungOption {
     }
 
     .note-badge--success { background: rgba(16, 185, 129, 0.15); color: var(--color-success); }
-    .note-badge--info { background: rgba(0, 242, 255, 0.15); color: var(--color-primary); }
+    .note-badge--info { background: rgba(255, 255, 255, 0.08); color: var(--text-secondary); }
     .note-badge--warning { background: rgba(245, 158, 11, 0.15); color: var(--color-warning); }
     .note-badge--caution { background: rgba(251, 146, 60, 0.15); color: #fb923c; }
     .note-badge--danger { background: rgba(239, 68, 68, 0.15); color: var(--color-danger); }
@@ -1247,7 +1246,7 @@ interface EinschreibungOption {
     }
 
     .status-badge--warning { background: rgba(245, 158, 11, 0.15); color: var(--color-warning); }
-    .status-badge--info { background: rgba(0, 242, 255, 0.15); color: var(--color-primary); }
+    .status-badge--info { background: rgba(255, 255, 255, 0.08); color: var(--text-secondary); }
     .status-badge--success { background: rgba(16, 185, 129, 0.15); color: var(--color-success); }
 
     .empty-state {
@@ -1358,7 +1357,7 @@ interface EinschreibungOption {
     }
 
     .note-large--success { background: rgba(16, 185, 129, 0.15); color: var(--color-success); }
-    .note-large--info { background: rgba(0, 242, 255, 0.15); color: var(--color-primary); }
+    .note-large--info { background: rgba(255, 255, 255, 0.08); color: var(--text-secondary); }
     .note-large--warning { background: rgba(245, 158, 11, 0.15); color: var(--color-warning); }
     .note-large--caution { background: rgba(251, 146, 60, 0.15); color: #fb923c; }
     .note-large--danger { background: rgba(239, 68, 68, 0.15); color: var(--color-danger); }
@@ -1423,9 +1422,9 @@ interface EinschreibungOption {
     }
 
     .btn--primary {
-      background: var(--color-primary);
-      border: none;
-      color: var(--bg-deep);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
     }
 
     .btn--primary:hover:not(:disabled) {
@@ -1627,6 +1626,7 @@ export class GradesComponent implements OnInit, OnDestroy {
 
   // ========== TRANSCRIPT ==========
   private readonly overlayService = inject(OverlayService);
+  private readonly toast = inject(ToastService);
 
   showTranscript(): void {
     this.showTranscriptModal.set(true);
@@ -1804,7 +1804,7 @@ export class GradesComponent implements OnInit, OnDestroy {
       pdf.save(`Notenbescheinigung_${kuerzel}_${datum}.pdf`);
     } catch (error) {
       console.error('PDF generation failed:', error);
-      alert('PDF-Erstellung fehlgeschlagen');
+      this.toast.error('PDF-Erstellung fehlgeschlagen');
     } finally {
       this.generatingPdf.set(false);
     }
@@ -1919,7 +1919,7 @@ export class GradesComponent implements OnInit, OnDestroy {
 
   async exportCsv(): Promise<void> {
     if (!this.selectedEinschreibung) {
-      alert('Keine Einschreibung ausgewählt');
+      this.toast.warning('Keine Einschreibung ausgewählt');
       return;
     }
 
@@ -1967,7 +1967,7 @@ export class GradesComponent implements OnInit, OnDestroy {
       globalThis.URL.revokeObjectURL(url);
     } catch (error) {
       console.error('Export failed:', error);
-      alert('Export fehlgeschlagen');
+      this.toast.error('Export fehlgeschlagen');
     }
   }
 }

@@ -79,30 +79,33 @@ public class NoteValidator {
     }
 
     /**
-     * Prüft ob der Versuch gültig ist.
+     * Prueft ob der Versuch gueltig ist.
      */
     private void validateVersuch(CreateNoteRequest request, List<String> errors) {
         Long einschreibungId = request.getEinschreibungId();
         Long modulId = request.getModulId();
         int versuch = request.getVersuch();
 
-        // Wenn Versuch angegeben, prüfen ob gültig
-        if (versuch > 0) {
-            if (versuch > MAX_VERSUCHE) {
-                errors.add("Maximal " + MAX_VERSUCHE + " Versuche pro Modul erlaubt");
-                return;
-            }
+        // Wenn Versuch explizit angegeben, pruefen ob im erlaubten Bereich
+        if (versuch > 0 && versuch > MAX_VERSUCHE) {
+            errors.add("Maximal " + MAX_VERSUCHE + " Versuche pro Modul erlaubt");
+            return;
         }
 
-        // Prüfen ob bereits mehr Versuche existieren als erlaubt
+        // Pruefen ob bereits die maximale Anzahl Versuche erreicht ist
         Integer maxVersuch = noteRepository.findMaxVersuch(einschreibungId, modulId);
         if (maxVersuch != null && maxVersuch >= MAX_VERSUCHE) {
+            errors.add("Maximale Anzahl Versuche (" + MAX_VERSUCHE + ") bereits erreicht");
+        }
+
+        // Bei Auto-Berechnung (versuch <= 0): naechster Versuch waere maxVersuch + 1
+        if (versuch <= 0 && maxVersuch != null && (maxVersuch + 1) > MAX_VERSUCHE) {
             errors.add("Maximale Anzahl Versuche (" + MAX_VERSUCHE + ") bereits erreicht");
         }
     }
 
     /**
-     * Prüft ob bereits eine Note für diese Kombination existiert.
+     * Prueft ob bereits eine Note fuer diese Kombination existiert.
      */
     private void validateDuplikat(CreateNoteRequest request, List<String> errors) {
         Long einschreibungId = request.getEinschreibungId();
@@ -110,11 +113,20 @@ public class NoteValidator {
         int versuch = request.getVersuch();
 
         if (versuch > 0) {
+            // Expliziter Versuch: pruefen ob genau dieser Versuch schon existiert
             boolean exists = noteRepository.findByEinschreibungIdAndModulIdAndVersuch(
                     einschreibungId, modulId, versuch).isPresent();
-            
             if (exists) {
-                errors.add("Note für diesen Versuch existiert bereits");
+                errors.add("Note fuer diesen Versuch existiert bereits");
+            }
+        } else {
+            // Auto-Berechnung: naechsten Versuch berechnen und pruefen
+            Integer maxVersuch = noteRepository.findMaxVersuch(einschreibungId, modulId);
+            int nextVersuch = (maxVersuch != null ? maxVersuch : 0) + 1;
+            boolean exists = noteRepository.findByEinschreibungIdAndModulIdAndVersuch(
+                    einschreibungId, modulId, nextVersuch).isPresent();
+            if (exists) {
+                errors.add("Note fuer Versuch " + nextVersuch + " existiert bereits");
             }
         }
     }

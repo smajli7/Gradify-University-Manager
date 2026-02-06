@@ -1,6 +1,7 @@
 # Gradify - Simple Start Script (ohne gradify-shared rebuild)
 # VORAUSSETZUNG: gradify-shared muss einmalig gebaut sein mit .\build-grpc.ps1
 
+Set-Location $PSScriptRoot
 Write-Host "========================================" -ForegroundColor Cyan
 Write-Host "  Gradify - Start Services (Simple)" -ForegroundColor Cyan
 Write-Host "========================================" -ForegroundColor Cyan
@@ -18,10 +19,14 @@ if (-not (Test-Path $sharedJar)) {
 Write-Host "gradify-shared gefunden in Maven-Repository" -ForegroundColor Green
 Write-Host ""
 
-# Docker starten
-Write-Host "Starte Docker Compose..." -ForegroundColor Green
-docker-compose up -d
-Start-Sleep -Seconds 3
+# Docker starten (nur Postgres + RabbitMQ)
+Write-Host "Starte Docker Compose (Postgres + RabbitMQ)..." -ForegroundColor Green
+docker compose -f docker-compose.dev.yml up -d
+if ($LASTEXITCODE -ne 0) {
+    Write-Host "FEHLER: Docker Compose konnte nicht gestartet werden." -ForegroundColor Red
+    exit 1
+}
+Start-Sleep -Seconds 5
 Write-Host ""
 
 # Alle Services parallel starten
@@ -50,10 +55,10 @@ Write-Host ""
 Write-Host "Ports:" -ForegroundColor Yellow
 Write-Host "  8080 - API Gateway"
 Write-Host "  8081 - Auth Service"
-Write-Host "  8082 - User Service (gRPC: 9092)"
-Write-Host "  8083 - Studiengang Service (gRPC: 9093)"
-Write-Host "  8084 - Noten Service (gRPC: 9094)"
+Write-Host "  8082 - User Service (gRPC: 9082)"
+Write-Host "  8083 - Studiengang Service (gRPC: 9083)"
+Write-Host "  8084 - Noten Service (gRPC: 9084)"
 Write-Host "  8085 - Berechnungs Service"
 Write-Host ""
-Write-Host "Frontend starten mit: cd gradify-frontend && npm start" -ForegroundColor Cyan
+Write-Host "Frontend starten mit: cd gradify-frontend; npm start" -ForegroundColor Cyan
 Write-Host ""

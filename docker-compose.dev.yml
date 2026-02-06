@@ -1,0 +1,44 @@
+# Nur Infrastruktur für lokale Entwicklung (Postgres + RabbitMQ)
+# Java-Services laufen mit mvn spring-boot:run, Frontend mit npm start
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gradify-postgres
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: gradify
+      POSTGRES_PASSWORD: gradify123
+      POSTGRES_DB: gradify_auth
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+      - ./docker/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gradify"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: gradify-rabbitmq
+    restart: unless-stopped
+    environment:
+      RABBITMQ_DEFAULT_USER: gradify
+      RABBITMQ_DEFAULT_PASS: gradify123
+    ports:
+      - "5672:5672"
+      - "15672:15672"
+    volumes:
+      - rabbitmq_data:/var/lib/rabbitmq
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+volumes:
+  postgres_data:
+  rabbitmq_data:

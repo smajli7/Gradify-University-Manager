@@ -9,6 +9,9 @@ import java.util.Map;
  */
 public interface TenantRegistryClient {
 
+    /** Reserviert die nächste freie mandant_id (global eindeutig über alle Tenants). */
+    long getNextMandantId();
+
     /** Registriert einen neuen Mandanten in der zentralen Registry. */
     void register(Long mandantId, String suffix, String kuerzel, String name);
 

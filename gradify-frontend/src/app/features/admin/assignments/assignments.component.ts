@@ -4,6 +4,8 @@ import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Apollo, gql } from 'apollo-angular';
 import { firstValueFrom } from 'rxjs';
+import { ToastService } from '../../../core/services/toast.service';
+import { SkeletonCardComponent } from '../../../shared/components/skeleton-card/skeleton-card.component';
 
 const GET_ALL_USERS = gql`
   query GetAllUsers {
@@ -101,7 +103,7 @@ interface ApiResponse<T> {
 @Component({
   selector: 'app-assignments',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, SkeletonCardComponent],
   template: `
     <div class="page">
       <header class="page-header">
@@ -168,10 +170,7 @@ interface ApiResponse<T> {
       }
 
       @if (loading()) {
-        <div class="loading-card card">
-          <div class="spinner-large"></div>
-          <p>Lade Zuweisungen...</p>
-        </div>
+        <app-skeleton-card [lines]="6" />
       }
 
       @if (!loading()) {
@@ -357,10 +356,10 @@ interface ApiResponse<T> {
       align-items: center;
       gap: var(--spacing-sm);
       padding: var(--spacing-md);
-      background: rgba(0, 242, 255, 0.05);
-      border: 1px solid rgba(0, 242, 255, 0.2);
+      background: rgba(255, 255, 255, 0.05);
+      border: 1px solid rgba(255, 255, 255, 0.2);
       border-radius: var(--radius-md);
-      color: var(--color-primary);
+      color: var(--text-primary);
       margin-bottom: var(--spacing-lg);
     }
 
@@ -389,7 +388,7 @@ interface ApiResponse<T> {
       width: 48px;
       height: 48px;
       border: 4px solid var(--border-color);
-      border-top-color: var(--color-primary);
+      border-top-color: var(--text-primary);
       border-radius: 50%;
       animation: spin 0.8s linear infinite;
       margin-bottom: var(--spacing-md);
@@ -435,9 +434,9 @@ interface ApiResponse<T> {
     .modul-badge {
       display: inline-block;
       padding: 2px 6px;
-      background: rgba(0, 242, 255, 0.1);
-      border: 1px solid rgba(0, 242, 255, 0.2);
-      color: var(--color-primary);
+      background: rgba(255, 255, 255, 0.1);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+      color: var(--text-primary);
       border-radius: var(--radius-sm);
       font-size: 0.75rem;
       font-weight: 600;
@@ -484,7 +483,7 @@ interface ApiResponse<T> {
 
     .btn-secondary:hover {
       background: var(--bg-elevated);
-      border-color: var(--color-primary);
+      border-color: var(--text-primary);
     }
 
     .btn-icon {
@@ -501,8 +500,8 @@ interface ApiResponse<T> {
     }
 
     .btn-icon:hover {
-      border-color: var(--color-primary);
-      color: var(--color-primary);
+      border-color: var(--text-primary);
+      color: var(--text-primary);
     }
 
     .btn-icon.btn-delete:hover {
@@ -634,8 +633,8 @@ interface ApiResponse<T> {
 
     .form-input:focus {
       outline: none;
-      border-color: var(--color-primary);
-      box-shadow: 0 0 0 2px rgba(0, 242, 255, 0.1);
+      border-color: var(--text-primary);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.1);
     }
 
     .error-message {
@@ -648,6 +647,7 @@ interface ApiResponse<T> {
 export class AssignmentsComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly apollo = inject(Apollo);
+  private readonly toast = inject(ToastService);
 
   // State
   loading = signal(false);
@@ -882,7 +882,7 @@ export class AssignmentsComponent implements OnInit {
 
     } catch (error: any) {
       console.error('Error creating assignment:', error);
-      alert('Fehler beim Erstellen: ' + (error.error?.message || error.message));
+      this.toast.error('Fehler beim Erstellen: ' + (error.error?.message || error.message));
     }
   }
 
@@ -902,7 +902,7 @@ export class AssignmentsComponent implements OnInit {
 
     } catch (error: any) {
       console.error('Error deleting assignment:', error);
-      alert('Fehler beim Löschen: ' + (error.error?.message || error.message));
+      this.toast.error('Fehler beim Löschen: ' + (error.error?.message || error.message));
     }
   }
 
