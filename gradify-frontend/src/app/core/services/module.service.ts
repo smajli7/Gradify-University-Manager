@@ -61,20 +61,30 @@ export class ModuleService {
   }
 
   /**
-   * Lädt ein einzelnes Modul
+   * Lädt ein einzelnes Modul und fügt es dem Cache hinzu
    */
   getModul(id: string): Observable<Modul | null> {
-    // Erst im Cache schauen
-    const cached = this.moduleMap().get(id);
+    const key = String(id);
+    const cached = this.moduleMap().get(key);
     if (cached) {
       return of(cached);
     }
 
     return this.apollo.query<{ modul: Modul }>({
       query: GET_MODUL,
-      variables: { id }
+      variables: { id },
+      context: { clientName: 'studiengang' }
     }).pipe(
       map(result => result.data.modul),
+      tap(modul => {
+        if (modul) {
+          const list = this.moduleSignal();
+          const exists = list.some(m => String(m?.id) === key);
+          if (!exists) {
+            this.moduleSignal.set([...list, modul]);
+          }
+        }
+      }),
       catchError(error => {
         console.error('Error loading module:', error);
         return of(null);

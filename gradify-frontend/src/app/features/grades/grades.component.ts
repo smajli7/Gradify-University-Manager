@@ -1844,7 +1844,18 @@ export class GradesComponent implements OnInit, OnDestroy {
     } else if (e?.studiengangId) {
       this.moduleService.loadModule(e.studiengangId).subscribe();
     }
-    this.gradeService.loadNotenByStudent(this.selectedEinschreibung).subscribe();
+    this.gradeService.loadNotenByStudent(this.selectedEinschreibung).subscribe({
+      next: (data) => {
+        const noten = data?.noten ?? [];
+        const map = this.moduleService.moduleMap();
+        const modulIds = [...new Set(noten.map(n => n.modulId).filter((id): id is string => id != null && id !== ''))];
+        modulIds.forEach((id) => {
+          if (!map.get(String(id))) {
+            this.moduleService.getModul(String(id)).subscribe();
+          }
+        });
+      }
+    });
   }
 
   formatDate(dateString: string): string {

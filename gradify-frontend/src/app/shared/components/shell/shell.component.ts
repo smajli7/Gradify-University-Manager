@@ -193,7 +193,7 @@ export class ShellComponent {
       label: 'Statistik',
       route: '/stats',
       icon: 'assets/icons/stats.svg',
-      roles: ['ADMIN', 'DOZENT', 'LEHRENDER', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER'],
+      roles: ['ADMIN', 'DOZENT', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER'],
       section: 'Akademisch'
     },
     {
@@ -205,14 +205,38 @@ export class ShellComponent {
       section: 'Studium'
     },
     
-    // === DOZENT ===
+    // === DOZENT: aufgabenorientiert (To-dos = Default Landing) ===
+    {
+      id: 'todos-dozent',
+      label: 'To-dos',
+      route: '/todos',
+      icon: 'assets/icons/dashboard.svg',
+      roles: ['LEHRENDER'],
+      section: 'LEHRE'
+    },
+    {
+      id: 'grades-entry-dozent',
+      label: 'Notenerfassung',
+      route: '/grades/entry',
+      icon: 'assets/icons/grades.svg',
+      roles: ['LEHRENDER'],
+      section: 'LEHRE'
+    },
     {
       id: 'dashboard-dozent',
       label: 'Module',
       route: '/dashboard',
-      icon: 'assets/icons/grades.svg',
+      icon: 'assets/icons/calculation.svg',
       roles: ['LEHRENDER'],
-      section: 'Lehre'
+      section: 'LEHRE'
+    },
+    {
+      id: 'stats-dozent',
+      label: 'Statistik',
+      route: '/stats',
+      icon: 'assets/icons/stats.svg',
+      roles: ['LEHRENDER'],
+      section: 'LEHRE'
     },
     
     // === STUDENT ===

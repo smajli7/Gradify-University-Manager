@@ -1,7 +1,8 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed, ElementRef, QueryList, ViewChildren } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
+import { ActivatedRoute } from '@angular/router';
 import { Apollo, gql } from 'apollo-angular';
 import { AuthService } from '../../../core/services/auth.service';
 import { ToastService } from '../../../core/services/toast.service';
@@ -99,10 +100,12 @@ interface StudentWithGrade extends StudentInfo {
   semester: number;
   noteId?: string;
   noteWert: number | null;
+  noteText?: string;
   bestanden: boolean;
   versuch: number;
   pruefungsdatum: string;
   bemerkung: string;
+  bemerkungOffen?: boolean;
   status: string;
   modulId: string;
   saving?: boolean;
@@ -148,143 +151,170 @@ interface StudentWithGrade extends StudentInfo {
         </div>
       }
 
-      <!-- Modul-Karten -->
-      @for (modul of module(); track modul.id) {
-        <div class="modul-card card">
-          <div class="modul-header">
-            <div class="modul-info">
-              <span class="modul-nr">{{ modul.modulNr }}</span>
-              <h2>{{ modul.name }}</h2>
-              <div class="modul-meta">
-                <span class="meta-item">{{ modul.ects }} ECTS</span>
-                <span class="meta-item">Semester {{ modul.semester }}</span>
-                <span class="meta-item">{{ modul.pruefungsform }}</span>
-              </div>
-            </div>
-            <button class="btn btn-primary" (click)="loadStudentsForModul(modul)">
-              {{ selectedModul()?.id === modul.id ? 'Aktualisieren' : 'Studierende laden' }}
+      <!-- Modul-Auswahl (kompakt) -->
+      @if (module().length > 0) {
+        <div class="modul-picker card">
+          <label class="modul-picker-label">Modul</label>
+          <div class="modul-picker-row">
+            <select class="modul-select" [ngModel]="selectedModul()?.id" (ngModelChange)="onModulSelect($event)">
+              <option [ngValue]="null">-- Modul wählen --</option>
+              @for (modul of module(); track modul.id) {
+                <option [ngValue]="modul.id">{{ modul.modulNr }} – {{ modul.name }}</option>
+              }
+            </select>
+            <button type="button" class="btn btn-ghost btn-icon-only" (click)="refreshCurrentModul()" title="Aktualisieren">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M23 4v6h-6"/><path d="M20.49 15a9 9 0 1 1-2.12-9.36L23 10"/></svg>
             </button>
           </div>
+        </div>
+      }
 
-          @if (selectedModul()?.id === modul.id) {
-            <div class="students-section">
-              @if (loadingStudents()) {
-                <div class="loading-small">
-                  <div class="spinner"></div>
-                  <span>Lade Studierende...</span>
-                </div>
-              }
+      @if (selectedModul(); as modul) {
+        <!-- Zeile A: Kontext (Modul • Meta | Datum) -->
+        <div class="context-bar">
+          <div class="context-left">
+            <span class="context-modul">{{ modul.modulNr }} – {{ modul.name }}</span>
+            <span class="context-sep">·</span>
+            <span class="context-meta">{{ modul.pruefungsform }}</span>
+            <span class="context-sep">·</span>
+            <span class="context-meta">{{ modul.ects }} ECTS</span>
+            <span class="context-sep">·</span>
+            <span class="context-meta">Semester {{ modul.semester }}</span>
+          </div>
+          <div class="context-right">
+            <input type="date" class="context-date" [ngModel]="globalPruefungsdatum()" (ngModelChange)="setGlobalPruefungsdatum($event)">
+          </div>
+        </div>
 
-              @if (!loadingStudents() && students().length === 0) {
-                <p class="text-muted">Keine Studierenden in diesem Modul eingeschrieben</p>
-              }
+        @if (loadingStudents()) {
+          <div class="loading-small"><div class="spinner"></div><span>Lade Studierende...</span></div>
+        }
 
-              @if (!loadingStudents() && students().length > 0) {
-                <div class="table-container">
-                  <table class="data-table">
-                    <thead>
-                      <tr>
-                        <th>Matrikelnummer</th>
-                        <th>Name</th>
-                        <th>Semester</th>
-                        <th class="col-center">Note</th>
-                        <th class="col-center">Bestanden</th>
-                        <th class="col-center">Versuch</th>
-                        <th>Prüfungsdatum</th>
-                        <th>Bemerkung</th>
-                        <th class="col-center">Aktionen</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      @for (student of students(); track student.id) {
-                        <tr>
-                          <td>{{ student.matrikelnummer }}</td>
-                          <td>{{ student.vorname }} {{ student.nachname }}</td>
-                          <td class="col-center">{{ student.semester }}</td>
-                          <td class="col-center">
-                            <input 
-                              type="number" 
-                              class="grade-input"
-                              step="0.1"
-                              min="1.0"
-                              max="5.0"
-                              [(ngModel)]="student.noteWert"
-                              (change)="onGradeChange(student)"
-                              (blur)="normalizeNoteValue(student)"
-                              placeholder="--">
-                          </td>
-                          <td class="col-center">
-                            <input 
-                              type="checkbox" 
-                              class="checkbox"
-                              [(ngModel)]="student.bestanden"
-                              (change)="onGradeChange(student)">
-                          </td>
-                          <td class="col-center">
-                            <select class="versuch-select" [(ngModel)]="student.versuch" (change)="onGradeChange(student)">
-                              <option [value]="1">1</option>
-                              <option [value]="2">2</option>
-                              <option [value]="3">3</option>
-                            </select>
-                          </td>
-                          <td>
-                            <input 
-                              type="date" 
-                              class="date-input"
-                              [(ngModel)]="student.pruefungsdatum"
-                              (change)="onGradeChange(student)">
-                          </td>
-                          <td>
-                            <input 
-                              type="text" 
-                              class="bemerkung-input"
-                              [(ngModel)]="student.bemerkung"
-                              (change)="onGradeChange(student)"
-                              placeholder="Optional">
-                          </td>
-                          <td class="col-center">
-                            @if (student.noteId) {
-                              <button class="btn-icon btn-success" (click)="saveGrade(student)" [disabled]="student.saving">
-                                @if (student.saving) {
-                                  <div class="spinner-small"></div>
-                                } @else {
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <polyline points="20 6 9 17 4 12"/>
-                                  </svg>
-                                }
-                              </button>
-                            } @else {
-                              <button class="btn-icon btn-primary" (click)="saveGrade(student)" [disabled]="student.saving || !student.noteWert">
-                                @if (student.saving) {
-                                  <div class="spinner-small"></div>
-                                } @else {
-                                  <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                    <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                                    <polyline points="17 21 17 13 7 13 7 21"/>
-                                    <polyline points="7 3 7 8 15 8"/>
-                                  </svg>
-                                }
-                              </button>
-                            }
-                          </td>
-                        </tr>
-                      }
-                    </tbody>
-                  </table>
-                </div>
+        @if (!loadingStudents() && students().length === 0) {
+          <p class="text-muted">Keine Studierenden in diesem Modul eingeschrieben</p>
+        }
 
-                <div class="action-bar">
-                  <button class="btn btn-primary" (click)="saveAllGrades()" [disabled]="savingAll()">
-                    @if (savingAll()) {
-                      <div class="spinner"></div>
-                    }
-                    Alle speichern
-                  </button>
-                  <span class="text-muted">{{ changedCount() }} Änderungen</span>
-                </div>
-              }
+        @if (!loadingStudents() && students().length > 0) {
+          <!-- Zeile B: Sticky Action Bar -->
+          <div class="action-bar">
+            <div class="action-chips">
+              <span class="chip" title="Bereits gespeicherte gültige Noten">Erfasst {{ erfasstCount() }}/{{ students().length }}</span>
+              <span class="chip chip--muted" title="Noch ohne Note">Fehlen {{ fehlenCount() }}</span>
+              <span class="chip" [class.chip--warn]="fehlerCount() > 0" title="Zeilen mit ungültiger Note (z. B. außerhalb 1,0–5,0)">Fehler {{ fehlerCount() }}</span>
             </div>
+            <div class="action-middle">
+              <input type="text" class="filter-search" placeholder="Matrikel / Name" [ngModel]="filterSuche()" (ngModelChange)="setFilterSuche($event)">
+              <label class="filter-toggle"><input type="checkbox" [ngModel]="filterNurOffen()" (ngModelChange)="setFilterNurOffen($event)"> Nur offen</label>
+              <label class="filter-toggle" title="Nur Zeilen mit ungültiger Note anzeigen"><input type="checkbox" [ngModel]="filterNurFehler()" (ngModelChange)="setFilterNurFehler($event)"> Nur Fehler</label>
+            </div>
+            <div class="action-right action-save-group">
+              <span class="action-save-label">Speichern</span>
+              @if (changedCount() > 0) {
+                <span class="action-changes">({{ changedCount() }} ungespeichert)</span>
+              }
+              <button type="button" class="btn btn-primary" (click)="saveAllGrades()" [disabled]="savingAll() || changedCount() === 0">
+                @if (savingAll()) { <span class="spinner-inline"></span> }
+                Alle speichern
+              </button>
+              @if (changedCount() === 0 && !savingAll()) {
+                <span class="action-saved">Alles gespeichert</span>
+              }
+              <span class="action-sep"></span>
+              <button type="button" class="btn btn-secondary" (click)="openReviewDialog()" [disabled]="fehlerCount() > 0 || fehlenCount() > 0" title="Erst wenn alle Noten erfasst und keine Fehler mehr vorhanden sind">Einreichen</button>
+            </div>
+          </div>
+
+          <div class="table-wrap">
+            <table class="flat-table">
+              <thead>
+                <tr>
+                  <th class="col-dot"></th>
+                  <th class="col-matrikel">Matrikel</th>
+                  <th class="col-name">Name</th>
+                  <th class="col-note">Note</th>
+                  <th class="col-versuch">Versuch</th>
+                  <th class="col-bemerkung">Bemerkung</th>
+                  <th class="col-save"></th>
+                  <th class="col-status"></th>
+                </tr>
+              </thead>
+              <tbody>
+                @for (student of filteredStudents(); track student.id; let i = $index) {
+                  <tr class="flat-row" [class.flat-row--even]="i % 2 === 0" [class.flat-row--odd]="i % 2 === 1">
+                    <td class="col-dot">
+                      <span class="status-dot" [class.status-dot--open]="rowStatus(student) === 'open'" [class.status-dot--unsaved]="rowStatus(student) === 'unsaved'" [class.status-dot--saved]="rowStatus(student) === 'saved'" [class.status-dot--error]="rowStatus(student) === 'error'" [class.status-dot--saving]="rowStatus(student) === 'saving'" [title]="statusTooltip(student)"></span>
+                    </td>
+                    <td class="col-matrikel">{{ student.matrikelnummer }}</td>
+                    <td class="col-name">{{ student.vorname }} {{ student.nachname }}</td>
+                    <td class="col-note">
+                      <select #noteSelect class="note-select" [ngModel]="student.noteWert" (ngModelChange)="onNoteSelectChange(student, $event, i)" (keydown)="onNoteKeydown($event, i)">
+                        <option [ngValue]="null">—</option>
+                        @for (v of notenOptions(); track v) {
+                          <option [ngValue]="v">{{ formatNoteOption(v) }}</option>
+                        }
+                      </select>
+                    </td>
+                    <td class="col-versuch">
+                      <select class="versuch-select" [ngModel]="student.versuch" (ngModelChange)="onVersuchChange(student, $event)">
+                        <option [value]="1">1</option>
+                        <option [value]="2">2</option>
+                        <option [value]="3">3</option>
+                      </select>
+                    </td>
+                    <td class="col-bemerkung">
+                      <input type="text" class="bemerkung-input" [(ngModel)]="student.bemerkung" (ngModelChange)="onGradeChange(student)" placeholder="Optional">
+                    </td>
+                    <td class="col-save">
+                      <button type="button" class="btn-row-save" (click)="saveGrade(student)" [disabled]="student.saving || student.noteWert == null || hasRowError(student)" title="Diese Note speichern">
+                        @if (student.saving) {
+                          <span class="spinner-tiny"></span>
+                        } @else {
+                          Speichern
+                        }
+                      </button>
+                    </td>
+                    <td class="col-status">
+                      @if (rowStatus(student) === 'error') {
+                        <span class="status-badge status-badge--error" [title]="getRowError(student)">Ungültige Note</span>
+                      }
+                      @if (rowStatus(student) === 'submitted') {
+                        <span class="status-badge status-badge--submitted">Eingereicht</span>
+                      }
+                      @if (rowStatus(student) === 'released') {
+                        <span class="status-badge status-badge--released">Freigegeben</span>
+                      }
+                    </td>
+                  </tr>
+                }
+              </tbody>
+            </table>
+          </div>
+          @if (filteredStudents().length === 0) {
+            <p class="text-muted filter-empty">Keine Einträge für aktuelle Filter.</p>
           }
+        }
+      }
+
+      <!-- Review-Dialog für Einreichen -->
+      @if (showReviewDialog()) {
+        <div class="dialog-backdrop" (click)="closeReviewDialog()">
+          <div class="dialog-card card" (click)="$event.stopPropagation()">
+            <h3 class="dialog-title">Einreichen – Überprüfung</h3>
+            <div class="dialog-summary">
+              <span>{{ erfasstCount() }}/{{ students().length }} erfasst</span>
+              <span>·</span>
+              <span [class.has-errors]="fehlerCount() > 0">{{ fehlerCount() }} Fehler</span>
+            </div>
+            @if (fehlenCount() > 0 || fehlerCount() > 0) {
+              <p class="dialog-warn">Bitte alle fehlenden Noten erfassen und Fehler beheben, bevor Sie einreichen.</p>
+            } @else {
+              <p class="dialog-hint">Nach Einreichen ist die Erfassung nur noch nach Rückgabe durch das Prüfungsamt änderbar.</p>
+              <div class="dialog-actions">
+                <button type="button" class="btn btn-ghost" (click)="closeReviewDialog()">Abbrechen</button>
+                <button type="button" class="btn btn-primary" (click)="submitForValidation()">Einreichen</button>
+              </div>
+            }
+          </div>
         </div>
       }
     </div>
@@ -292,8 +322,10 @@ interface StudentWithGrade extends StudentInfo {
   styles: [`
     .grade-entry-page {
       padding: var(--spacing-lg);
+      width: 100%;
       max-width: 1400px;
       margin: 0 auto;
+      box-sizing: border-box;
     }
 
     .page-header {
@@ -564,21 +596,100 @@ interface StudentWithGrade extends StudentInfo {
       background: rgba(255, 255, 255, 0.25);
     }
 
-    .action-bar {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: var(--spacing-md);
-      background: var(--bg-hover);
-      border-radius: var(--radius-md);
-    }
+    .modul-picker { padding: var(--spacing-md); }
+    .modul-picker-label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; }
+    .modul-picker-row { display: flex; gap: var(--spacing-sm); align-items: center; }
+    .modul-select { flex: 1; max-width: 400px; padding: var(--spacing-sm) var(--spacing-md); background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--text-primary); }
+    .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); }
+    .btn-sm { padding: 4px 8px; font-size: 0.8rem; }
+    .btn-icon-only { padding: 8px; width: 36px; height: 36px; }
+    .btn-icon-only svg { width: 18px; height: 18px; }
+    .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-color); }
+    .spinner-inline { display: inline-block; width: 14px; height: 14px; border: 2px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
+
+    .context-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; margin-bottom: 8px; }
+    .context-left, .context-right { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+    .context-modul { font-weight: 600; color: var(--text-primary); font-size: 0.95rem; }
+    .context-meta { font-size: 0.8rem; color: var(--text-muted); }
+    .context-sep { color: var(--text-muted); font-size: 0.8rem; }
+    .context-date { padding: 6px 10px; background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; }
+
+    .action-bar { position: sticky; top: 0; z-index: 12; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; margin-bottom: 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+    .action-chips { display: flex; align-items: center; gap: 8px; }
+    .chip { font-size: 0.8rem; color: var(--text-secondary); padding: 5px 10px; border-radius: var(--radius-sm); background: var(--bg-elevated); }
+    .chip--muted { color: var(--text-muted); }
+    .chip--warn { color: var(--color-warning, #b45309); font-weight: 500; }
+    .action-middle { display: flex; align-items: center; gap: 12px; }
+    .action-right { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
+    .action-save-group { padding-left: 12px; border-left: 1px solid var(--border-color); }
+    .action-save-label { font-size: 0.75rem; font-weight: 600; color: var(--text-muted); text-transform: uppercase; letter-spacing: 0.03em; }
+    .action-changes { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+    .action-saved { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+    .action-sep { width: 1px; height: 20px; background: var(--border-color); }
+    .filter-search { padding: 6px 10px; min-width: 160px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; }
+    .filter-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; }
+    .filter-empty { padding: var(--spacing-lg); text-align: center; }
+
+    .table-wrap { overflow: auto; max-height: 60vh; border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+    .flat-table { width: 100%; border-collapse: collapse; }
+    .flat-table th, .flat-table td { padding: 8px 12px; font-size: 0.875rem; text-align: left; vertical-align: middle; border: none; border-bottom: 1px solid transparent; }
+    .flat-table thead th { font-weight: 600; color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; background: var(--bg-elevated); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 5; }
+    .flat-row { transition: background 0.12s ease; }
+    .flat-row--odd { background: rgba(255,255,255,0.02); }
+    .flat-row:hover { background: var(--bg-hover); }
+    .flat-row:hover td { border-bottom-color: rgba(255,255,255,0.06); }
+    .col-dot { width: 24px; padding-left: 12px; }
+    .col-matrikel { width: 88px; }
+    .col-name { min-width: 140px; }
+    .col-note { width: 100px; }
+    .col-versuch { width: 72px; }
+    .col-bemerkung { min-width: 140px; }
+    .col-save { width: 90px; }
+    .col-status { width: 90px; text-align: right; }
+
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
+    .status-dot--open { background: var(--text-muted); opacity: 0.9; }
+    .status-dot--unsaved { background: var(--color-warning, #b45309); opacity: 0.95; }
+    .status-dot--saved { background: var(--color-success, #0d9488); opacity: 0.9; }
+    .status-dot--error { background: var(--color-danger, #dc2626); opacity: 0.9; }
+    .status-dot--saving { background: var(--text-muted); animation: pulse 1s ease infinite; }
+    @keyframes pulse { 50% { opacity: 0.5; } }
+
+    .note-select { width: 100%; min-width: 72px; padding: 6px 8px; font-size: 0.875rem; font-weight: 500; color: var(--text-primary); background: var(--bg-deep); border: none; border-radius: var(--radius-sm); cursor: pointer; appearance: auto; }
+    .note-select:focus { outline: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.12); }
+    .versuch-select { width: 100%; min-width: 52px; padding: 6px 8px; font-size: 0.85rem; color: var(--text-primary); background: var(--bg-deep); border: none; border-radius: var(--radius-sm); cursor: pointer; }
+    .versuch-select:focus { outline: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.08); }
+    .btn-row-save { padding: 4px 8px; font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; }
+    .btn-row-save:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
+    .btn-row-save:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-row-save .spinner-tiny { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border-color); border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 4px; }
+
+    .bemerkung-input { width: 100%; min-width: 120px; padding: 6px 8px; font-size: 0.85rem; background: var(--bg-deep); border: none; border-radius: var(--radius-sm); color: var(--text-primary); }
+    .bemerkung-input::placeholder { color: var(--text-muted); }
+    .bemerkung-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.1); }
+
+    .status-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: var(--radius-sm); font-weight: 500; }
+    .status-badge--error { background: rgba(220, 38, 38, 0.12); color: var(--color-danger, #dc2626); }
+    .status-badge--submitted { background: rgba(59, 130, 246, 0.12); color: var(--text-secondary); }
+    .status-badge--released { background: rgba(13, 148, 136, 0.12); color: var(--color-success, #0d9488); }
+
+    .dialog-backdrop { position: fixed; inset: 0; background: rgba(0,0,0,0.5); z-index: 1000; display: flex; align-items: center; justify-content: center; padding: var(--spacing-lg); }
+    .dialog-card { max-width: 420px; padding: var(--spacing-lg); }
+    .dialog-title { margin: 0 0 var(--spacing-md) 0; font-size: 1.1rem; color: var(--text-primary); }
+    .dialog-summary { font-size: 0.9rem; color: var(--text-secondary); margin-bottom: var(--spacing-md); }
+    .dialog-warn { color: var(--color-warning, #b45309); font-size: 0.9rem; margin: 0; }
+    .dialog-hint { font-size: 0.9rem; color: var(--text-muted); margin: 0 0 var(--spacing-md) 0; }
+    .dialog-actions { display: flex; justify-content: flex-end; gap: var(--spacing-sm); }
   `]
 })
 export class GradeEntryComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly apollo = inject(Apollo);
+  private readonly route = inject(ActivatedRoute);
   private readonly authService = inject(AuthService);
   private readonly toast = inject(ToastService);
+
+  @ViewChildren('noteSelect') noteSelects!: QueryList<ElementRef<HTMLSelectElement>>;
 
   // State
   loading = signal(false);
@@ -590,6 +701,42 @@ export class GradeEntryComponent implements OnInit {
   selectedModul = signal<ModulInfo | null>(null);
   students = signal<StudentWithGrade[]>([]);
   changedCount = signal(0);
+  globalPruefungsdatum = signal('');
+  defaultVersuch = signal(1);
+  filterNurOffen = signal(true);
+  filterNurFehler = signal(false);
+  filterSuche = signal('');
+  showReviewDialog = signal(false);
+
+  notenOptions = computed(() => [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 5.0]);
+
+  erfasstCount = computed(() =>
+    this.students().filter(s => s.noteWert != null && !this.hasRowError(s) && !s.changed).length
+  );
+  fehlenCount = computed(() => this.students().filter(s => s.noteWert == null).length);
+  fehlerCount = computed(() => this.students().filter(s => this.hasRowError(s)).length);
+
+  filteredStudents = computed(() => {
+    let list = this.students();
+    const q = (this.filterSuche() || '').trim().toLowerCase();
+    if (q) {
+      list = list.filter(s =>
+        (String(s.matrikelnummer ?? '') + ' ' + (s.vorname ?? '') + ' ' + (s.nachname ?? '')).toLowerCase().includes(q)
+      );
+    }
+    if (this.filterNurOffen()) list = list.filter(s => s.noteWert == null);
+    if (this.filterNurFehler()) list = list.filter(s => this.hasRowError(s));
+    const sorted = [...list];
+    sorted.sort((a, b) => {
+      const aOpen = a.noteWert == null;
+      const bOpen = b.noteWert == null;
+      if (aOpen !== bOpen) return aOpen ? -1 : 1;
+      const last = (a.nachname ?? '').localeCompare(b.nachname ?? '');
+      if (last !== 0) return last;
+      return (a.vorname ?? '').localeCompare(b.vorname ?? '');
+    });
+    return sorted;
+  });
 
   // Data maps
   private readonly einschreibungenMap = new Map<string, EinschreibungInfo>();
@@ -617,10 +764,24 @@ export class GradeEntryComponent implements OnInit {
         fetchPolicy: 'network-only'
       }));
 
-      this.module.set(result.data?.dozentenModule || []);
+      const raw = result.data?.dozentenModule || [];
+      const seen = new Set<string>();
+      const unique = raw.filter((m: any) => {
+        const id = String(m?.id ?? '');
+        if (seen.has(id)) return false;
+        seen.add(id);
+        return true;
+      });
+      this.module.set(unique);
 
       if (this.module().length === 0) {
         this.error.set('Ihnen sind keine Module zugewiesen');
+      } else {
+        const modulId = this.route.snapshot.queryParams['modulId'];
+        if (modulId) {
+          const modul = this.module().find(m => String(m.id) === String(modulId));
+          if (modul) await this.loadStudentsForModul(modul);
+        }
       }
 
     } catch (err: any) {
@@ -680,10 +841,12 @@ export class GradeEntryComponent implements OnInit {
           semester: e.aktuellesSemester,
           noteId: existingNote?.id,
           noteWert: existingNote?.noteWert || null,
+          noteText: existingNote?.noteWert != null ? this.formatNoteOption(existingNote.noteWert) : '',
           bestanden: existingNote?.bestanden || false,
-          versuch: existingNote?.versuch || 1,
+          versuch: existingNote?.versuch ?? this.defaultVersuch(),
           pruefungsdatum: existingNote?.pruefungsdatum || this.getTodayString(),
           bemerkung: existingNote?.bemerkung || '',
+          bemerkungOffen: Boolean(existingNote?.bemerkung),
           status: existingNote?.status || 'ERFASST',
           modulId: modul.id,
           saving: false,
@@ -692,6 +855,9 @@ export class GradeEntryComponent implements OnInit {
       }
 
       this.students.set(studentsWithGrades);
+      const firstDate = studentsWithGrades.find(s => s.pruefungsdatum)?.pruefungsdatum || this.getTodayString();
+      this.globalPruefungsdatum.set(firstDate);
+      setTimeout(() => this.focusFirstOpen(), 100);
 
     } catch (err: any) {
       console.error('Error loading students for modul:', err);
@@ -701,9 +867,90 @@ export class GradeEntryComponent implements OnInit {
     }
   }
 
+  onModulSelect(modulId: string | null): void {
+    if (!modulId) { this.selectedModul.set(null); this.students.set([]); return; }
+    const m = this.module().find(x => String(x.id) === String(modulId));
+    if (m) this.loadStudentsForModul(m);
+  }
+
+  refreshCurrentModul(): void {
+    const m = this.selectedModul();
+    if (m) this.loadStudentsForModul(m);
+  }
+
+  setGlobalPruefungsdatum(v: string): void { this.globalPruefungsdatum.set(v || this.getTodayString()); }
+  setDefaultVersuch(v: number): void { this.defaultVersuch.set(v); }
+  setFilterSuche(v: string): void { this.filterSuche.set(v); }
+  setFilterNurOffen(v: boolean): void { this.filterNurOffen.set(v); }
+  setFilterNurFehler(v: boolean): void { this.filterNurFehler.set(v); }
+
+  hasRowError(s: StudentWithGrade): boolean {
+    if (s.noteWert != null) {
+      const n = Number(s.noteWert);
+      if (Number.isNaN(n) || n < 1 || n > 5) return true;
+    }
+    return false;
+  }
+
+  getRowError(s: StudentWithGrade): string {
+    if (s.noteWert != null) {
+      const n = Number(s.noteWert);
+      if (Number.isNaN(n)) return 'Ungültige Note';
+      if (n < 1 || n > 5) return 'Note muss zwischen 1,0 und 5,0 liegen';
+    }
+    return '';
+  }
+
+  rowStatus(student: any): 'open' | 'unsaved' | 'saving' | 'saved' | 'error' | 'submitted' | 'released' {
+    if (student.saving) return 'saving';
+    if (this.hasRowError(student)) return 'error';
+    if (student.changed) return 'unsaved';
+    if (student.noteWert == null) return 'open';
+    if (String(student.status || '').toUpperCase() === 'EINGEREICHT') return 'submitted';
+    if (String(student.status || '').toUpperCase() === 'FREIGEGEBEN') return 'released';
+    return 'saved';
+  }
+
+  statusTooltip(student: any): string {
+    const status = this.rowStatus(student);
+    if (status === 'error') return this.getRowError(student);
+    const labels: Record<string, string> = { open: 'Offen', unsaved: 'Ungespeichert', saving: 'Speichert…', saved: 'Gespeichert', submitted: 'Eingereicht', released: 'Freigegeben' };
+    return labels[status] ?? '';
+  }
+
+  formatNoteOption(v: number): string {
+    return v === 5 ? '5,0' : v.toFixed(1).replace('.', ',');
+  }
+
+  onNoteSelectChange(student: any, value: number | null, index: number): void {
+    student.noteWert = value;
+    student.bestanden = value != null ? value <= 4.0 : false;
+    this.onGradeChange(student);
+    setTimeout(() => this.focusNextNote(index), 0);
+  }
+
+  openReviewDialog(): void { this.showReviewDialog.set(true); }
+  closeReviewDialog(): void { this.showReviewDialog.set(false); }
+
+  submitForValidation(): void {
+    this.closeReviewDialog();
+    this.toast.info('Einreichen ist in dieser Version noch nicht angebunden.');
+  }
+
   onGradeChange(student: any): void {
     student.changed = true;
     this.updateChangedCount();
+  }
+
+  onVersuchChange(student: any, value: number): void {
+    student.versuch = Number(value);
+    this.onGradeChange(student);
+  }
+
+  focusNextNote(index: number): void {
+    const selects = this.noteSelects?.toArray() ?? [];
+    const next = selects[index + 1];
+    if (next?.nativeElement) next.nativeElement.focus();
   }
 
   private static readonly VALID_NOTEN = [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 5.0];
@@ -736,20 +983,22 @@ export class GradeEntryComponent implements OnInit {
   }
 
   async saveGrade(student: any): Promise<void> {
-    if (!student.noteWert) return;
+    if (student.noteWert == null || this.hasRowError(student)) return;
 
     this.normalizeNoteValue(student);
 
     student.saving = true;
 
     try {
+      const datum = student.pruefungsdatum || this.globalPruefungsdatum() || this.getTodayString();
+      const bestanden = student.noteWert != null ? student.noteWert <= 4.0 : false;
       const payload = {
         einschreibungId: student.einschreibungId,
         modulId: student.modulId,
         noteWert: this.toValidNoteValue(student.noteWert),
-        bestanden: student.bestanden,
-        versuch: student.versuch,
-        pruefungsdatum: student.pruefungsdatum,
+        bestanden,
+        versuch: student.versuch ?? this.defaultVersuch(),
+        pruefungsdatum: datum,
         bemerkung: student.bemerkung || null
       };
 
@@ -778,7 +1027,7 @@ export class GradeEntryComponent implements OnInit {
   }
 
   async saveAllGrades(): Promise<void> {
-    const changedStudents = this.students().filter(s => s.changed && s.noteWert);
+    const changedStudents = this.students().filter(s => s.changed && s.noteWert != null && !this.hasRowError(s));
     if (changedStudents.length === 0) return;
 
     this.savingAll.set(true);
@@ -793,5 +1042,20 @@ export class GradeEntryComponent implements OnInit {
   private getTodayString(): string {
     const today = new Date();
     return today.toISOString().split('T')[0];
+  }
+
+  private focusFirstOpen(): void {
+    const selects = this.noteSelects?.toArray() ?? [];
+    const list = this.filteredStudents();
+    const firstOpenIndex = list.findIndex(s => s.noteWert == null);
+    if (firstOpenIndex >= 0 && selects[firstOpenIndex]?.nativeElement) {
+      selects[firstOpenIndex].nativeElement.focus();
+    }
+  }
+
+  onNoteKeydown(event: KeyboardEvent, index: number): void {
+    if (event.key !== 'Enter') return;
+    event.preventDefault();
+    this.focusNextNote(index);
   }
 }

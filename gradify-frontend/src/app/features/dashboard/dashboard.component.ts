@@ -176,143 +176,94 @@ interface EinschreibungOption {
         </div>
       }
 
-      <!-- Dozenten Dashboard -->
+      <!-- Dozenten Dashboard: Work Queue + Modul-Tabelle -->
       @if (isDozent()) {
         <div class="dozent-dashboard animate-slide-up">
-          <div class="welcome-header">
-            <h1>{{ authService.userFullName() }}</h1>
-            <p class="subtitle">Ihre Module im Überblick</p>
-          </div>
+          <!-- Work-Queue-Header: KPI-Leiste + CTA -->
+          <header class="work-queue">
+            <div class="work-queue-kpis">
+              <div class="kpi-tile">
+                <span class="kpi-value" style="font-variant-numeric: tabular-nums;">{{ dozentKpiOffen() }}</span>
+                <span class="kpi-label">Offen zur Eingabe</span>
+              </div>
+              <div class="kpi-tile">
+                <span class="kpi-value" style="font-variant-numeric: tabular-nums;">{{ dozentKpiEntwurf() }}</span>
+                <span class="kpi-label">Entwürfe</span>
+              </div>
+              <div class="kpi-tile">
+                <span class="kpi-value" style="font-variant-numeric: tabular-nums;">{{ dozentKpiEingereicht() }}</span>
+                <span class="kpi-label">Eingereicht / wartet Validierung</span>
+              </div>
+              <div class="kpi-tile">
+                <span class="kpi-value" style="font-variant-numeric: tabular-nums;">{{ dozentKpiVeroeffentlicht() }}</span>
+                <span class="kpi-label">Freigegeben (30 Tage)</span>
+              </div>
+            </div>
+            <div class="work-queue-cta">
+              <a [routerLink]="['/grades/entry']" class="btn btn--primary">Noten erfassen</a>
+            </div>
+          </header>
 
           @if (loadingDozentenModule()) {
             <app-skeleton-card [lines]="5" />
           }
 
           @if (!loadingDozentenModule() && dozentenModule().length > 0) {
-            <div class="module-list">
-              @for (modul of dozentenModule(); track modul.id) {
-                <div class="modul-item card">
-                  <div class="modul-header-section">
-                    <div class="modul-title">
-                      <span class="modul-nr-badge">{{ modul.modulNr }}</span>
-                      <h2>{{ modul.name }}</h2>
-                    </div>
-                    <button class="btn-toggle" (click)="toggleModul(modul.id)">
-                      {{ expandedModul() === modul.id ? 'Einklappen' : 'Notenerfassung öffnen' }}
-                      <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" 
-                           [style.transform]="expandedModul() === modul.id ? 'rotate(180deg)' : 'rotate(0)'">
-                        <polyline points="6 9 12 15 18 9"/>
-                      </svg>
-                    </button>
-                  </div>
-                  
-                  <div class="modul-meta">
-                    <span class="meta-badge">{{ modul.pruefungsform }}</span>
-                    @if (modul.pruefungsdauer) {
-                      <span class="meta-text">{{ modul.pruefungsdauer }}</span>
-                    }
-                    <span class="meta-text">{{ modul.ects }} ECTS</span>
-                    <span class="meta-text">Semester {{ modul.semester }}</span>
-                  </div>
-
-                  @if (expandedModul() === modul.id) {
-                    <div class="notenerfassung-section">
-                      @if (loadingStudentsForModul()) {
-                        <app-skeleton-state [lineCount]="4" />
-                      }
-
-                      @if (!loadingStudentsForModul() && studentsForModul().length === 0) {
-                        <p class="text-muted">Keine Studierenden in diesem Modul eingeschrieben</p>
-                      }
-
-                      @if (!loadingStudentsForModul() && studentsForModul().length > 0) {
-                        <div class="noten-table-container">
-                          <table class="noten-table">
-                            <thead>
-                              <tr>
-                                <th>Matrikelnr.</th>
-                                <th>Name</th>
-                                <th>Note</th>
-                                <th>Bestanden</th>
-                                <th>Versuch</th>
-                                <th>Prüfungsdatum</th>
-                                <th></th>
-                              </tr>
-                            </thead>
-                            <tbody>
-                              @for (student of studentsForModul(); track student.id) {
-                                <tr>
-                                  <td>{{ student.matrikelnummer }}</td>
-                                  <td>{{ student.vorname }} {{ student.nachname }}</td>
-                                  <td>
-                                    <input 
-                                      type="number" 
-                                      class="note-input"
-                                      step="0.1"
-                                      min="1.0"
-                                      max="5.0"
-                                      [(ngModel)]="student.noteWert"
-                                      (change)="markChanged(student)"
-                                      (blur)="normalizeNoteValue(student)"
-                                      placeholder="--">
-                                  </td>
-                                  <td class="col-center">
-                                    <input 
-                                      type="checkbox" 
-                                      class="checkbox"
-                                      [(ngModel)]="student.bestanden"
-                                      (change)="markChanged(student)">
-                                  </td>
-                                  <td class="col-center">
-                                    <select class="versuch-select" [(ngModel)]="student.versuch" (change)="markChanged(student)">
-                                      <option [value]="1">1</option>
-                                      <option [value]="2">2</option>
-                                      <option [value]="3">3</option>
-                                    </select>
-                                  </td>
-                                  <td>
-                                    <input 
-                                      type="date" 
-                                      class="date-input"
-                                      [(ngModel)]="student.pruefungsdatum"
-                                      (change)="markChanged(student)">
-                                  </td>
-                                  <td class="col-center">
-                                    <button 
-                                      class="btn-save" 
-                                      (click)="saveGradeForStudent(student)" 
-                                      [disabled]="!student.changed || student.saving"
-                                      [class.has-changes]="student.changed">
-                                      @if (student.saving) {
-                                        <div class="spinner-tiny"></div>
-                                      } @else if (student.noteId) {
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                          <polyline points="20 6 9 17 4 12"/>
-                                        </svg>
-                                      } @else {
-                                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                                          <path d="M19 21H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11l5 5v11a2 2 0 0 1-2 2z"/>
-                                          <polyline points="17 21 17 13 7 13 7 21"/>
-                                        </svg>
-                                      }
-                                    </button>
-                                  </td>
-                                </tr>
-                              }
-                            </tbody>
-                          </table>
-                        </div>
-                      }
-                    </div>
+            <div class="module-filters">
+              <input type="text" class="module-search" placeholder="Modul / Code / Termin suchen…" [ngModel]="dozentModulFilter()" (ngModelChange)="setDozentModulFilter($event)">
+              <div class="module-filter-chips">
+                <button type="button" class="chip" [class.chip--active]="dozentStatusFilter() === 'all'" (click)="setDozentStatusFilter('all')">Alle</button>
+                <button type="button" class="chip" [class.chip--active]="dozentStatusFilter() === 'offen'" (click)="setDozentStatusFilter('offen')">Offen</button>
+                <button type="button" class="chip" [class.chip--active]="dozentStatusFilter() === 'entwurf'" (click)="setDozentStatusFilter('entwurf')">Entwurf</button>
+                <button type="button" class="chip" [class.chip--active]="dozentStatusFilter() === 'eingereicht'" (click)="setDozentStatusFilter('eingereicht')">Eingereicht</button>
+                <button type="button" class="chip" [class.chip--active]="dozentStatusFilter() === 'zurueckgewiesen'" (click)="setDozentStatusFilter('zurueckgewiesen')">Zurückgewiesen</button>
+                <button type="button" class="chip" [class.chip--active]="dozentStatusFilter() === 'freigegeben'" (click)="setDozentStatusFilter('freigegeben')">Freigegeben</button>
+              </div>
+            </div>
+            <div class="module-table-wrap card">
+              <table class="module-table">
+                <thead>
+                  <tr>
+                    <th>Modul</th>
+                    <th>Semester / ECTS / Prüfungsform</th>
+                    <th>Status Notenerfassung</th>
+                    <th>Letzte Änderung</th>
+                    <th class="module-table-actions">Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (modul of dozentFilteredModule(); track modul.id) {
+                    <tr>
+                      <td>
+                        <span class="modul-code">{{ modul.modulNr }}</span>
+                        <span class="modul-name">{{ modul.name }}</span>
+                      </td>
+                      <td class="modul-meta-cell">
+                        <span>{{ modul.semester }}. Sem</span>
+                        <span>·</span>
+                        <span>{{ modul.ects }} ECTS</span>
+                        <span>·</span>
+                        <span>{{ modul.pruefungsform || '–' }}</span>
+                      </td>
+                      <td>
+                        <span class="status-badge status-badge--{{ getModulStatusClass(modul) }}">{{ getModulStatusLabel(modul) }}</span>
+                      </td>
+                      <td class="modul-date-cell">{{ getModulLastChange(modul) }}</td>
+                      <td class="module-table-actions">
+                        <a [routerLink]="['/grades/entry']" [queryParams]="{ modulId: modul.id }" class="btn btn--primary btn--sm">Noten erfassen</a>
+                        <a [routerLink]="['/grades/entry']" [queryParams]="{ modulId: modul.id }" class="btn btn--ghost btn--sm">Details</a>
+                      </td>
+                    </tr>
                   }
-                </div>
-              }
+                </tbody>
+              </table>
             </div>
           }
 
           @if (!loadingDozentenModule() && dozentenModule().length === 0) {
             <div class="empty-state card">
               <p>Ihnen sind aktuell keine Module zugewiesen.</p>
+              <a [routerLink]="['/grades/entry']" class="btn btn--primary" style="margin-top: 1rem;">Noten erfassen</a>
             </div>
           }
         </div>
@@ -926,73 +877,197 @@ interface EinschreibungOption {
       border-color: rgba(249, 115, 22, 0.5);
     }
 
-    /* Selection Controls */
+    /* Dozent: Work Queue + Module-Tabelle */
     .dozent-dashboard {
-      max-width: 900px;
+      max-width: 100%;
       margin: 0 auto;
     }
 
-    .welcome-header {
+    .work-queue {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      justify-content: space-between;
+      gap: var(--spacing-lg);
       margin-bottom: var(--spacing-xl);
+      padding-bottom: var(--spacing-lg);
+      border-bottom: 1px solid var(--border-color);
     }
 
-    .welcome-header h1 {
-      font-size: 2rem;
-      margin: 0 0 var(--spacing-xs) 0;
-      color: var(--text-primary);
+    .work-queue-kpis {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-md);
     }
 
-    .module-list {
+    .kpi-tile {
       display: flex;
       flex-direction: column;
-      gap: var(--spacing-lg);
-    }
-
-    .modul-item {
-      padding: var(--spacing-xl);
+      gap: 2px;
+      padding: var(--spacing-sm) var(--spacing-md);
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
-    }
-
-    .modul-main {
-      display: flex;
-      flex-direction: column;
-      gap: var(--spacing-md);
-    }
-
-    .modul-title {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-md);
-    }
-
-    .modul-nr-badge {
-      display: inline-flex;
-      align-items: center;
-      justify-content: center;
-      min-width: 60px;
-      padding: 8px 12px;
-      background: rgba(255, 255, 255, 0.08);
-      border: 1px solid rgba(255, 255, 255, 0.12);
-      color: var(--text-primary);
       border-radius: var(--radius-md);
-      font-size: 0.875rem;
-      font-weight: 700;
-      letter-spacing: 0.05em;
+      min-width: 120px;
     }
 
-    .modul-title h2 {
+    .kpi-value {
       font-size: 1.25rem;
-      margin: 0;
+      font-weight: 700;
       color: var(--text-primary);
-      font-weight: 600;
     }
 
-    .modul-details {
+    .kpi-label {
+      font-size: 0.7rem;
+      font-weight: 500;
+      color: var(--text-muted);
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+    }
+
+    .work-queue-cta .btn { flex-shrink: 0; }
+
+    .module-filters {
       display: flex;
-      flex-direction: column;
-      gap: var(--spacing-sm);
-      padding-left: 72px;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-md);
+    }
+    .module-search {
+      flex: 1;
+      min-width: 200px;
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: 0.9rem;
+    }
+    .module-search::placeholder { color: var(--text-muted); }
+    .module-filter-chips {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-xs);
+    }
+    .module-filter-chips .chip {
+      padding: 6px 12px;
+      border-radius: var(--radius-full);
+      font-size: 0.75rem;
+      font-weight: 500;
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s, color 0.15s;
+    }
+    .module-filter-chips .chip:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .module-filter-chips .chip--active {
+      background: rgba(249, 115, 22, 0.15);
+      border-color: rgba(249, 115, 22, 0.4);
+      color: #F97316;
+    }
+
+    .module-table-wrap {
+      overflow-x: auto;
+      padding: 0;
+    }
+
+    .module-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: 0.9rem;
+    }
+
+    .module-table th {
+      text-align: left;
+      padding: var(--spacing-sm) var(--spacing-md);
+      font-weight: 600;
+      color: var(--text-muted);
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .module-table td {
+      padding: var(--spacing-sm) var(--spacing-md);
+      border-bottom: 1px solid var(--border-color);
+      vertical-align: middle;
+    }
+
+    .module-table tbody tr:hover {
+      background: var(--bg-hover);
+    }
+
+    .module-table-actions {
+      white-space: nowrap;
+    }
+
+    .module-table-actions .btn { margin-right: var(--spacing-xs); }
+
+    .modul-code {
+      display: block;
+      font-weight: 600;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .modul-name {
+      display: block;
+      font-size: 0.85rem;
+      color: var(--text-secondary);
+    }
+
+    .modul-meta-cell {
+      font-variant-numeric: tabular-nums;
+      color: var(--text-secondary);
+    }
+
+    .modul-meta-cell span + span { margin-left: 6px; }
+
+    .modul-date-cell { font-variant-numeric: tabular-nums; color: var(--text-muted); }
+
+    .status-badge {
+      display: inline-block;
+      padding: 4px 10px;
+      border-radius: var(--radius-full);
+      font-size: 0.7rem;
+      font-weight: 500;
+    }
+
+    .status-badge--entwurf {
+      background: rgba(255, 255, 255, 0.1);
+      color: var(--text-secondary);
+      border: 1px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .status-badge--validiert {
+      background: rgba(59, 130, 246, 0.15);
+      color: #3B82F6;
+      border: 1px solid rgba(59, 130, 246, 0.3);
+    }
+
+    .status-badge--freigegeben {
+      background: rgba(34, 197, 94, 0.15);
+      color: #22C55E;
+      border: 1px solid rgba(34, 197, 94, 0.3);
+    }
+
+    .btn--ghost {
+      background: transparent;
+      border-color: transparent;
+      color: var(--text-secondary);
+    }
+
+    .btn--ghost:hover { color: var(--text-primary); background: var(--bg-hover); }
+
+    .btn--sm { padding: 6px 12px; font-size: 0.8rem; }
+
+    .empty-state {
+      text-align: center;
+      padding: var(--spacing-2xl);
+      color: var(--text-muted);
     }
 
     .detail-row {
@@ -1011,12 +1086,6 @@ interface EinschreibungOption {
     }
 
     .detail-value-muted {
-      color: var(--text-muted);
-    }
-
-    .empty-state {
-      text-align: center;
-      padding: var(--spacing-2xl);
       color: var(--text-muted);
     }
 
@@ -1769,6 +1838,35 @@ export class DashboardComponent implements OnInit {
   expandedModul = signal<string | null>(null);
   studentsForModul = signal<any[]>([]);
   loadingStudentsForModul = signal(false);
+  dozentModulFilter = signal('');
+  dozentStatusFilter = signal<'all' | 'offen' | 'entwurf' | 'eingereicht' | 'zurueckgewiesen' | 'freigegeben'>('all');
+
+  /** Gefilterte Modulliste für Dozent (Suche + Status-Chip) */
+  dozentFilteredModule = computed(() => {
+    const list = this.dozentenModule();
+    const q = (this.dozentModulFilter() || '').trim().toLowerCase();
+    const status = this.dozentStatusFilter();
+    let out = list;
+    if (q) {
+      out = out.filter(m =>
+        (String(m.modulNr ?? '') + String(m.name ?? '')).toLowerCase().includes(q)
+      );
+    }
+    if (status !== 'all') {
+      const modulStatus = (m: any) => this.getModulStatusClass(m);
+      out = out.filter(m => modulStatus(m) === status || (status === 'offen' && modulStatus(m) === 'entwurf'));
+    }
+    return out;
+  });
+
+  /** Work-Queue KPIs für Dozent (Platzhalter bis Backend-Aggregation) */
+  dozentKpiOffen = computed(() => this.dozentenModule().length > 0 ? this.dozentenModule().length : 0);
+  dozentKpiEntwurf = computed(() => 0);
+  dozentKpiEingereicht = computed(() => 0);
+  dozentKpiVeroeffentlicht = computed(() => 0);
+
+  setDozentModulFilter(v: string): void { this.dozentModulFilter.set(v); }
+  setDozentStatusFilter(v: 'all' | 'offen' | 'entwurf' | 'eingereicht' | 'zurueckgewiesen' | 'freigegeben'): void { this.dozentStatusFilter.set(v); }
   
   // Computed
   studiengangName = computed(() => {
@@ -1970,6 +2068,24 @@ export class DashboardComponent implements OnInit {
     } finally {
       this.loadingDozentenModule.set(false);
     }
+  }
+
+  /** Status-Badge-Klasse pro Modul (Entwurf / Validiert / Freigegeben) – erweiterbar mit Backend */
+  getModulStatusClass(modul: any): string {
+    return (modul?.noteStatus as string)?.toLowerCase() === 'freigegeben' ? 'freigegeben' :
+      (modul?.noteStatus as string)?.toLowerCase() === 'validiert' ? 'validiert' : 'entwurf';
+  }
+
+  getModulStatusLabel(modul: any): string {
+    const s = (modul?.noteStatus as string)?.toUpperCase();
+    if (s === 'FREIGEGEBEN') return 'Freigegeben';
+    if (s === 'VALIDIERT') return 'Validiert';
+    if (s === 'ERFASST') return 'Entwurf';
+    return 'Entwurf';
+  }
+
+  getModulLastChange(modul: any): string {
+    return modul?.lastChangeDate ? new Date(modul.lastChangeDate).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '–';
   }
 
   loadOwnData(): void {
