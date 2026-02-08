@@ -58,6 +58,7 @@ type Modul {
     inGesamtnote: Boolean!
     vorleistung: String
     wahlpflichtGruppe: String
+    studiengangKuerzel: String
 }
 
 type Einschreibung {

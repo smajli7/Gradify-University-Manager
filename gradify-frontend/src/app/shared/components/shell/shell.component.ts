@@ -122,8 +122,66 @@ export class ShellComponent {
   showUserMenu = false;
   mobileMenuOpen = false;
 
-  // Navigation Items – Übersicht immer ganz oben
+  // Navigation Items – Prüfungsamt reduziert (Queue-Fokus), Rest wie bisher
   dockItems: DockItem[] = [
+    // === PRÜFUNGSAMT (reduzierte Sidebar: Dashboard → Validierung → Freigaben → …) ===
+    {
+      id: 'dashboard-pa',
+      label: 'Dashboard',
+      route: '/dashboard',
+      icon: 'assets/icons/dashboard.svg',
+      roles: ['PRUEFUNGSAMT'],
+      section: 'Prüfungsamt'
+    },
+    {
+      id: 'validation-pa',
+      label: 'Validierung',
+      route: '/grades/validation',
+      icon: 'assets/icons/validation.svg',
+      roles: ['PRUEFUNGSAMT'],
+      section: 'Prüfungsamt'
+    },
+    {
+      id: 'release-pa',
+      label: 'Freigaben',
+      route: '/grades/release',
+      icon: 'assets/icons/grades.svg',
+      roles: ['PRUEFUNGSAMT'],
+      section: 'Prüfungsamt'
+    },
+    {
+      id: 'conflicts-pa',
+      label: 'Rückfragen / Konflikte',
+      route: '/grades/conflicts',
+      icon: 'assets/icons/validation.svg',
+      roles: ['PRUEFUNGSAMT'],
+      section: 'Prüfungsamt'
+    },
+    {
+      id: 'audit-pa',
+      label: 'Protokoll',
+      route: '/grades/audit',
+      icon: 'assets/icons/stats.svg',
+      roles: ['PRUEFUNGSAMT', 'ADMIN', 'HOCHSCHUL_VERWALTER'],
+      section: 'Prüfungsamt'
+    },
+    {
+      id: 'stats-pa',
+      label: 'Statistik',
+      route: '/stats',
+      icon: 'assets/icons/stats.svg',
+      roles: ['PRUEFUNGSAMT'],
+      section: 'Prüfungsamt'
+    },
+    {
+      id: 'students-pa',
+      label: 'Studierende',
+      route: '/students',
+      icon: 'assets/icons/students.svg',
+      roles: ['PRUEFUNGSAMT'],
+      section: 'Prüfungsamt'
+    },
+    // === STUDENT ===
     {
       id: 'dashboard-student',
       label: 'Übersicht',
@@ -132,6 +190,7 @@ export class ShellComponent {
       roles: ['STUDENT'],
       section: 'Studium'
     },
+    // === ADMIN / HV (ohne PRUEFUNGSAMT in Akademisch) ===
     {
       id: 'admin',
       label: 'Übersicht',
@@ -169,7 +228,7 @@ export class ShellComponent {
       label: 'Studenten',
       route: '/students',
       icon: 'assets/icons/students.svg',
-      roles: ['ADMIN', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER'],
+      roles: ['ADMIN', 'HOCHSCHUL_VERWALTER'],
       section: 'Akademisch'
     },
     {
@@ -177,7 +236,7 @@ export class ShellComponent {
       label: 'Validierung',
       route: '/grades/validation',
       icon: 'assets/icons/validation.svg',
-      roles: ['ADMIN', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER'],
+      roles: ['ADMIN', 'HOCHSCHUL_VERWALTER'],
       section: 'Akademisch'
     },
     {
@@ -185,7 +244,7 @@ export class ShellComponent {
       label: 'Berechnung',
       route: '/calculation',
       icon: 'assets/icons/calculation.svg',
-      roles: ['ADMIN', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER'],
+      roles: ['ADMIN', 'HOCHSCHUL_VERWALTER'],
       section: 'Akademisch'
     },
     {
@@ -193,7 +252,7 @@ export class ShellComponent {
       label: 'Statistik',
       route: '/stats',
       icon: 'assets/icons/stats.svg',
-      roles: ['ADMIN', 'DOZENT', 'PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER'],
+      roles: ['ADMIN', 'DOZENT', 'HOCHSCHUL_VERWALTER'],
       section: 'Akademisch'
     },
     {
@@ -201,16 +260,16 @@ export class ShellComponent {
       label: 'Studienplan',
       route: '/study-plan',
       icon: 'assets/icons/calculation.svg',
-      roles: ['ADMIN', 'PRUEFUNGSAMT', 'STUDENT', 'HOCHSCHUL_VERWALTER'],
+      roles: ['ADMIN', 'STUDENT', 'HOCHSCHUL_VERWALTER'],
       section: 'Studium'
     },
     
-    // === DOZENT: aufgabenorientiert (To-dos = Default Landing) ===
+    // === DOZENT (Meine Module zuerst = Standardansicht) ===
     {
-      id: 'todos-dozent',
-      label: 'To-dos',
-      route: '/todos',
-      icon: 'assets/icons/dashboard.svg',
+      id: 'dashboard-dozent',
+      label: 'Meine Module',
+      route: '/dashboard',
+      icon: 'assets/icons/calculation.svg',
       roles: ['LEHRENDER'],
       section: 'LEHRE'
     },
@@ -223,17 +282,17 @@ export class ShellComponent {
       section: 'LEHRE'
     },
     {
-      id: 'dashboard-dozent',
-      label: 'Module',
-      route: '/dashboard',
-      icon: 'assets/icons/calculation.svg',
+      id: 'stats-dozent',
+      label: 'Statistik',
+      route: '/stats',
+      icon: 'assets/icons/stats.svg',
       roles: ['LEHRENDER'],
       section: 'LEHRE'
     },
     {
-      id: 'stats-dozent',
-      label: 'Statistik',
-      route: '/stats',
+      id: 'audit-dozent',
+      label: 'Protokoll',
+      route: '/grades/audit',
       icon: 'assets/icons/stats.svg',
       roles: ['LEHRENDER'],
       section: 'LEHRE'

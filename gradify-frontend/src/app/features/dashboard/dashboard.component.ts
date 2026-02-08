@@ -11,6 +11,7 @@ import { SystemStatusService } from '../../core/services/system-status.service';
 import { ToastService } from '../../core/services/toast.service';
 import { SkeletonStateComponent } from '../../shared/components/skeleton-state/skeleton-state.component';
 import { SkeletonCardComponent } from '../../shared/components/skeleton-card/skeleton-card.component';
+import { PaDashboardComponent } from './pa-dashboard.component';
 
 // Query für alle Studenten (User-Service)
 const GET_STUDENTS_QUERY = gql`
@@ -117,21 +118,26 @@ interface EinschreibungOption {
 @Component({
   selector: 'app-dashboard',
   standalone: true,
-  imports: [CommonModule, RouterLink, FormsModule, SkeletonStateComponent, SkeletonCardComponent],
+  imports: [CommonModule, RouterLink, FormsModule, SkeletonStateComponent, SkeletonCardComponent, PaDashboardComponent],
   template: `
+    @if (isPruefungsamt()) {
+      <app-pa-dashboard />
+    } @else {
     <div class="dashboard-page">
-      <div class="page-header animate-slide-up">
-        <div class="header-content">
-          <h1>Dashboard</h1>
-          <p class="page-subtitle">
-            @if (studiengangName()) {
-              {{ studiengangName() }} - {{ currentSemester() }}. Semester
-            } @else {
-              Willkommen! Wählen Sie einen Studenten und eine Einschreibung.
-            }
-          </p>
+      @if (!isDozent()) {
+        <div class="page-header animate-slide-up">
+          <div class="header-content">
+            <h1>Dashboard</h1>
+            <p class="page-subtitle">
+              @if (studiengangName()) {
+                {{ studiengangName() }} - {{ currentSemester() }}. Semester
+              } @else {
+                Willkommen! Wählen Sie einen Studenten und eine Einschreibung.
+              }
+            </p>
+          </div>
         </div>
-      </div>
+      }
 
       <!-- Auswahl (nur für Nicht-Studenten sichtbar) -->
       @if (canSelectStudent()) {
@@ -176,32 +182,12 @@ interface EinschreibungOption {
         </div>
       }
 
-      <!-- Dozenten Dashboard: Work Queue + Modul-Tabelle -->
+      <!-- Dozenten Dashboard: Meine Module -->
       @if (isDozent()) {
         <div class="dozent-dashboard animate-slide-up">
-          <!-- Work-Queue-Header: KPI-Leiste + CTA -->
-          <header class="work-queue">
-            <div class="work-queue-kpis">
-              <div class="kpi-tile">
-                <span class="kpi-value" style="font-variant-numeric: tabular-nums;">{{ dozentKpiOffen() }}</span>
-                <span class="kpi-label">Offen zur Eingabe</span>
-              </div>
-              <div class="kpi-tile">
-                <span class="kpi-value" style="font-variant-numeric: tabular-nums;">{{ dozentKpiEntwurf() }}</span>
-                <span class="kpi-label">Entwürfe</span>
-              </div>
-              <div class="kpi-tile">
-                <span class="kpi-value" style="font-variant-numeric: tabular-nums;">{{ dozentKpiEingereicht() }}</span>
-                <span class="kpi-label">Eingereicht / wartet Validierung</span>
-              </div>
-              <div class="kpi-tile">
-                <span class="kpi-value" style="font-variant-numeric: tabular-nums;">{{ dozentKpiVeroeffentlicht() }}</span>
-                <span class="kpi-label">Freigegeben (30 Tage)</span>
-              </div>
-            </div>
-            <div class="work-queue-cta">
-              <a [routerLink]="['/grades/entry']" class="btn btn--primary">Noten erfassen</a>
-            </div>
+          <header class="dozent-header">
+            <h2 class="dozent-title">Meine Module</h2>
+            <p class="dozent-subtitle">Zugewiesene Module für die Notenerfassung</p>
           </header>
 
           @if (loadingDozentenModule()) {
@@ -210,24 +196,14 @@ interface EinschreibungOption {
 
           @if (!loadingDozentenModule() && dozentenModule().length > 0) {
             <div class="module-filters">
-              <input type="text" class="module-search" placeholder="Modul / Code / Termin suchen…" [ngModel]="dozentModulFilter()" (ngModelChange)="setDozentModulFilter($event)">
-              <div class="module-filter-chips">
-                <button type="button" class="chip" [class.chip--active]="dozentStatusFilter() === 'all'" (click)="setDozentStatusFilter('all')">Alle</button>
-                <button type="button" class="chip" [class.chip--active]="dozentStatusFilter() === 'offen'" (click)="setDozentStatusFilter('offen')">Offen</button>
-                <button type="button" class="chip" [class.chip--active]="dozentStatusFilter() === 'entwurf'" (click)="setDozentStatusFilter('entwurf')">Entwurf</button>
-                <button type="button" class="chip" [class.chip--active]="dozentStatusFilter() === 'eingereicht'" (click)="setDozentStatusFilter('eingereicht')">Eingereicht</button>
-                <button type="button" class="chip" [class.chip--active]="dozentStatusFilter() === 'zurueckgewiesen'" (click)="setDozentStatusFilter('zurueckgewiesen')">Zurückgewiesen</button>
-                <button type="button" class="chip" [class.chip--active]="dozentStatusFilter() === 'freigegeben'" (click)="setDozentStatusFilter('freigegeben')">Freigegeben</button>
-              </div>
+              <input type="text" class="module-search" placeholder="Modul oder Code suchen…" [ngModel]="dozentModulFilter()" (ngModelChange)="setDozentModulFilter($event)">
             </div>
             <div class="module-table-wrap card">
               <table class="module-table">
                 <thead>
                   <tr>
                     <th>Modul</th>
-                    <th>Semester / ECTS / Prüfungsform</th>
-                    <th>Status Notenerfassung</th>
-                    <th>Letzte Änderung</th>
+                    <th>Semester · ECTS · Prüfungsform</th>
                     <th class="module-table-actions">Aktionen</th>
                   </tr>
                 </thead>
@@ -245,13 +221,9 @@ interface EinschreibungOption {
                         <span>·</span>
                         <span>{{ modul.pruefungsform || '–' }}</span>
                       </td>
-                      <td>
-                        <span class="status-badge status-badge--{{ getModulStatusClass(modul) }}">{{ getModulStatusLabel(modul) }}</span>
-                      </td>
-                      <td class="modul-date-cell">{{ getModulLastChange(modul) }}</td>
                       <td class="module-table-actions">
                         <a [routerLink]="['/grades/entry']" [queryParams]="{ modulId: modul.id }" class="btn btn--primary btn--sm">Noten erfassen</a>
-                        <a [routerLink]="['/grades/entry']" [queryParams]="{ modulId: modul.id }" class="btn btn--ghost btn--sm">Details</a>
+                        <button type="button" class="btn btn--ghost btn--sm" (click)="openModulDetail(modul)">Details</button>
                       </td>
                     </tr>
                   }
@@ -264,6 +236,46 @@ interface EinschreibungOption {
             <div class="empty-state card">
               <p>Ihnen sind aktuell keine Module zugewiesen.</p>
               <a [routerLink]="['/grades/entry']" class="btn btn--primary" style="margin-top: 1rem;">Noten erfassen</a>
+            </div>
+          }
+
+          <!-- Modul-Detail-Modal -->
+          @if (selectedModulDetail(); as modul) {
+            <div class="modul-detail-overlay" (click)="closeModulDetail()">
+              <div class="modul-detail-modal card" (click)="$event.stopPropagation()">
+                <div class="modul-detail-header">
+                  <h3 class="modul-detail-title">{{ modul.modulNr }} – {{ modul.name }}</h3>
+                  <button type="button" class="modul-detail-close" (click)="closeModulDetail()" aria-label="Schließen">✕</button>
+                </div>
+                <div class="modul-detail-body">
+                  <dl class="modul-detail-meta">
+                    <dt>Semester</dt>
+                    <dd>{{ modul.semester }}. Semester</dd>
+                    <dt>ECTS</dt>
+                    <dd>{{ modul.ects }} CP</dd>
+                    <dt>Prüfungsform</dt>
+                    <dd>{{ modul.pruefungsform || '–' }}</dd>
+                  </dl>
+                  @if (loadingModulDetail()) {
+                    <p class="modul-detail-loading">Statistik wird geladen…</p>
+                  } @else if (modulDetailStats()) {
+                    <div class="modul-detail-stats">
+                      <div class="modul-detail-stat">
+                        <span class="modul-detail-stat-value">{{ modulDetailStats()!.abgeschlossen }}</span>
+                        <span class="modul-detail-stat-label">Studierende abgeschlossen</span>
+                      </div>
+                      <div class="modul-detail-stat">
+                        <span class="modul-detail-stat-value">{{ modulDetailStats()!.mitNote }}</span>
+                        <span class="modul-detail-stat-label">Noten erfasst</span>
+                      </div>
+                    </div>
+                  }
+                </div>
+                <div class="modul-detail-footer">
+                  <button type="button" class="btn btn--secondary" (click)="closeModulDetail()">Schließen</button>
+                  <a [routerLink]="['/grades/entry']" [queryParams]="{ modulId: modul.id }" class="btn btn--primary" (click)="closeModulDetail()">Noten erfassen</a>
+                </div>
+              </div>
             </div>
           }
         </div>
@@ -477,6 +489,7 @@ interface EinschreibungOption {
         </div>
       }
     </div>
+    }
   `,
   styles: [`
     .dashboard-page {
@@ -883,49 +896,30 @@ interface EinschreibungOption {
       margin: 0 auto;
     }
 
-    .work-queue {
+    .dozent-header {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
       justify-content: space-between;
-      gap: var(--spacing-lg);
-      margin-bottom: var(--spacing-xl);
-      padding-bottom: var(--spacing-lg);
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .work-queue-kpis {
-      display: flex;
-      flex-wrap: wrap;
       gap: var(--spacing-md);
+      margin-bottom: var(--spacing-lg);
     }
 
-    .kpi-tile {
-      display: flex;
-      flex-direction: column;
-      gap: 2px;
-      padding: var(--spacing-sm) var(--spacing-md);
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      min-width: 120px;
-    }
-
-    .kpi-value {
-      font-size: 1.25rem;
-      font-weight: 700;
+    .dozent-title {
+      margin: 0;
+      font-size: 1.35rem;
+      font-weight: 600;
       color: var(--text-primary);
     }
 
-    .kpi-label {
-      font-size: 0.7rem;
-      font-weight: 500;
+    .dozent-subtitle {
+      margin: 4px 0 0 0;
+      font-size: var(--font-size-sm);
       color: var(--text-muted);
-      text-transform: uppercase;
-      letter-spacing: 0.04em;
+      width: 100%;
     }
 
-    .work-queue-cta .btn { flex-shrink: 0; }
+    .dozent-header .btn { flex-shrink: 0; }
 
     .module-filters {
       display: flex;
@@ -1005,6 +999,124 @@ interface EinschreibungOption {
     }
 
     .module-table-actions .btn { margin-right: var(--spacing-xs); }
+
+    .modul-detail-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.5);
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      z-index: 1000;
+      padding: var(--spacing-md);
+    }
+
+    .modul-detail-modal {
+      max-width: 420px;
+      width: 100%;
+      max-height: 90vh;
+      overflow: auto;
+    }
+
+    .modul-detail-header {
+      display: flex;
+      align-items: flex-start;
+      justify-content: space-between;
+      gap: var(--spacing-md);
+      padding: var(--spacing-lg);
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .modul-detail-title {
+      margin: 0;
+      font-size: 1.1rem;
+      font-weight: 600;
+      color: var(--text-primary);
+      line-height: 1.3;
+    }
+
+    .modul-detail-close {
+      flex-shrink: 0;
+      width: 32px;
+      height: 32px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      cursor: pointer;
+      font-size: 1.1rem;
+    }
+
+    .modul-detail-close:hover {
+      background: var(--bg-hover);
+      color: var(--text-primary);
+    }
+
+    .modul-detail-body {
+      padding: var(--spacing-lg);
+    }
+
+    .modul-detail-meta {
+      display: grid;
+      grid-template-columns: auto 1fr;
+      gap: var(--spacing-xs) var(--spacing-lg);
+      margin: 0 0 var(--spacing-lg) 0;
+      font-size: 0.9rem;
+    }
+
+    .modul-detail-meta dt {
+      margin: 0;
+      color: var(--text-muted);
+      font-weight: 500;
+    }
+
+    .modul-detail-meta dd {
+      margin: 0;
+      color: var(--text-primary);
+    }
+
+    .modul-detail-loading {
+      margin: 0;
+      font-size: 0.9rem;
+      color: var(--text-muted);
+    }
+
+    .modul-detail-stats {
+      display: flex;
+      gap: var(--spacing-xl);
+      margin-top: var(--spacing-md);
+      padding-top: var(--spacing-md);
+      border-top: 1px solid var(--border-color);
+    }
+
+    .modul-detail-stat {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
+    }
+
+    .modul-detail-stat-value {
+      font-size: 1.5rem;
+      font-weight: 700;
+      color: var(--text-primary);
+      font-variant-numeric: tabular-nums;
+    }
+
+    .modul-detail-stat-label {
+      font-size: 0.75rem;
+      color: var(--text-muted);
+    }
+
+    .modul-detail-footer {
+      display: flex;
+      justify-content: flex-end;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-lg);
+      border-top: 1px solid var(--border-color);
+    }
 
     .modul-code {
       display: block;
@@ -1821,7 +1933,8 @@ export class DashboardComponent implements OnInit {
   // Role-based visibility
   isStudent = computed(() => this.authService.isStudent());
   isDozent = computed(() => this.authService.isDozent());
-  canSelectStudent = computed(() => !this.isStudent() && !this.isDozent());
+  isPruefungsamt = computed(() => this.authService.isPruefungsamt());
+  canSelectStudent = computed(() => !this.isStudent() && !this.isDozent() && !this.isPruefungsamt());
   
   // Data
   students = signal<StudentOption[]>([]);
@@ -1839,34 +1952,33 @@ export class DashboardComponent implements OnInit {
   studentsForModul = signal<any[]>([]);
   loadingStudentsForModul = signal(false);
   dozentModulFilter = signal('');
-  dozentStatusFilter = signal<'all' | 'offen' | 'entwurf' | 'eingereicht' | 'zurueckgewiesen' | 'freigegeben'>('all');
+  selectedModulDetail = signal<any>(null);
+  modulDetailStats = signal<{ abgeschlossen: number; mitNote: number } | null>(null);
+  loadingModulDetail = signal(false);
 
-  /** Gefilterte Modulliste für Dozent (Suche + Status-Chip) */
-  dozentFilteredModule = computed(() => {
+  /** Eindeutige Module (Backend kann pro Zuweisung ein Duplikat liefern) */
+  dozentModuleUnique = computed(() => {
     const list = this.dozentenModule();
-    const q = (this.dozentModulFilter() || '').trim().toLowerCase();
-    const status = this.dozentStatusFilter();
-    let out = list;
-    if (q) {
-      out = out.filter(m =>
-        (String(m.modulNr ?? '') + String(m.name ?? '')).toLowerCase().includes(q)
-      );
-    }
-    if (status !== 'all') {
-      const modulStatus = (m: any) => this.getModulStatusClass(m);
-      out = out.filter(m => modulStatus(m) === status || (status === 'offen' && modulStatus(m) === 'entwurf'));
-    }
-    return out;
+    const seen = new Set<string>();
+    return list.filter(m => {
+      const id = String(m?.id ?? '');
+      if (seen.has(id)) return false;
+      seen.add(id);
+      return true;
+    });
   });
 
-  /** Work-Queue KPIs für Dozent (Platzhalter bis Backend-Aggregation) */
-  dozentKpiOffen = computed(() => this.dozentenModule().length > 0 ? this.dozentenModule().length : 0);
-  dozentKpiEntwurf = computed(() => 0);
-  dozentKpiEingereicht = computed(() => 0);
-  dozentKpiVeroeffentlicht = computed(() => 0);
+  /** Modulliste für Dozent (nur Suche nach Name/Code) */
+  dozentFilteredModule = computed(() => {
+    const list = this.dozentModuleUnique();
+    const q = (this.dozentModulFilter() || '').trim().toLowerCase();
+    if (!q) return list;
+    return list.filter(m =>
+      (String(m.modulNr ?? '') + String(m.name ?? '')).toLowerCase().includes(q)
+    );
+  });
 
   setDozentModulFilter(v: string): void { this.dozentModulFilter.set(v); }
-  setDozentStatusFilter(v: 'all' | 'offen' | 'entwurf' | 'eingereicht' | 'zurueckgewiesen' | 'freigegeben'): void { this.dozentStatusFilter.set(v); }
   
   // Computed
   studiengangName = computed(() => {
@@ -1876,29 +1988,29 @@ export class DashboardComponent implements OnInit {
   
   currentSemester = computed(() => this.einschreibung()?.aktuellesSemester || 1);
   totalEcts = computed(() => this.einschreibung()?.studiengang?.gesamtEcts || 0);
+
+  /** Student: nur freigegebene Noten; Dozent/Prüfungsamt: alle Noten */
+  notenFuerAnzeige = computed(() =>
+    this.isStudent() ? this.noten().filter(n => n.status === 'FREIGEGEBEN') : this.noten()
+  );
   
   // Berechnungsdaten vom Service oder Fallback-Berechnung
   gesamtnote = computed(() => {
-    // Versuche zuerst vom Berechnungsservice
     const berechnung = this.berechnung();
     
     if (berechnung?.gesamtnote !== null && berechnung?.gesamtnote !== undefined) {
       return berechnung.gesamtnote;
     }
     
-    // Fallback: Durchschnitt aus bestandenen Noten berechnen
-    const bestandeneNoten = this.noten().filter(n => 
-      (n.bestanden === true || n.status === 'FREIGEGEBEN' || n.status === 'VALIDIERT') &&
-      n.noteWert !== null && n.noteWert !== undefined
+    const noten = this.notenFuerAnzeige();
+    const bestandeneNoten = noten.filter(n =>
+      n.bestanden === true && n.noteWert != null
     );
     
-    if (bestandeneNoten.length === 0) {
-      return null;
-    }
+    if (bestandeneNoten.length === 0) return null;
     
     const summe = bestandeneNoten.reduce((sum, n) => sum + n.noteWert, 0);
-    const durchschnitt = summe / bestandeneNoten.length;
-    return Math.round(durchschnitt * 10) / 10; // Auf 1 Dezimalstelle runden
+    return Math.round((summe / bestandeneNoten.length) * 10) / 10;
   });
   
   // Flag ob Service erreichbar war (unabhängig davon ob Gesamtnote berechnet wurde)
@@ -1920,46 +2032,30 @@ export class DashboardComponent implements OnInit {
   
   bestandenCount = computed(() => {
     const f = this.fortschritt();
-    if (f && f.moduleBestanden > 0) return f.moduleBestanden;
-    // Fallback: aus Noten berechnen
-    const bestandeneNoten = this.noten().filter(n => {
-      return n.bestanden === true || n.status === 'FREIGEGEBEN' || n.status === 'VALIDIERT';
-    });
+    if (f && f.moduleBestanden > 0 && !this.isStudent()) return f.moduleBestanden;
+    const bestandeneNoten = this.notenFuerAnzeige().filter(n => n.bestanden === true);
     return bestandeneNoten.length;
   });
   
   ectsErreicht = computed(() => {
     const f = this.fortschritt();
-    if (f && f.ectsErreicht > 0) return f.ectsErreicht;
-    // Fallback: aus Noten berechnen
-    const bestandeneNoten = this.noten().filter(n => 
-      n.bestanden === true || n.status === 'FREIGEGEBEN' || n.status === 'VALIDIERT'
-    );
-    const bestandeneModulIds = new Set(
-      bestandeneNoten.map(n => String(n.modulId))
-    );
-    const moduleList = this.module();
-    const ects = moduleList
+    if (f && f.ectsErreicht > 0 && !this.isStudent()) return f.ectsErreicht;
+    const bestandeneNoten = this.notenFuerAnzeige().filter(n => n.bestanden === true);
+    const bestandeneModulIds = new Set(bestandeneNoten.map(n => String(n.modulId)));
+    return this.module()
       .filter(m => bestandeneModulIds.has(String(m.id)))
       .reduce((sum, m) => sum + (m.ects || 0), 0);
-    return ects;
   });
   
   offeneModule = computed(() => {
-    // Immer aus Modulen berechnen, da Service-Daten oft unvollständig
     const moduleList = this.module();
     if (moduleList.length === 0) {
-      // Kein Fallback möglich, prüfe Service
       const f = this.fortschritt();
       if (f && f.moduleOffen > 0) return f.moduleOffen;
       return 0;
     }
-    
-    const bestandeneNoten = this.noten().filter(n => 
-      n.bestanden === true || n.status === 'FREIGEGEBEN' || n.status === 'VALIDIERT'
-    );
     const bestandeneModulIds = new Set(
-      bestandeneNoten.map(n => String(n.modulId))
+      this.notenFuerAnzeige().filter(n => n.bestanden === true).map(n => String(n.modulId))
     );
     return moduleList.filter(m => !bestandeneModulIds.has(String(m.id))).length;
   });
@@ -1974,21 +2070,21 @@ export class DashboardComponent implements OnInit {
 
   ectsOffen = computed(() => Math.max(0, this.totalEcts() - this.ectsErreicht()));
 
+  /** Für Studenten 0 (sie sehen keine „Validierung ausstehend“) */
   pendingValidierung = computed(() =>
-    this.noten().filter(n => n.status === 'ERFASST' || n.status === 'EINGEREICHT').length
+    this.isStudent() ? 0 : this.noten().filter(n => n.status === 'ERFASST' || n.status === 'EINGEREICHT').length
   );
   
   recentNoten = computed(() => {
-    return [...this.noten()]
-      .sort((a, b) => new Date(b.pruefungsdatum).getTime() - new Date(a.pruefungsdatum).getTime())
+    return [...this.notenFuerAnzeige()]
+      .sort((a, b) => new Date(b.pruefungsdatum || 0).getTime() - new Date(a.pruefungsdatum || 0).getTime())
       .slice(0, 5);
   });
 
-  /** Zuletzt validierte Note (für „Als Nächstes“) */
+  /** Zuletzt freigegebene/validierte Note (für „Als Nächstes“); Student nur FREIGEGEBEN */
   lastValidatedNote = computed(() => {
-    const list = [...this.noten()]
-      .filter(n => n.status === 'VALIDIERT' || n.status === 'FREIGEGEBEN')
-      .sort((a, b) => new Date(b.pruefungsdatum).getTime() - new Date(a.pruefungsdatum).getTime());
+    const list = [...this.notenFuerAnzeige()]
+      .sort((a, b) => new Date(b.pruefungsdatum || 0).getTime() - new Date(a.pruefungsdatum || 0).getTime());
     if (list.length === 0) return null;
     const n = list[0];
     return { modulName: this.getModulName(n.modulId) };
@@ -1997,8 +2093,8 @@ export class DashboardComponent implements OnInit {
   /** Top 2 offene Module mit ECTS/Semester für Hero-Mini-Liste */
   topOpenModulesWithMeta = computed(() => {
     const bestandeneModulIds = new Set(
-      this.noten()
-        .filter(n => n.bestanden === true || n.status === 'FREIGEGEBEN' || n.status === 'VALIDIERT')
+      this.notenFuerAnzeige()
+        .filter(n => n.bestanden === true)
         .map(n => String(n.modulId))
     );
     return this.module()
@@ -2070,22 +2166,29 @@ export class DashboardComponent implements OnInit {
     }
   }
 
-  /** Status-Badge-Klasse pro Modul (Entwurf / Validiert / Freigegeben) – erweiterbar mit Backend */
-  getModulStatusClass(modul: any): string {
-    return (modul?.noteStatus as string)?.toLowerCase() === 'freigegeben' ? 'freigegeben' :
-      (modul?.noteStatus as string)?.toLowerCase() === 'validiert' ? 'validiert' : 'entwurf';
+  openModulDetail(modul: any): void {
+    this.selectedModulDetail.set(modul);
+    this.modulDetailStats.set(null);
+    this.loadingModulDetail.set(true);
+    this.http.get<{ data: any[] }>(`/api/noten/modul/${modul.id}`).subscribe({
+      next: (res) => {
+        const list = res?.data ?? [];
+        const abgeschlossen = new Set(
+          list.filter((n: any) => n.bestanden === true).map((n: any) => String(n.einschreibungId ?? ''))
+        ).size;
+        this.modulDetailStats.set({ abgeschlossen, mitNote: list.length });
+        this.loadingModulDetail.set(false);
+      },
+      error: () => {
+        this.modulDetailStats.set({ abgeschlossen: 0, mitNote: 0 });
+        this.loadingModulDetail.set(false);
+      }
+    });
   }
 
-  getModulStatusLabel(modul: any): string {
-    const s = (modul?.noteStatus as string)?.toUpperCase();
-    if (s === 'FREIGEGEBEN') return 'Freigegeben';
-    if (s === 'VALIDIERT') return 'Validiert';
-    if (s === 'ERFASST') return 'Entwurf';
-    return 'Entwurf';
-  }
-
-  getModulLastChange(modul: any): string {
-    return modul?.lastChangeDate ? new Date(modul.lastChangeDate).toLocaleDateString('de-DE', { day: '2-digit', month: '2-digit', year: 'numeric' }) : '–';
+  closeModulDetail(): void {
+    this.selectedModulDetail.set(null);
+    this.modulDetailStats.set(null);
   }
 
   loadOwnData(): void {
@@ -2322,12 +2425,8 @@ export class DashboardComponent implements OnInit {
     return noteWert.toFixed(1).replace('.', ',');
   }
 
-  getNoteColor(noteWert: number | null): string {
-    if (noteWert === null || noteWert === undefined) return 'muted';
-    if (noteWert <= 1.5) return 'success';
-    if (noteWert <= 2.5) return 'info';
-    if (noteWert <= 3.5) return 'warning';
-    return 'danger';
+  getNoteColor(_noteWert: number | null): string {
+    return 'muted';
   }
 
   getStatusLabel(status: string): string {

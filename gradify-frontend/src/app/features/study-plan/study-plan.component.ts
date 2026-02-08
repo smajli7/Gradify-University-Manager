@@ -223,12 +223,14 @@ const NOTEN_QUERY = gql`
             </button>
             <button type="button" class="legend-item" [class.legend-item--active]="statusFilter() === 'offen'" (click)="setStatusFilter('offen')">
               <span class="legend-dot legend-dot--offen"></span>
-              <span>Offen</span>
+              <span>{{ isStudent() ? 'Nicht angetreten' : 'Offen' }}</span>
             </button>
-            <button type="button" class="legend-item" [class.legend-item--active]="statusFilter() === 'in-bearbeitung'" (click)="setStatusFilter('in-bearbeitung')">
-              <span class="legend-dot legend-dot--in-bearbeitung"></span>
-              <span>In Bearbeitung</span>
-            </button>
+            @if (canSelectStudent()) {
+              <button type="button" class="legend-item" [class.legend-item--active]="statusFilter() === 'in-bearbeitung'" (click)="setStatusFilter('in-bearbeitung')">
+                <span class="legend-dot legend-dot--in-bearbeitung"></span>
+                <span>In Bearbeitung</span>
+              </button>
+            }
             <button type="button" class="legend-item" [class.legend-item--active]="statusFilter() === 'nicht-bestanden'" (click)="setStatusFilter('nicht-bestanden')">
               <span class="legend-dot legend-dot--nicht-bestanden"></span>
               <span>Nicht bestanden</span>
@@ -253,6 +255,7 @@ const NOTEN_QUERY = gql`
                   @for (modul of row.module; track modul.id) {
                     <div 
                       class="module-card module-card--{{ modul.status }}"
+                      [class.module-card--nicht-angetreten]="modul.status === 'nicht-bestanden' && !modul.note"
                       [class.module-card--wahlpflicht]="modul.modultyp === 'WAHLPFLICHT'"
                       [class.module-card--current]="isCurrentSemester(row.semester)"
                       [title]="getModuleTooltip(modul)"
@@ -274,7 +277,7 @@ const NOTEN_QUERY = gql`
                         } @else if (modul.bewertungsart === 'BESTANDEN_NICHT_BESTANDEN' && modul.note?.bestanden) {
                           <span class="module-note module-note--bestanden">✓</span>
                         } @else {
-                          <span class="module-note module-note--empty">—</span>
+                          <span class="module-note module-note--empty">-</span>
                         }
                       </div>
                       
@@ -329,7 +332,9 @@ const NOTEN_QUERY = gql`
             
             <div class="modal-body">
               <!-- Status Display -->
-              <div class="status-display status-display--{{ selectedModul()!.status }}">
+              <div 
+                class="status-display status-display--{{ selectedModul()!.status }}"
+                [class.status-display--nicht-angetreten]="selectedModul()!.status === 'nicht-bestanden' && !selectedModul()!.note">
                 @if (selectedModul()!.note?.noteWert) {
                   <span class="status-note">{{ formatNote(selectedModul()!.note!.noteWert) }}</span>
                 }
@@ -338,7 +343,7 @@ const NOTEN_QUERY = gql`
                     @case ('bestanden') { Bestanden }
                     @case ('nicht-bestanden') { Nicht bestanden }
                     @case ('in-bearbeitung') { In Bearbeitung }
-                    @default { Offen }
+                    @default { {{ isStudent() ? 'Nicht angetreten' : 'Offen' }} }
                   }
                 </span>
               </div>
@@ -763,6 +768,11 @@ const NOTEN_QUERY = gql`
       border-color: rgba(239, 68, 68, 0.6);
     }
 
+    .module-card--nicht-angetreten {
+      background: rgba(128, 128, 128, 0.15);
+      border-color: rgba(128, 128, 128, 0.5);
+    }
+
     .module-card--in-bearbeitung {
       background: rgba(234, 179, 8, 0.12);
       border-color: rgba(234, 179, 8, 0.6);
@@ -1016,6 +1026,11 @@ const NOTEN_QUERY = gql`
     .status-display--nicht-bestanden {
       background: rgba(239, 68, 68, 0.12);
       border: 1px solid rgba(239, 68, 68, 0.55);
+    }
+
+    .status-display--nicht-angetreten {
+      background: rgba(128, 128, 128, 0.15);
+      border: 1px solid rgba(128, 128, 128, 0.5);
     }
 
     .status-display--in-bearbeitung {
@@ -1592,12 +1607,17 @@ export class StudyPlanComponent implements OnInit {
       this.noten.set(noten);
       console.log('Loaded noten:', noten.length);
 
-      // Map modules with notes
+      // Studenten sehen nur freigegebene Noten; Dozent/Prüfungsamt sieht alle
+      const notenFuerStatus = this.isStudent()
+        ? noten.filter(n => n.status === 'FREIGEGEBEN')
+        : noten;
+
+      // Map modules with notes (pro Modul: Note mit höchstem Versuch)
       const moduleList = einschreibungData.einschreibung.pruefungsordnung?.module || [];
       console.log('Loaded module:', moduleList.length);
       const notenMap = new Map<string, Note>();
 
-      for (const note of noten) {
+      for (const note of notenFuerStatus) {
         const key = String(note.modulId ?? '');
         const existing = notenMap.get(key);
         if (!existing || note.versuch > existing.versuch) {
@@ -1605,12 +1625,15 @@ export class StudyPlanComponent implements OnInit {
         }
       }
 
+      // Status: Student nur bestanden / nicht bestanden / offen; Prüfungsamt auch "In Bearbeitung"
+      const nurDreiStatus = this.isStudent();
+
       const moduleMitNoten: ModulMitNote[] = moduleList.map((m: Modul) => {
         const note = notenMap.get(String(m.id ?? ''));
         let status: ModulMitNote['status'] = 'offen';
 
         if (note) {
-          if (note.status === 'ERFASST' || note.status === 'VALIDIERT') {
+          if (!nurDreiStatus && (note.status === 'ERFASST' || note.status === 'VALIDIERT')) {
             status = 'in-bearbeitung';
           } else if (note.bestanden === true) {
             status = 'bestanden';

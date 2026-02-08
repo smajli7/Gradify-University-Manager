@@ -182,7 +182,8 @@ interface StudentWithGrade extends StudentInfo {
             <span class="context-meta">Semester {{ modul.semester }}</span>
           </div>
           <div class="context-right">
-            <input type="date" class="context-date" [ngModel]="globalPruefungsdatum()" (ngModelChange)="setGlobalPruefungsdatum($event)">
+            <label class="context-date-label" title="Standard-Prüfungsdatum für neue/geänderte Noten beim Einreichen">Prüfungsdatum</label>
+            <input type="date" class="context-date" [ngModel]="globalPruefungsdatum()" (ngModelChange)="setGlobalPruefungsdatum($event)" title="Wird beim Einreichen für alle Zeilen ohne eigenes Datum verwendet">
           </div>
         </div>
 
@@ -200,29 +201,31 @@ interface StudentWithGrade extends StudentInfo {
             <div class="action-chips">
               <span class="chip" title="Bereits gespeicherte gültige Noten">Erfasst {{ erfasstCount() }}/{{ students().length }}</span>
               <span class="chip chip--muted" title="Noch ohne Note">Fehlen {{ fehlenCount() }}</span>
-              <span class="chip" [class.chip--warn]="fehlerCount() > 0" title="Zeilen mit ungültiger Note (z. B. außerhalb 1,0–5,0)">Fehler {{ fehlerCount() }}</span>
             </div>
             <div class="action-middle">
               <input type="text" class="filter-search" placeholder="Matrikel / Name" [ngModel]="filterSuche()" (ngModelChange)="setFilterSuche($event)">
               <label class="filter-toggle"><input type="checkbox" [ngModel]="filterNurOffen()" (ngModelChange)="setFilterNurOffen($event)"> Nur offen</label>
-              <label class="filter-toggle" title="Nur Zeilen mit ungültiger Note anzeigen"><input type="checkbox" [ngModel]="filterNurFehler()" (ngModelChange)="setFilterNurFehler($event)"> Nur Fehler</label>
             </div>
             <div class="action-right action-save-group">
-              <span class="action-save-label">Speichern</span>
+              <span class="action-save-label">Einreichen</span>
               @if (changedCount() > 0) {
                 <span class="action-changes">({{ changedCount() }} ungespeichert)</span>
               }
               <button type="button" class="btn btn-primary" (click)="saveAllGrades()" [disabled]="savingAll() || changedCount() === 0">
                 @if (savingAll()) { <span class="spinner-inline"></span> }
-                Alle speichern
+                Alle einreichen
               </button>
               @if (changedCount() === 0 && !savingAll()) {
-                <span class="action-saved">Alles gespeichert</span>
+                <span class="action-saved">Alles eingereicht</span>
               }
               <span class="action-sep"></span>
               <button type="button" class="btn btn-secondary" (click)="openReviewDialog()" [disabled]="fehlerCount() > 0 || fehlenCount() > 0" title="Erst wenn alle Noten erfasst und keine Fehler mehr vorhanden sind">Einreichen</button>
             </div>
           </div>
+          <p class="grade-entry-hint">
+            <span class="grade-entry-hint-icon" aria-hidden="true"><svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round"><path d="M12 6v6m0 4h.01M12 2a10 10 0 1 1 0 20 10 10 0 0 1 0-20z"/></svg></span>
+            Bis zum Einreichen änderbar - danach nur noch über das Prüfungsamt.
+          </p>
 
           <div class="table-wrap">
             <table class="flat-table">
@@ -235,7 +238,6 @@ interface StudentWithGrade extends StudentInfo {
                   <th class="col-versuch">Versuch</th>
                   <th class="col-bemerkung">Bemerkung</th>
                   <th class="col-save"></th>
-                  <th class="col-status"></th>
                 </tr>
               </thead>
               <tbody>
@@ -247,41 +249,51 @@ interface StudentWithGrade extends StudentInfo {
                     <td class="col-matrikel">{{ student.matrikelnummer }}</td>
                     <td class="col-name">{{ student.vorname }} {{ student.nachname }}</td>
                     <td class="col-note">
-                      <select #noteSelect class="note-select" [ngModel]="student.noteWert" (ngModelChange)="onNoteSelectChange(student, $event, i)" (keydown)="onNoteKeydown($event, i)">
-                        <option [ngValue]="null">—</option>
-                        @for (v of notenOptions(); track v) {
-                          <option [ngValue]="v">{{ formatNoteOption(v) }}</option>
-                        }
-                      </select>
+                      @if (canEditNote(student)) {
+                        <select #noteSelect class="note-select" [ngModel]="student.noteWert" (ngModelChange)="onNoteSelectChange(student, $event, i)" (keydown)="onNoteKeydown($event, i)">
+                          <option [ngValue]="null">-</option>
+                          @for (v of notenOptions(); track v) {
+                            <option [ngValue]="v">{{ formatNoteOption(v) }}</option>
+                          }
+                        </select>
+                      } @else {
+                        <span class="note-readonly">{{ student.noteWert != null ? formatNoteOption(student.noteWert) : '-' }}</span>
+                      }
                     </td>
                     <td class="col-versuch">
-                      <select class="versuch-select" [ngModel]="student.versuch" (ngModelChange)="onVersuchChange(student, $event)">
-                        <option [value]="1">1</option>
-                        <option [value]="2">2</option>
-                        <option [value]="3">3</option>
-                      </select>
+                      @if (canEditNote(student)) {
+                        <select class="versuch-select" [ngModel]="student.versuch" (ngModelChange)="onVersuchChange(student, $event)">
+                          <option [value]="1">1</option>
+                          <option [value]="2">2</option>
+                          <option [value]="3">3</option>
+                        </select>
+                      } @else {
+                        <span class="note-readonly">{{ student.versuch ?? '-' }}</span>
+                      }
                     </td>
                     <td class="col-bemerkung">
-                      <input type="text" class="bemerkung-input" [(ngModel)]="student.bemerkung" (ngModelChange)="onGradeChange(student)" placeholder="Optional">
+                      @if (canEditNote(student)) {
+                        <button type="button" class="btn-bemerkung" (click)="openBemerkungPopup(student)" [class.btn-bemerkung--has]="student.bemerkung?.trim()" title="Bemerkung hinzufügen oder bearbeiten">
+                          Bemerkung
+                          @if (student.bemerkung?.trim()) {
+                            <span class="btn-bemerkung-dot" aria-hidden="true"></span>
+                          }
+                        </button>
+                      } @else {
+                        <span class="note-readonly">{{ student.bemerkung || '-' }}</span>
+                      }
                     </td>
                     <td class="col-save">
-                      <button type="button" class="btn-row-save" (click)="saveGrade(student)" [disabled]="student.saving || student.noteWert == null || hasRowError(student)" title="Diese Note speichern">
+                      @if (canEditNote(student)) {
+                      <button type="button" class="btn-row-save" (click)="saveGrade(student)" [disabled]="student.saving || student.noteWert == null || hasRowError(student)" title="Diese Note einreichen">
                         @if (student.saving) {
                           <span class="spinner-tiny"></span>
                         } @else {
-                          Speichern
+                          Einreichen
                         }
                       </button>
-                    </td>
-                    <td class="col-status">
-                      @if (rowStatus(student) === 'error') {
-                        <span class="status-badge status-badge--error" [title]="getRowError(student)">Ungültige Note</span>
-                      }
-                      @if (rowStatus(student) === 'submitted') {
-                        <span class="status-badge status-badge--submitted">Eingereicht</span>
-                      }
-                      @if (rowStatus(student) === 'released') {
-                        <span class="status-badge status-badge--released">Freigegeben</span>
+                      } @else {
+                        <span class="note-readonly" [title]="noteLockedTooltip(student)">Nur Prüfungsamt</span>
                       }
                     </td>
                   </tr>
@@ -293,6 +305,20 @@ interface StudentWithGrade extends StudentInfo {
             <p class="text-muted filter-empty">Keine Einträge für aktuelle Filter.</p>
           }
         }
+      }
+
+      <!-- Bemerkung-Popup -->
+      @if (bemerkungPopupStudent(); as popupStudent) {
+        <div class="dialog-backdrop" (click)="closeBemerkungPopup()">
+          <div class="dialog-card card bemerkung-dialog" (click)="$event.stopPropagation()">
+            <h3 class="dialog-title">Bemerkung – {{ popupStudent.vorname }} {{ popupStudent.nachname }}</h3>
+            <p class="bemerkung-dialog-hint">Die Bemerkung wird erst beim Klick auf „Einreichen“ (Zeile oder „Alle einreichen“) mit übermittelt.</p>
+            <textarea class="bemerkung-textarea" [(ngModel)]="popupStudent.bemerkung" (ngModelChange)="onGradeChange(popupStudent)" placeholder="Optionale Bemerkung …" rows="4"></textarea>
+            <div class="dialog-actions">
+              <button type="button" class="btn btn-primary" (click)="closeBemerkungPopup()">Schließen</button>
+            </div>
+          </div>
+        </div>
       }
 
       <!-- Review-Dialog für Einreichen -->
@@ -612,6 +638,7 @@ interface StudentWithGrade extends StudentInfo {
     .context-modul { font-weight: 600; color: var(--text-primary); font-size: 0.95rem; }
     .context-meta { font-size: 0.8rem; color: var(--text-muted); }
     .context-sep { color: var(--text-muted); font-size: 0.8rem; }
+    .context-date-label { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
     .context-date { padding: 6px 10px; background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; }
 
     .action-bar { position: sticky; top: 0; z-index: 12; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; margin-bottom: 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
@@ -629,6 +656,9 @@ interface StudentWithGrade extends StudentInfo {
     .filter-search { padding: 6px 10px; min-width: 160px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; }
     .filter-toggle { display: flex; align-items: center; gap: 6px; font-size: 0.8rem; color: var(--text-secondary); cursor: pointer; }
     .filter-empty { padding: var(--spacing-lg); text-align: center; }
+    .grade-entry-hint { display: flex; align-items: center; gap: 8px; margin: 0 0 12px 0; padding: 8px 12px; font-size: 0.8rem; color: var(--color-danger, #dc2626); line-height: 1.4; background: rgba(220, 38, 38, 0.08); border-radius: var(--radius-sm); border-left: 3px solid var(--color-danger, #dc2626); }
+    .grade-entry-hint-icon { display: inline-flex; flex-shrink: 0; color: var(--color-danger, #dc2626); }
+    .note-readonly { font-size: 0.875rem; color: var(--text-muted); }
 
     .table-wrap { overflow: auto; max-height: 60vh; border: 1px solid var(--border-color); border-radius: var(--radius-md); }
     .flat-table { width: 100%; border-collapse: collapse; }
@@ -645,7 +675,6 @@ interface StudentWithGrade extends StudentInfo {
     .col-versuch { width: 72px; }
     .col-bemerkung { min-width: 140px; }
     .col-save { width: 90px; }
-    .col-status { width: 90px; text-align: right; }
 
     .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
     .status-dot--open { background: var(--text-muted); opacity: 0.9; }
@@ -664,9 +693,15 @@ interface StudentWithGrade extends StudentInfo {
     .btn-row-save:disabled { opacity: 0.5; cursor: not-allowed; }
     .btn-row-save .spinner-tiny { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border-color); border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 4px; }
 
-    .bemerkung-input { width: 100%; min-width: 120px; padding: 6px 8px; font-size: 0.85rem; background: var(--bg-deep); border: none; border-radius: var(--radius-sm); color: var(--text-primary); }
-    .bemerkung-input::placeholder { color: var(--text-muted); }
-    .bemerkung-input:focus { outline: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.1); }
+    .btn-bemerkung { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; }
+    .btn-bemerkung:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .btn-bemerkung--has { color: var(--text-primary); }
+    .btn-bemerkung-dot { width: 6px; height: 6px; border-radius: 50%; background: var(--color-success, #0d9488); flex-shrink: 0; }
+    .bemerkung-dialog { max-width: 400px; }
+    .bemerkung-dialog-hint { font-size: 0.8rem; color: var(--text-muted); margin: 0 0 var(--spacing-md) 0; }
+    .bemerkung-textarea { width: 100%; padding: 10px 12px; font-size: 0.9rem; background: var(--bg-deep); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); resize: vertical; min-height: 80px; box-sizing: border-box; }
+    .bemerkung-textarea::placeholder { color: var(--text-muted); }
+    .bemerkung-textarea:focus { outline: none; border-color: var(--text-muted); }
 
     .status-badge { font-size: 0.7rem; padding: 2px 6px; border-radius: var(--radius-sm); font-weight: 500; }
     .status-badge--error { background: rgba(220, 38, 38, 0.12); color: var(--color-danger, #dc2626); }
@@ -704,9 +739,9 @@ export class GradeEntryComponent implements OnInit {
   globalPruefungsdatum = signal('');
   defaultVersuch = signal(1);
   filterNurOffen = signal(true);
-  filterNurFehler = signal(false);
   filterSuche = signal('');
   showReviewDialog = signal(false);
+  bemerkungPopupStudent = signal<StudentWithGrade | null>(null);
 
   notenOptions = computed(() => [1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 5.0]);
 
@@ -725,7 +760,6 @@ export class GradeEntryComponent implements OnInit {
       );
     }
     if (this.filterNurOffen()) list = list.filter(s => s.noteWert == null);
-    if (this.filterNurFehler()) list = list.filter(s => this.hasRowError(s));
     const sorted = [...list];
     sorted.sort((a, b) => {
       const aOpen = a.noteWert == null;
@@ -882,7 +916,19 @@ export class GradeEntryComponent implements OnInit {
   setDefaultVersuch(v: number): void { this.defaultVersuch.set(v); }
   setFilterSuche(v: string): void { this.filterSuche.set(v); }
   setFilterNurOffen(v: boolean): void { this.filterNurOffen.set(v); }
-  setFilterNurFehler(v: boolean): void { this.filterNurFehler.set(v); }
+
+  /** Nur im Status ERFASST darf der Dozent die Note bearbeiten; nach Validierung/Freigabe nur Prüfungsamt. */
+  canEditNote(s: StudentWithGrade): boolean {
+    const status = String(s.status ?? '').toUpperCase();
+    return status === 'ERFASST' || status === '';
+  }
+
+  noteLockedTooltip(s: StudentWithGrade): string {
+    const status = String(s.status ?? '').toUpperCase();
+    if (status === 'VALIDIERT') return 'Bereits validiert; Änderung nur über das Prüfungsamt möglich.';
+    if (status === 'FREIGEGEBEN') return 'Bereits freigegeben; nicht mehr änderbar.';
+    return 'Diese Note kann nur noch vom Prüfungsamt geändert werden.';
+  }
 
   hasRowError(s: StudentWithGrade): boolean {
     if (s.noteWert != null) {
@@ -914,7 +960,7 @@ export class GradeEntryComponent implements OnInit {
   statusTooltip(student: any): string {
     const status = this.rowStatus(student);
     if (status === 'error') return this.getRowError(student);
-    const labels: Record<string, string> = { open: 'Offen', unsaved: 'Ungespeichert', saving: 'Speichert…', saved: 'Gespeichert', submitted: 'Eingereicht', released: 'Freigegeben' };
+    const labels: Record<string, string> = { open: 'Offen', unsaved: 'Ungespeichert', saving: 'Wird eingereicht…', saved: 'Eingereicht', submitted: 'Beim Prüfungsamt', released: 'Freigegeben' };
     return labels[status] ?? '';
   }
 
@@ -928,6 +974,9 @@ export class GradeEntryComponent implements OnInit {
     this.onGradeChange(student);
     setTimeout(() => this.focusNextNote(index), 0);
   }
+
+  openBemerkungPopup(student: StudentWithGrade): void { this.bemerkungPopupStudent.set(student); }
+  closeBemerkungPopup(): void { this.bemerkungPopupStudent.set(null); }
 
   openReviewDialog(): void { this.showReviewDialog.set(true); }
   closeReviewDialog(): void { this.showReviewDialog.set(false); }
@@ -1020,7 +1069,7 @@ export class GradeEntryComponent implements OnInit {
 
     } catch (err: any) {
       console.error('Error saving grade:', err);
-      this.toast.error('Fehler beim Speichern: ' + (err.error?.message || err.message || 'Unbekannter Fehler'));
+      this.toast.error('Fehler beim Einreichen: ' + (err.error?.message || err.message || 'Unbekannter Fehler'));
     } finally {
       student.saving = false;
     }

@@ -810,11 +810,7 @@ export class CalculationComponent implements OnInit {
     });
   }
 
-  getGradeColor(noteWert: number | null): string {
-    if (noteWert === null || noteWert === undefined) return 'muted';
-    if (noteWert <= 1.5) return 'success';
-    if (noteWert <= 2.5) return 'info';
-    if (noteWert <= 3.5) return 'warning';
-    return 'danger';
+  getGradeColor(_noteWert: number | null): string {
+    return 'muted';
   }
 }

@@ -1,10 +1,11 @@
-import { Component, OnInit, OnDestroy, ElementRef, ViewChild, AfterViewInit, inject, signal } from '@angular/core';
+import { Component, OnInit, OnDestroy, ElementRef, ViewChild, AfterViewInit, inject, signal, computed, effect } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { FormsModule } from '@angular/forms';
 import { HttpClient } from '@angular/common/http';
 import { Apollo, gql } from 'apollo-angular';
 import { Chart, registerables } from 'chart.js';
 import { firstValueFrom } from 'rxjs';
+import { RouterLink } from '@angular/router';
 import { AuthService } from '../../core/services/auth.service';
 
 // Chart.js registrieren
@@ -44,6 +45,10 @@ const GET_ALL_MODULE = gql`
       modulNr
       name
       ects
+      gewichtung
+      inGesamtnote
+      bewertungsart
+      studiengangKuerzel
     }
   }
 `;
@@ -55,6 +60,10 @@ const GET_DOZENTEN_MODULE = gql`
       modulNr
       name
       ects
+      gewichtung
+      inGesamtnote
+      bewertungsart
+      studiengangKuerzel
     }
   }
 `;
@@ -82,6 +91,10 @@ interface ModulInfo {
   modulNr: string;
   name: string;
   ects: number;
+  gewichtung?: number;
+  inGesamtnote?: boolean;
+  bewertungsart?: string;
+  studiengangKuerzel?: string;
 }
 
 interface Note {
@@ -109,6 +122,7 @@ interface StudiengangStats {
 }
 
 interface ModulStats {
+  modulId?: string;
   modulNr: string;
   name: string;
   totalGrades: number;
@@ -121,183 +135,194 @@ interface ModulStats {
 @Component({
   selector: 'app-stats',
   standalone: true,
-  imports: [CommonModule, FormsModule],
+  imports: [CommonModule, FormsModule, RouterLink],
   template: `
     <div class="stats-page">
+      <!-- Header + Filter -->
       <header class="page-header">
         <div class="header-content">
           <h1>Statistik</h1>
           <p class="subtitle">
             @if (isDozent()) {
-              Auswertungen für Ihre zugewiesenen Module
+              Was muss ich tun? Auswertungen für Ihre zugewiesenen Module
             } @else {
               Auswertungen und Diagramme
             }
           </p>
         </div>
-        <button class="btn btn-primary" (click)="refreshData()" [disabled]="loading()">
-          <span *ngIf="loading()" class="spinner"></span>
-          {{ loading() ? 'Lädt...' : 'Aktualisieren' }}
-        </button>
+        <div class="header-actions">
+          @if (lastUpdate()) {
+            <span class="last-update">Letztes Update: {{ lastUpdate() }}</span>
+          }
+          <div class="export-dropdown">
+            <button type="button" class="btn btn-ghost btn-export" (click)="exportCsv()" [disabled]="loading() || totalGrades() === 0" title="Als CSV exportieren">CSV</button>
+          </div>
+          <button class="btn btn-primary" (click)="refreshData()" [disabled]="loading()">
+            <span *ngIf="loading()" class="spinner"></span>
+            {{ loading() ? 'Lädt...' : 'Aktualisieren' }}
+          </button>
+        </div>
       </header>
+
+      <!-- Filter-Leiste -->
+      <div class="filter-bar card">
+        <div class="filter-row">
+          <label class="filter-label">Studiengang</label>
+          <select class="filter-select" [ngModel]="filterStudiengang()" (ngModelChange)="setFilterStudiengang($event)">
+            <option value="">Alle</option>
+            @for (sg of studiengangOptions(); track sg.kuerzel) {
+              <option [value]="sg.kuerzel">{{ sg.name }} ({{ sg.kuerzel }})</option>
+            }
+          </select>
+          <label class="filter-label">Modul</label>
+          <select class="filter-select" [ngModel]="filterModul()" (ngModelChange)="setFilterModul($event)">
+            <option value="">Alle</option>
+            @for (m of moduleListFilteredByStudiengang(); track m.id) {
+              <option [value]="m.id">{{ m.modulNr }} - {{ m.name }}</option>
+            }
+          </select>
+        </div>
+      </div>
 
       @if (isDozent() && !loading()) {
         <div class="info-banner">
-          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-            <circle cx="12" cy="12" r="10"/>
-            <line x1="12" y1="16" x2="12" y2="12"/>
-            <line x1="12" y1="8" x2="12.01" y2="8"/>
-          </svg>
           <span>Sie sehen nur Statistiken für Ihre zugewiesenen Module</span>
         </div>
       }
 
-      <!-- Kennzahlen-Karten -->
+      <!-- Aktionsbedarf (Dozent: Was muss ich tun?) -->
+      @if (isDozent() && !loading()) {
+        <section class="action-demand section">
+          <h2 class="section-title">Aktionsbedarf</h2>
+          <div class="action-cards">
+            <a routerLink="/grades/entry" class="action-card action-card--primary">
+              <span class="action-card-value">{{ erfasstCount() }}</span>
+              <span class="action-card-label">Zur Validierung bereit (Erfasst)</span>
+              <span class="action-card-cta">Eintragen / Einreichen</span>
+            </a>
+            <a routerLink="/grades/validation" class="action-card action-card--secondary">
+              <span class="action-card-value">{{ validiertCount() }}</span>
+              <span class="action-card-label">Validiert (noch nicht freigegeben)</span>
+              <span class="action-card-cta">Prüfungsamt</span>
+            </a>
+            <div class="action-card action-card--muted">
+              <span class="action-card-value">{{ freigegebenCount() }}</span>
+              <span class="action-card-label">Freigegeben</span>
+              <span class="action-card-cta">Nur Info</span>
+            </div>
+          </div>
+        </section>
+      }
+
+      <!-- KPI-Karten (mit Untertiteln, klickbar) -->
       <section class="kpi-section">
         <div class="kpi-grid">
-          <div class="kpi-card">
-            <div class="kpi-icon students-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-                <circle cx="9" cy="7" r="4"/>
-                <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-                <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-              </svg>
-            </div>
-            <div class="kpi-content">
-              <span class="kpi-value">{{ totalStudents() }}</span>
-              <span class="kpi-label">Studierende</span>
-            </div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-icon grades-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-                <polyline points="14 2 14 8 20 8"/>
-                <line x1="16" y1="13" x2="8" y2="13"/>
-                <line x1="16" y1="17" x2="8" y2="17"/>
-              </svg>
-            </div>
-            <div class="kpi-content">
-              <span class="kpi-value">{{ totalGrades() }}</span>
-              <span class="kpi-label">Erfasste Noten</span>
-            </div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-icon avg-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <line x1="18" y1="20" x2="18" y2="10"/>
-                <line x1="12" y1="20" x2="12" y2="4"/>
-                <line x1="6" y1="20" x2="6" y2="14"/>
-              </svg>
-            </div>
-            <div class="kpi-content">
-              <span class="kpi-value">{{ averageGrade() | number:'1.2-2' }}</span>
-              <span class="kpi-label">Ø Gesamtnote</span>
-            </div>
-          </div>
-
-          <div class="kpi-card">
-            <div class="kpi-icon pass-icon">
-              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                <path d="M22 11.08V12a10 10 0 1 1-5.93-9.14"/>
-                <polyline points="22 4 12 14.01 9 11.01"/>
-              </svg>
-            </div>
-            <div class="kpi-content">
-              <span class="kpi-value">{{ overallPassRate() | number:'1.1-1' }}%</span>
-              <span class="kpi-label">Bestehensquote</span>
-            </div>
-          </div>
+          <button type="button" class="kpi-card" [class.kpi-card--active]="kpiFilter() === 'students'" (click)="setKpiFilter('students')">
+            <span class="kpi-value">{{ totalStudents() }}</span>
+            <span class="kpi-label">Studierende mit Note</span>
+            <span class="kpi-sublabel">in gefilterten Modulen</span>
+          </button>
+          <button type="button" class="kpi-card" [class.kpi-card--active]="kpiFilter() === 'grades'" (click)="setKpiFilter('grades')">
+            <span class="kpi-value">{{ totalGrades() }}</span>
+            <span class="kpi-label">Noten erfasst</span>
+            <span class="kpi-sublabel">Gesamt (Erfasst/Validiert/Freigegeben)</span>
+          </button>
+          <button type="button" class="kpi-card" [class.kpi-card--active]="kpiFilter() === 'avg'" (click)="setKpiFilter('avg')">
+            <span class="kpi-value">{{ averageGrade() | number:'1.2-2' }}</span>
+            <span class="kpi-label">Ø-Note (nach PO gewichtet)</span>
+            <span class="kpi-sublabel">nur Module in Gesamtnote, gewichtet</span>
+          </button>
+          <button type="button" class="kpi-card" [class.kpi-card--active]="kpiFilter() === 'pass'" (click)="setKpiFilter('pass')">
+            <span class="kpi-value">{{ overallPassRate() | number:'1.1-1' }}%</span>
+            <span class="kpi-label">Bestehensquote</span>
+            <span class="kpi-sublabel">bezogen auf erfasste Noten</span>
+          </button>
         </div>
       </section>
 
-      <!-- Validierungsstatus -->
+      <!-- Validierung als Stepper -->
       <section class="validation-section card">
-        <h2>Validierungsstatus</h2>
-        <div class="validation-bars">
-          <div class="validation-item">
-            <div class="validation-header">
-              <span class="validation-label">Erfasst</span>
-              <span class="validation-count">{{ erfasstCount() }} Noten</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill erfasst" [style.width.%]="erfasstPercent()"></div>
-            </div>
+        <h2>Validierungspipeline</h2>
+        <p class="section-subtitle">Erfasst → Validiert → Freigegeben</p>
+        <div class="validation-stepper">
+          <div class="stepper-step">
+            <span class="stepper-dot stepper-dot--erfasst"></span>
+            <span class="stepper-label">Erfasst</span>
+            <span class="stepper-count">{{ erfasstCount() }} ({{ totalGrades() > 0 ? (erfasstPercent() | number:'1.0-0') : 0 }}%)</span>
           </div>
-          <div class="validation-item">
-            <div class="validation-header">
-              <span class="validation-label">Validiert</span>
-              <span class="validation-count">{{ validiertCount() }} Noten</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill validiert" [style.width.%]="validiertPercent()"></div>
-            </div>
+          <div class="stepper-connector"></div>
+          <div class="stepper-step">
+            <span class="stepper-dot stepper-dot--validiert"></span>
+            <span class="stepper-label">Validiert</span>
+            <span class="stepper-count">{{ validiertCount() }} ({{ totalGrades() > 0 ? (validiertPercent() | number:'1.0-0') : 0 }}%)</span>
           </div>
-          <div class="validation-item">
-            <div class="validation-header">
-              <span class="validation-label">Freigegeben</span>
-              <span class="validation-count">{{ freigegebenCount() }} Noten</span>
-            </div>
-            <div class="progress-bar">
-              <div class="progress-fill freigegeben" [style.width.%]="freigegebenPercent()"></div>
-            </div>
+          <div class="stepper-connector"></div>
+          <div class="stepper-step">
+            <span class="stepper-dot stepper-dot--freigegeben"></span>
+            <span class="stepper-label">Freigegeben</span>
+            <span class="stepper-count">{{ freigegebenCount() }} ({{ totalGrades() > 0 ? (freigegebenPercent() | number:'1.0-0') : 0 }}%)</span>
           </div>
         </div>
       </section>
 
-      <!-- Charts Grid -->
-      <section class="charts-section">
-        <div class="charts-grid">
-          <!-- Notenverteilung -->
-          <div class="chart-card card">
-            <h2>Notenverteilung</h2>
-            <div class="chart-container">
-              <canvas #gradeDistributionChart></canvas>
+      <!-- Charts (max 2 nebeneinander) -->
+      @if (!loading() && totalGrades() > 0) {
+        <section class="charts-section">
+          <div class="charts-grid">
+            <div class="chart-card card">
+              <h2>Notenverteilung</h2>
+              <p class="section-subtitle">Bins 1,0–5,0, Grenze Bestanden bei 4,0</p>
+              <div class="chart-container">
+                <canvas #gradeDistributionChart></canvas>
+              </div>
+            </div>
+            <div class="chart-card card chart-card--pie">
+              <h2>Bestanden / Nicht bestanden</h2>
+              <div class="chart-container chart-container-pie">
+                <canvas #passFailChart></canvas>
+              </div>
+            </div>
+            <div class="chart-card card full-width">
+              <h2>Durchschnittsnoten nach Studiengang</h2>
+              <p class="section-subtitle">Skala 1,0–5,0, Ø nach PO gewichtet, sortiert nach Ø-Note</p>
+              <div class="chart-container">
+                <canvas #avgByProgramChart></canvas>
+              </div>
             </div>
           </div>
+        </section>
+      }
 
-          <!-- Bestehensquote -->
-          <div class="chart-card card">
-            <h2>Bestanden / Nicht bestanden</h2>
-            <div class="chart-container chart-container-pie">
-              <canvas #passFailChart></canvas>
-            </div>
-          </div>
+      @if (!loading() && totalGrades() === 0) {
+        <section class="empty-state card">
+          <p class="empty-state-text">Noch keine Noten für diesen Zeitraum / diese Filter.</p>
+          @if (isDozent()) {
+            <a routerLink="/grades/entry" class="btn btn-primary">Noten erfassen</a>
+          }
+        </section>
+      }
 
-          <!-- Durchschnittsnoten pro Studiengang -->
-          <div class="chart-card card full-width">
-            <h2>Durchschnittsnoten nach Studiengang</h2>
-            <div class="chart-container">
-              <canvas #avgByProgramChart></canvas>
-            </div>
-          </div>
-        </div>
-      </section>
-
-      <!-- Studiengänge Übersicht -->
+      <!-- Studiengänge Übersicht (sticky header) -->
       <section class="programs-section card">
         <h2>Studiengänge Übersicht</h2>
-        <div class="table-container">
-          <table class="data-table">
+        <div class="table-wrap">
+          <table class="data-table data-table--sticky">
             <thead>
               <tr>
-                <th>Studiengang</th>
+                <th (click)="sortProgramsBy('name')" class="th-sort">Studiengang</th>
                 <th class="col-center">Kürzel</th>
-                <th class="col-center">Studierende</th>
+                <th class="col-center" (click)="sortProgramsBy('studentCount')">Studierende</th>
                 <th class="col-center">Ø Semester</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let sg of studiengangStats()">
+              <tr *ngFor="let sg of sortedStudiengangStats()" (click)="selectStudiengang(sg.kuerzel)">
                 <td>{{ sg.name }}</td>
                 <td class="col-center"><span class="badge">{{ sg.kuerzel }}</span></td>
                 <td class="col-center">{{ sg.studentCount }}</td>
                 <td class="col-center">{{ sg.avgSemester | number:'1.1-1' }}</td>
               </tr>
-              <tr *ngIf="studiengangStats().length === 0">
+              <tr *ngIf="sortedStudiengangStats().length === 0">
                 <td colspan="4" class="empty-row">Keine Daten verfügbar</td>
               </tr>
             </tbody>
@@ -305,43 +330,47 @@ interface ModulStats {
         </div>
       </section>
 
-      <!-- Module mit niedrigster Bestehensquote -->
+      <!-- Module nach Bestehensquote (Mini-Progress, Badges) -->
       <section class="modules-section card">
         <h2>Module nach Bestehensquote</h2>
-        <p class="section-subtitle">Sortiert nach Bestehensquote (aufsteigend)</p>
-        <div class="table-container">
-          <table class="data-table">
+        <p class="section-subtitle">Ø-Note pro Modul (arithmetisch). Klick auf Zeile für Details.</p>
+        <div class="table-wrap">
+          <table class="data-table data-table--sticky">
             <thead>
               <tr>
                 <th>Modul</th>
-                <th class="col-center">Anzahl Noten</th>
+                <th class="col-center">Noten</th>
                 <th class="col-center">Bestanden</th>
                 <th class="col-center">Nicht bestanden</th>
                 <th class="col-center">Quote</th>
-                <th class="col-center">Ø Note</th>
+                <th class="col-center" title="Ø-Note (arithmetisch pro Modul)">Ø Note</th>
               </tr>
             </thead>
             <tbody>
-              <tr *ngFor="let m of modulStats()">
+              <tr *ngFor="let m of sortedModulStats()" (click)="selectModul(m)">
                 <td>
                   <span class="modul-nr">{{ m.modulNr }}</span>
                   {{ m.name }}
+                  @if (m.passRate < 50 && m.totalGrades > 0) {
+                    <span class="cell-badge cell-badge--warn">Fehlende Noten</span>
+                  }
                 </td>
                 <td class="col-center">{{ m.totalGrades }}</td>
                 <td class="col-center text-success">{{ m.passed }}</td>
                 <td class="col-center text-danger">{{ m.failed }}</td>
                 <td class="col-center">
-                  <span class="pass-rate" [class.low]="m.passRate < 50" [class.medium]="m.passRate >= 50 && m.passRate < 80" [class.high]="m.passRate >= 80">
-                    {{ m.passRate | number:'1.1-1' }}%
-                  </span>
+                  <div class="mini-progress-wrap" title="Bestehensquote {{ m.passRate | number:'1.1-1' }}%">
+                    <div class="mini-progress" [class.low]="m.passRate < 50" [class.medium]="m.passRate >= 50 && m.passRate < 80" [class.high]="m.passRate >= 80">
+                      <div class="mini-progress-fill" [style.width.%]="m.passRate"></div>
+                    </div>
+                    <span class="mini-progress-value">{{ m.passRate | number:'1.0-0' }}%</span>
+                  </div>
                 </td>
                 <td class="col-center">
-                  <span class="grade-badge" [class.good]="m.avgGrade <= 2.0" [class.ok]="m.avgGrade > 2.0 && m.avgGrade <= 3.0" [class.bad]="m.avgGrade > 3.0">
-                    {{ m.avgGrade | number:'1.2-2' }}
-                  </span>
+                  <span class="grade-badge" [class.good]="m.avgGrade <= 2.0" [class.ok]="m.avgGrade > 2.0 && m.avgGrade <= 3.0" [class.bad]="m.avgGrade > 3.0" title="Ø-Note (arithmetisch)">{{ m.avgGrade | number:'1.2-2' }}</span>
                 </td>
               </tr>
-              <tr *ngIf="modulStats().length === 0">
+              <tr *ngIf="sortedModulStats().length === 0">
                 <td colspan="6" class="empty-row">Keine Daten verfügbar</td>
               </tr>
             </tbody>
@@ -376,6 +405,55 @@ interface ModulStats {
       margin: var(--spacing-xs) 0 0 0;
     }
 
+    .header-actions { display: flex; align-items: center; gap: var(--spacing-md); flex-wrap: wrap; }
+    .last-update { font-size: 0.75rem; color: var(--text-muted); }
+    .btn-export { font-size: 0.875rem; }
+    .filter-bar { margin-bottom: var(--spacing-lg); }
+    .filter-row { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-md); }
+    .filter-label { font-size: 0.8rem; color: var(--text-muted); margin-right: 4px; }
+    .filter-select { padding: 6px 10px; background: var(--bg-deep); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.875rem; min-width: 160px; }
+    .section-title { font-size: 1rem; font-weight: 600; color: var(--text-primary); margin: 0 0 var(--spacing-md) 0; }
+    .action-demand { margin-bottom: var(--spacing-xl); }
+    .action-cards { display: flex; flex-wrap: wrap; gap: var(--spacing-md); }
+    .action-card { display: flex; flex-direction: column; padding: var(--spacing-md) var(--spacing-lg); border-radius: var(--radius-md); border: 1px solid rgba(255,255,255,0.12); background: rgba(255,255,255,0.04); text-decoration: none; color: inherit; min-width: 180px; transition: background 0.2s, border-color 0.2s; }
+    .action-card:hover { background: rgba(255,255,255,0.08); border-color: rgba(255,255,255,0.18); }
+    .action-card--primary { border-left: 4px solid rgba(16, 185, 129, 0.9); }
+    .action-card--secondary { border-left: 4px solid rgba(99, 102, 241, 0.7); }
+    .action-card--muted { border-left: 4px solid rgba(255,255,255,0.25); opacity: 0.9; cursor: default; }
+    .action-card-value { font-size: 1.5rem; font-weight: 700; color: var(--text-primary); }
+    .action-card-label { font-size: 0.8rem; color: var(--text-muted); margin-top: 4px; }
+    .action-card-cta { font-size: 0.75rem; color: var(--text-secondary); margin-top: 6px; }
+    .validation-stepper { display: flex; align-items: center; justify-content: center; gap: 0; flex-wrap: wrap; padding: var(--spacing-md) 0; }
+    .stepper-step { display: flex; flex-direction: column; align-items: center; gap: 4px; padding: 0 var(--spacing-md); }
+    .stepper-dot { width: 12px; height: 12px; border-radius: 50%; }
+    .stepper-dot--erfasst { background: linear-gradient(135deg, #6366f1, #818cf8); }
+    .stepper-dot--validiert { background: linear-gradient(135deg, #10b981, #34d399); }
+    .stepper-dot--freigegeben { background: linear-gradient(135deg, #22c55e, #4ade80); }
+    .stepper-label { font-size: 0.8rem; font-weight: 600; color: var(--text-primary); }
+    .stepper-count { font-size: 0.75rem; color: var(--text-muted); }
+    .stepper-connector { width: 40px; height: 2px; background: var(--border-color); }
+    .chart-stack-wrap { margin-bottom: var(--spacing-md); }
+    .chart-stack-bar { display: flex; height: 24px; border-radius: var(--radius-sm); overflow: hidden; background: var(--bg-hover); }
+    .chart-stack-fill { transition: width 0.3s; }
+    .chart-stack--passed { background: rgba(16, 185, 129, 0.8); }
+    .chart-stack--failed { background: rgba(239, 68, 68, 0.8); }
+    .chart-stack-legend { display: flex; gap: var(--spacing-lg); margin-top: 8px; font-size: 0.8rem; color: var(--text-muted); }
+    .mini-progress-wrap { display: flex; align-items: center; gap: 8px; }
+    .mini-progress { flex: 1; min-width: 60px; max-width: 100px; height: 8px; background: var(--bg-hover); border-radius: var(--radius-full); overflow: hidden; }
+    .mini-progress-fill { height: 100%; border-radius: var(--radius-full); transition: width 0.3s; }
+    .mini-progress.low .mini-progress-fill { background: #ef4444; }
+    .mini-progress.medium .mini-progress-fill { background: #f59e0b; }
+    .mini-progress.high .mini-progress-fill { background: #10b981; }
+    .mini-progress-value { font-size: 0.75rem; color: var(--text-muted); min-width: 28px; }
+    .cell-badge { font-size: 0.65rem; padding: 2px 6px; border-radius: var(--radius-sm); margin-left: 6px; }
+    .cell-badge--warn { background: rgba(245, 158, 11, 0.2); color: var(--color-warning, #f59e0b); }
+    .table-wrap { overflow: auto; max-height: 50vh; }
+    .data-table--sticky thead th { position: sticky; top: 0; z-index: 2; background: var(--bg-elevated); }
+    .th-sort { cursor: pointer; user-select: none; }
+    .th-sort:hover { color: var(--text-primary); }
+    .empty-state { text-align: center; padding: var(--spacing-xl); }
+    .empty-state-text { color: var(--text-muted); margin: 0 0 var(--spacing-md) 0; }
+
     .info-banner {
       display: flex;
       align-items: center;
@@ -407,12 +485,24 @@ interface ModulStats {
     }
 
     .btn-primary {
-      background: var(--text-primary);
-      color: white;
+      background: rgba(255,255,255,0.12);
+      color: var(--text-primary);
+      border: 1px solid rgba(255,255,255,0.2);
     }
 
     .btn-primary:hover:not(:disabled) {
-      background: var(--text-secondary);
+      background: rgba(255,255,255,0.18);
+      border-color: rgba(255,255,255,0.28);
+    }
+
+    .btn-ghost {
+      background: transparent;
+      color: var(--text-secondary);
+      border: 1px solid rgba(255,255,255,0.15);
+    }
+    .btn-ghost:hover:not(:disabled) {
+      background: rgba(255,255,255,0.06);
+      border-color: rgba(255,255,255,0.22);
     }
 
     .btn:disabled {
@@ -447,57 +537,26 @@ interface ModulStats {
     .kpi-card {
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
+      border-radius: var(--radius-md);
       padding: var(--spacing-lg);
       display: flex;
-      align-items: center;
-      gap: var(--spacing-md);
-      transition: transform 0.2s, box-shadow 0.2s;
+      flex-direction: column;
+      align-items: flex-start;
+      gap: 4px;
+      transition: background 0.2s, border-color 0.2s;
+      cursor: pointer;
+      text-align: left;
+      min-height: 90px;
     }
 
     .kpi-card:hover {
-      transform: translateY(-2px);
-      box-shadow: 0 4px 12px rgba(0,0,0,0.1);
+      background: var(--bg-hover);
+      border-color: rgba(255,255,255,0.15);
     }
 
-    .kpi-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: var(--radius-md);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .kpi-icon svg {
-      width: 24px;
-      height: 24px;
-    }
-
-    .students-icon {
-      background: rgba(99, 102, 241, 0.1);
-      color: #6366f1;
-    }
-
-    .grades-icon {
-      background: rgba(16, 185, 129, 0.1);
-      color: #10b981;
-    }
-
-    .avg-icon {
-      background: rgba(245, 158, 11, 0.1);
-      color: #f59e0b;
-    }
-
-    .pass-icon {
-      background: rgba(34, 197, 94, 0.1);
-      color: #22c55e;
-    }
-
-    .kpi-content {
-      display: flex;
-      flex-direction: column;
+    .kpi-card--active {
+      border-color: var(--color-success, #10b981);
+      background: rgba(16, 185, 129, 0.06);
     }
 
     .kpi-value {
@@ -509,8 +568,13 @@ interface ModulStats {
 
     .kpi-label {
       font-size: 0.875rem;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .kpi-sublabel {
+      font-size: 0.75rem;
       color: var(--text-muted);
-      margin-top: var(--spacing-xs);
     }
 
     /* Card */
@@ -609,9 +673,18 @@ interface ModulStats {
       position: relative;
     }
 
+    .chart-card--pie {
+      display: flex;
+      flex-direction: column;
+      align-items: center;
+      text-align: center;
+    }
+    .chart-card--pie h2 {
+      margin-bottom: var(--spacing-sm);
+    }
     .chart-container-pie {
-      height: 280px;
-      max-width: 280px;
+      height: 260px;
+      width: 260px;
       margin: 0 auto;
     }
 
@@ -760,40 +833,177 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
   // State
   loading = signal(false);
   isDozent = signal(false);
-  totalStudents = signal(0);
-  totalGrades = signal(0);
-  averageGrade = signal(0);
-  overallPassRate = signal(0);
+  // KPIs aus gefilterten Noten (reagieren auf Filter)
+  totalStudents = computed(() => {
+    const n = this.filteredNoten();
+    return new Set(n.map(x => String(x.einschreibungId ?? ''))).size;
+  });
+  totalGrades = computed(() => this.filteredNoten().length);
+  averageGrade = computed(() => {
+    const gradesForPO = this.filteredNoten().filter(n => this.noteZaehltInGesamtnote(n));
+    if (gradesForPO.length === 0) return 0;
+    const sumWeight = gradesForPO.reduce((acc, n) => acc + this.getGewichtungForNote(n), 0);
+    if (sumWeight <= 0) return gradesForPO.reduce((s, n) => s + (n.noteWert ?? 0), 0) / gradesForPO.length;
+    const sumNoteWeight = gradesForPO.reduce((acc, n) => acc + (n.noteWert ?? 0) * this.getGewichtungForNote(n), 0);
+    return sumNoteWeight / sumWeight;
+  });
+  overallPassRate = computed(() => {
+    const n = this.filteredNoten();
+    if (n.length === 0) return 0;
+    return (n.filter(x => x.bestanden).length / n.length) * 100;
+  });
 
-  // Validation status
-  erfasstCount = signal(0);
-  validiertCount = signal(0);
-  freigegebenCount = signal(0);
-  erfasstPercent = signal(0);
-  validiertPercent = signal(0);
-  freigegebenPercent = signal(0);
+  // Validation status aus gefilterten Noten
+  erfasstCount = computed(() => this.filteredNoten().filter(n => n.status === 'ERFASST').length);
+  validiertCount = computed(() => this.filteredNoten().filter(n => n.status === 'VALIDIERT').length);
+  freigegebenCount = computed(() => this.filteredNoten().filter(n => n.status === 'FREIGEGEBEN').length);
+  erfasstPercent = computed(() => {
+    const t = this.filteredNoten().length;
+    return t === 0 ? 0 : (this.erfasstCount() / t) * 100;
+  });
+  validiertPercent = computed(() => {
+    const t = this.filteredNoten().length;
+    return t === 0 ? 0 : (this.validiertCount() / t) * 100;
+  });
+  freigegebenPercent = computed(() => {
+    const t = this.filteredNoten().length;
+    return t === 0 ? 0 : (this.freigegebenCount() / t) * 100;
+  });
 
   // Data
   studiengangStats = signal<StudiengangStats[]>([]);
-  modulStats = signal<ModulStats[]>([]);
+  passCount = computed(() => this.filteredNoten().filter(n => n.bestanden).length);
+  failCount = computed(() => this.filteredNoten().length - this.passCount());
+  modulStats = computed(() => {
+    const list = this.filteredNoten();
+    const moduleMap = new Map(this.moduleList().map(m => [String(m.id), m]));
+    const statsMap = new Map<string, ModulStats>();
+    for (const note of list) {
+      const key = String(note.modulId ?? '');
+      const modul = moduleMap.get(key);
+      const existing = statsMap.get(key);
+      if (existing) {
+        existing.totalGrades++;
+        if (note.bestanden) existing.passed++; else existing.failed++;
+        const allGrades = list.filter(n => String(n.modulId ?? '') === key && (n.noteWert ?? 0) > 0);
+        existing.avgGrade = allGrades.length > 0 ? allGrades.reduce((s, n) => s + (n.noteWert ?? 0), 0) / allGrades.length : existing.avgGrade;
+        existing.passRate = (existing.passed / existing.totalGrades) * 100;
+      } else {
+        statsMap.set(key, {
+          modulId: key,
+          modulNr: modul?.modulNr || '?',
+          name: modul?.name || 'Unbekanntes Modul',
+          totalGrades: 1,
+          passed: note.bestanden ? 1 : 0,
+          failed: note.bestanden ? 0 : 1,
+          passRate: note.bestanden ? 100 : 0,
+          avgGrade: note.noteWert ?? 0
+        });
+      }
+    }
+    return Array.from(statsMap.values()).filter(m => m.totalGrades > 0).sort((a, b) => a.passRate - b.passRate);
+  });
+  moduleList = signal<ModulInfo[]>([]);
+  lastUpdate = signal<string | null>(null);
+  filterStudiengang = signal('');
+  filterModul = signal('');
+  kpiFilter = signal<string | null>(null);
+  programSort = signal<{ key: string; dir: number }>({ key: 'name', dir: 1 });
+  modulSort = signal<{ key: string; dir: number }>({ key: 'passRate', dir: 1 });
+
+  studiengangOptions = computed(() => this.studiengangStats());
+
+  /** Module für das Modul-Dropdown: nur solche des gewählten Studiengangs (wenn einer gewählt). */
+  moduleListFilteredByStudiengang = computed(() => {
+    const list = this.moduleList();
+    const sg = this.filterStudiengang();
+    if (!sg) return list;
+    return list.filter(m => (m.studiengangKuerzel ?? '') === sg);
+  });
+
+  /** Noten gefiltert nach Studiengang und Modul (für KPIs, Charts, Tabellen). */
+  filteredNoten = computed(() => {
+    const list = this.noten();
+    const sg = this.filterStudiengang();
+    const modulId = this.filterModul();
+    const einschreibungenList = this.einschreibungen();
+    const einschreibungByKuerzel = new Map<string, Set<string>>();
+    for (const e of einschreibungenList) {
+      const k = e.studiengang?.kuerzel ?? '';
+      if (!einschreibungByKuerzel.has(k)) einschreibungByKuerzel.set(k, new Set());
+      einschreibungByKuerzel.get(k)!.add(String(e.id ?? ''));
+    }
+    return list.filter(n => {
+      if (modulId && String(n.modulId ?? '') !== String(modulId)) return false;
+      if (sg) {
+        const ids = einschreibungByKuerzel.get(sg);
+        if (!ids || !ids.has(String(n.einschreibungId ?? ''))) return false;
+      }
+      return true;
+    });
+  });
+
+  sortedStudiengangStats = computed(() => {
+    const list = this.studiengangStats();
+    const sg = this.filterStudiengang();
+    const filtered = sg ? list.filter(s => s.kuerzel === sg) : list;
+    const { key, dir } = this.programSort();
+    return [...filtered].sort((a, b) => {
+      let v = 0;
+      if (key === 'name') v = (a.name || '').localeCompare(b.name || '');
+      else if (key === 'studentCount') v = a.studentCount - b.studentCount;
+      return dir * v;
+    });
+  });
+
+  sortedModulStats = computed(() => {
+    const list = this.modulStats();
+    const modulId = this.filterModul();
+    const filtered = modulId ? list.filter(m => String(m.modulId) === String(modulId)) : list;
+    const { key, dir } = this.modulSort();
+    return [...filtered].sort((a, b) => {
+      let v = 0;
+      if (key === 'passRate') v = a.passRate - b.passRate;
+      else if (key === 'avgGrade') v = a.avgGrade - b.avgGrade;
+      else if (key === 'totalGrades') v = a.totalGrades - b.totalGrades;
+      return dir * v;
+    });
+  });
+
+  passFailPassPercent = computed(() => {
+    const t = this.passCount() + this.failCount();
+    return t === 0 ? 0 : (this.passCount() / t) * 100;
+  });
+  passFailFailPercent = computed(() => {
+    const t = this.passCount() + this.failCount();
+    return t === 0 ? 0 : (this.failCount() / t) * 100;
+  });
 
   // Charts
   private gradeDistributionChart: Chart | null = null;
   private passFailChart: Chart | null = null;
   private avgByProgramChart: Chart | null = null;
 
-  // Raw data
+  // Raw data (noten + einschreibungen als Signale für reaktive Filter)
   private students: StudentInfo[] = [];
-  private einschreibungen: EinschreibungInfo[] = [];
+  noten = signal<Note[]>([]);
+  einschreibungen = signal<EinschreibungInfo[]>([]);
   private module: ModulInfo[] = [];
-  private noten: Note[] = [];
+
+  private readonly chartUpdateEffect = effect(() => {
+    this.filteredNoten();
+    this.filterStudiengang();
+    this.filterModul();
+    if (this.loading() || this.noten().length === 0) return;
+    setTimeout(() => this.initCharts(), 80);
+  });
 
   ngOnInit(): void {
     this.loadData();
   }
 
   ngAfterViewInit(): void {
-    // Charts werden nach Datenladung initialisiert
+    // Charts werden per effect bei Filter-/Datenänderung aktualisiert
   }
 
   ngOnDestroy(): void {
@@ -843,35 +1053,36 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
       ]);
 
       this.students = studentsResult.data?.students || [];
-      this.einschreibungen = einschreibungenResult.data?.einschreibungen || [];
+      this.einschreibungen.set(einschreibungenResult.data?.einschreibungen || []);
       
-      // Module aus der richtigen Query extrahieren
-      if (isDozent) {
-        this.module = (moduleResult.data as any)?.dozentenModule || [];
-      } else {
-        this.module = (moduleResult.data as any)?.module || [];
-      }
-      
+      // Module aus der richtigen Query extrahieren (Backend kann pro Zuweisung Duplikate liefern → nach ID deduplizieren)
+      let rawModule: ModulInfo[] = isDozent
+        ? (moduleResult.data as any)?.dozentenModule || []
+        : (moduleResult.data as any)?.module || [];
+      const seenIds = new Set<string>();
+      this.module = rawModule.filter(m => {
+        const id = String(m?.id ?? '');
+        if (seenIds.has(id)) return false;
+        seenIds.add(id);
+        return true;
+      });
+
       const allNoten = notenResponse?.data || [];
       
       // Für Dozenten: Nur Noten zu ihren Modulen
       if (isDozent && this.module.length > 0) {
         const myModulIds = new Set(this.module.map(m => String(m.id)));
-        this.noten = allNoten.filter(n => myModulIds.has(String(n.modulId ?? '')));
+        this.noten.set(allNoten.filter(n => myModulIds.has(String(n.modulId ?? ''))));
       } else {
-        this.noten = allNoten;
+        this.noten.set(allNoten);
       }
 
-      // Statistiken berechnen
-      this.calculateKPIs();
-      this.calculateValidationStatus();
-      this.calculateStudiengangStats();
-      this.calculateModulStats();
+      this.moduleList.set(this.module);
+      this.lastUpdate.set(new Date().toLocaleString('de-DE', { dateStyle: 'short', timeStyle: 'short' }));
 
-      // Charts aktualisieren
-      setTimeout(() => {
-        this.initCharts();
-      }, 100);
+      this.calculateStudiengangStats();
+
+      setTimeout(() => this.initCharts(), 100);
 
     } catch (error) {
       console.error('Error loading stats data:', error);
@@ -880,52 +1091,44 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
     }
   }
 
-  private calculateKPIs(): void {
-    this.totalStudents.set(this.students.length);
-    this.totalGrades.set(this.noten.length);
-
-    // Durchschnittsnote
-    const gradesWithValue = this.noten.filter(n => n.noteWert > 0);
-    if (gradesWithValue.length > 0) {
-      const sum = gradesWithValue.reduce((acc, n) => acc + n.noteWert, 0);
-      this.averageGrade.set(sum / gradesWithValue.length);
-    } else {
-      this.averageGrade.set(0);
-    }
-
-    // Bestehensquote
-    if (this.noten.length > 0) {
-      const passed = this.noten.filter(n => n.bestanden).length;
-      this.overallPassRate.set((passed / this.noten.length) * 100);
-    } else {
-      this.overallPassRate.set(0);
-    }
+  /**
+   * Prüft, ob eine Note gemäß PO in die Gesamtnote zählt.
+   * Validierungsregeln laut PO:
+   *  1. Nur bestandene Module (Note ≤ 4.0) → bestanden === true
+   *  2. Module mit Gewichtung 0 werden ausgeschlossen
+   *  3. "Bestanden/nicht bestanden" Module werden ausgeschlossen (bewertungsart ≠ NOTE)
+   *  4. inGesamtnote muss true sein
+   */
+  private noteZaehltInGesamtnote(note: Note): boolean {
+    const modul = this.module.find(m => String(m.id) === String(note.modulId));
+    if (!modul) return false;
+    // PO-Regel 4: inGesamtnote
+    if (modul.inGesamtnote === false) return false;
+    // PO-Regel 3: nur NOTE-Module (keine BESTANDEN_NICHT_BESTANDEN)
+    if ((modul.bewertungsart ?? 'NOTE') !== 'NOTE') return false;
+    // PO-Regel 2: Gewichtung > 0
+    const g = typeof modul.gewichtung === 'number' ? modul.gewichtung : 1;
+    if (g <= 0) return false;
+    // PO-Regel 1: nur bestandene (Note ≤ 4.0)
+    if (!note.bestanden) return false;
+    // noteWert muss vorhanden sein
+    if ((note.noteWert ?? 0) <= 0) return false;
+    return true;
   }
 
-  private calculateValidationStatus(): void {
-    const total = this.noten.length;
-    
-    // Status: ERFASST -> VALIDIERT -> FREIGEGEBEN
-    const erfasst = this.noten.filter(n => n.status === 'ERFASST').length;
-    const validiert = this.noten.filter(n => n.status === 'VALIDIERT').length;
-    const freigegeben = this.noten.filter(n => n.status === 'FREIGEGEBEN').length;
-
-    // Anzeige: Erfasst (noch nicht validiert), Validiert (noch nicht freigegeben), Freigegeben
-    this.erfasstCount.set(erfasst);
-    this.validiertCount.set(validiert);
-    this.freigegebenCount.set(freigegeben);
-
-    if (total > 0) {
-      this.erfasstPercent.set((erfasst / total) * 100);
-      this.validiertPercent.set((validiert / total) * 100);
-      this.freigegebenPercent.set((freigegeben / total) * 100);
-    }
+  /** Gewichtung eines Moduls für PO-Berechnung. */
+  private getGewichtungForNote(note: Note): number {
+    const modul = this.module.find(m => String(m.id) === String(note.modulId));
+    if (!modul || !this.noteZaehltInGesamtnote(note)) return 0;
+    const g = modul.gewichtung;
+    return typeof g === 'number' && g > 0 ? g : 0;
   }
 
   private calculateStudiengangStats(): void {
     const statsMap = new Map<string, StudiengangStats>();
+    const list = this.einschreibungen();
 
-    for (const e of this.einschreibungen) {
+    for (const e of list) {
       const key = e.studiengang.id;
       const existing = statsMap.get(key);
 
@@ -941,51 +1144,54 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
         });
       }
     }
-
     this.studiengangStats.set(Array.from(statsMap.values()));
   }
 
-  private calculateModulStats(): void {
-    const statsMap = new Map<string, ModulStats>();
-    const moduleMap = new Map(this.module.map(m => [String(m.id), m]));
-
-    for (const note of this.noten) {
-      const key = String(note.modulId ?? '');
-      const modul = moduleMap.get(key);
-      const existing = statsMap.get(key);
-
-      if (existing) {
-        existing.totalGrades++;
-        if (note.bestanden) {
-          existing.passed++;
-        } else {
-          existing.failed++;
-        }
-        // Recalculate average
-        const allGrades = this.noten.filter(n => String(n.modulId ?? '') === key && n.noteWert > 0);
-        if (allGrades.length > 0) {
-          existing.avgGrade = allGrades.reduce((sum, n) => sum + n.noteWert, 0) / allGrades.length;
-        }
-        existing.passRate = (existing.passed / existing.totalGrades) * 100;
-      } else {
-        statsMap.set(key, {
-          modulNr: modul?.modulNr || '?',
-          name: modul?.name || 'Unbekanntes Modul',
-          totalGrades: 1,
-          passed: note.bestanden ? 1 : 0,
-          failed: note.bestanden ? 0 : 1,
-          passRate: note.bestanden ? 100 : 0,
-          avgGrade: note.noteWert || 0
-        });
-      }
+  setFilterStudiengang(v: string): void {
+    this.filterStudiengang.set(v ?? '');
+    const kuerzel = v ?? '';
+    const allowed = this.moduleList().filter(m => (m.studiengangKuerzel ?? '') === kuerzel);
+    const current = this.filterModul();
+    if (current && kuerzel && !allowed.some(m => String(m.id) === String(current))) {
+      this.filterModul.set('');
     }
+  }
+  setFilterModul(v: string): void { this.filterModul.set(v ?? ''); }
+  setKpiFilter(v: string | null): void { this.kpiFilter.set(v); }
 
-    // Sort by pass rate (ascending - worst first)
-    const sorted = Array.from(statsMap.values())
-      .filter(m => m.totalGrades > 0)
-      .sort((a, b) => a.passRate - b.passRate);
+  sortProgramsBy(key: string): void {
+    const prev = this.programSort();
+    this.programSort.set({ key, dir: prev.key === key ? -prev.dir : 1 });
+  }
 
-    this.modulStats.set(sorted);
+  selectStudiengang(kuerzel: string): void {
+    this.setFilterStudiengang(this.filterStudiengang() === kuerzel ? '' : kuerzel);
+  }
+
+  selectModul(m: ModulStats): void {
+    const id = m.modulId ?? '';
+    this.setFilterModul(this.filterModul() === id ? '' : id);
+  }
+
+  exportCsv(): void {
+    const rows: string[] = ['Modul_Nr;Modul_Name;EinschreibungId;Note;Bestanden;Status'];
+    for (const n of this.filteredNoten()) {
+      const modul = this.module.find(m => String(m.id) === String(n.modulId));
+      rows.push([
+        modul?.modulNr ?? '',
+        modul?.name ?? '',
+        n.einschreibungId ?? '',
+        n.noteWert ?? '',
+        n.bestanden ? 'ja' : 'nein',
+        n.status ?? ''
+      ].join(';'));
+    }
+    const blob = new Blob([rows.join('\n')], { type: 'text/csv;charset=utf-8' });
+    const a = document.createElement('a');
+    a.href = URL.createObjectURL(blob);
+    a.download = `noten_statistik_${new Date().toISOString().slice(0, 10)}.csv`;
+    a.click();
+    URL.revokeObjectURL(a.href);
   }
 
   private initCharts(): void {
@@ -1018,9 +1224,10 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
 
     // Notenverteilung berechnen
     const gradeLabels = ['1.0', '1.3', '1.7', '2.0', '2.3', '2.7', '3.0', '3.3', '3.7', '4.0', '5.0'];
+    const noten = this.filteredNoten();
     const gradeCounts = gradeLabels.map(label => {
       const value = parseFloat(label);
-      return this.noten.filter(n => Math.abs(n.noteWert - value) < 0.05).length;
+      return noten.filter(n => Math.abs((n.noteWert ?? 0) - value) < 0.05).length;
     });
 
     this.gradeDistributionChart = new Chart(ctx, {
@@ -1028,14 +1235,12 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
       data: {
         labels: gradeLabels,
         datasets: [{
-          label: 'Anzahl Noten',
+          label: 'Anzahl',
           data: gradeCounts,
-          backgroundColor: gradeCounts.map((_, i) => {
+          backgroundColor: gradeLabels.map((_, i) => {
             const value = parseFloat(gradeLabels[i]);
-            if (value <= 2.0) return 'rgba(16, 185, 129, 0.8)';
-            if (value <= 3.0) return 'rgba(245, 158, 11, 0.8)';
-            if (value <= 4.0) return 'rgba(249, 115, 22, 0.8)';
-            return 'rgba(239, 68, 68, 0.8)';
+            if (value >= 4.0) return 'rgba(239, 68, 68, 0.85)';
+            return 'rgba(99, 102, 241, 0.7)';
           }),
           borderRadius: 4
         }]
@@ -1044,12 +1249,18 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
         responsive: true,
         maintainAspectRatio: false,
         plugins: {
-          legend: { display: false }
+          legend: { display: false },
+          tooltip: { callbacks: { afterLabel: (ctx: any) => `Anzahl: ${ctx.raw}` } }
         },
         scales: {
+          x: {
+            grid: { display: false },
+            ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 11 } }
+          },
           y: {
             beginAtZero: true,
-            ticks: { stepSize: 1 }
+            ticks: { stepSize: 1, color: 'rgba(255,255,255,0.6)' },
+            grid: { color: 'rgba(255,255,255,0.06)' }
           }
         }
       }
@@ -1062,8 +1273,32 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
     const ctx = this.passFailCanvas.nativeElement.getContext('2d');
     if (!ctx) return;
 
-    const passed = this.noten.filter(n => n.bestanden).length;
-    const failed = this.noten.filter(n => !n.bestanden).length;
+    const noten = this.filteredNoten();
+    const passed = noten.filter(n => n.bestanden).length;
+    const failed = noten.filter(n => !n.bestanden).length;
+
+    const centerPlugin = {
+      id: 'centerNumbers',
+      afterDraw: (chart: Chart) => {
+        if ((chart as any).config?.type !== 'doughnut' || !chart.data.datasets?.[0]?.data?.length) return;
+        const { ctx, chartArea } = chart;
+        if (!chartArea) return;
+        const cx = (chartArea.left + chartArea.right) / 2;
+        const cy = (chartArea.top + chartArea.bottom) / 2;
+        ctx.save();
+        ctx.textAlign = 'center';
+        ctx.textBaseline = 'middle';
+        ctx.fillStyle = 'rgba(255,255,255,0.95)';
+        ctx.font = 'bold 1.25rem sans-serif';
+        ctx.fillText(String(passed), cx, cy - 10);
+        ctx.font = '0.75rem sans-serif';
+        ctx.fillStyle = 'rgba(255,255,255,0.7)';
+        ctx.fillText('Bestanden', cx, cy + 8);
+        ctx.fillText(String(failed), cx, cy + 28);
+        ctx.fillText('Nicht bestanden', cx, cy + 46);
+        ctx.restore();
+      }
+    };
 
     this.passFailChart = new Chart(ctx, {
       type: 'doughnut',
@@ -1071,26 +1306,29 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
         labels: ['Bestanden', 'Nicht bestanden'],
         datasets: [{
           data: [passed, failed],
-          backgroundColor: [
-            'rgba(16, 185, 129, 0.8)',
-            'rgba(239, 68, 68, 0.8)'
-          ],
+          backgroundColor: ['rgba(16, 185, 129, 0.85)', 'rgba(239, 68, 68, 0.85)'],
           borderWidth: 0
         }]
       },
       options: {
+        cutout: '55%',
         responsive: true,
-        maintainAspectRatio: false,
+        maintainAspectRatio: true,
+        layout: { padding: 8 },
         plugins: {
-          legend: {
-            position: 'bottom',
-            labels: {
-              padding: 20,
-              usePointStyle: true
+          legend: { display: false },
+          tooltip: {
+            callbacks: {
+              afterLabel: (ctx: any) => {
+                const total = passed + failed;
+                const pct = total > 0 ? ((ctx.raw / total) * 100).toFixed(1) : '0';
+                return `${ctx.raw} (${pct} %)`;
+              }
             }
           }
         }
-      }
+      } as any,
+      plugins: [centerPlugin]
     });
   }
 
@@ -1101,36 +1339,47 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
     if (!ctx) return;
 
     const stats = this.studiengangStats();
-    
-    // Durchschnittsnote pro Studiengang berechnen
-    const avgByProgram = stats.map(sg => {
-      // Finde alle Einschreibungen für diesen Studiengang
+    const noten = this.filteredNoten();
+    const einschreibungenList = this.einschreibungen();
+    const dataWithAvg: { kuerzel: string; name: string; avg: number; n: number }[] = stats.map(sg => {
       const einschreibungIds = new Set(
-        this.einschreibungen
+        einschreibungenList
           .filter(e => e.studiengang.kuerzel === sg.kuerzel)
           .map(e => String(e.id ?? ''))
       );
-      
-      // Finde alle Noten für diese Einschreibungen
-      const grades = this.noten.filter(n => 
-        einschreibungIds.has(String(n.einschreibungId ?? '')) && n.noteWert > 0
+      const grades = noten.filter(n =>
+        einschreibungIds.has(String(n.einschreibungId ?? '')) && (n.noteWert ?? 0) > 0
       );
-
-      if (grades.length === 0) return 0;
-      return grades.reduce((sum, n) => sum + n.noteWert, 0) / grades.length;
+      // PO-konform: gewichteter Durchschnitt (nur Module mit inGesamtnote + NOTE)
+      let avg = 0;
+      const forPO = grades.filter(n => this.noteZaehltInGesamtnote(n));
+      if (forPO.length > 0) {
+        const sumWeight = forPO.reduce((acc, n) => acc + this.getGewichtungForNote(n), 0);
+        if (sumWeight > 0) {
+          const sumNoteWeight = forPO.reduce(
+            (acc, n) => acc + (n.noteWert ?? 0) * this.getGewichtungForNote(n),
+            0
+          );
+          avg = sumNoteWeight / sumWeight;
+        } else {
+          avg = forPO.reduce((s, n) => s + (n.noteWert ?? 0), 0) / forPO.length;
+        }
+      }
+      return { kuerzel: sg.kuerzel, name: sg.name, avg, n: grades.length };
     });
+    dataWithAvg.sort((a, b) => a.avg - b.avg);
 
     this.avgByProgramChart = new Chart(ctx, {
       type: 'bar',
       data: {
-        labels: stats.map(sg => sg.kuerzel),
+        labels: dataWithAvg.map(d => `${d.kuerzel} (n=${d.n})`),
         datasets: [{
-          label: 'Durchschnittsnote',
-          data: avgByProgram,
-          backgroundColor: avgByProgram.map(avg => {
-            if (avg === 0) return 'rgba(156, 163, 175, 0.5)';
-            if (avg <= 2.0) return 'rgba(16, 185, 129, 0.8)';
-            if (avg <= 3.0) return 'rgba(245, 158, 11, 0.8)';
+          label: 'Ø-Note',
+          data: dataWithAvg.map(d => d.avg),
+          backgroundColor: dataWithAvg.map(d => {
+            if (d.avg === 0) return 'rgba(156, 163, 175, 0.5)';
+            if (d.avg <= 2.0) return 'rgba(16, 185, 129, 0.8)';
+            if (d.avg <= 3.0) return 'rgba(245, 158, 11, 0.8)';
             return 'rgba(239, 68, 68, 0.8)';
           }),
           borderRadius: 4
@@ -1141,13 +1390,19 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
         maintainAspectRatio: false,
         indexAxis: 'y',
         plugins: {
-          legend: { display: false }
+          legend: { display: false },
+          tooltip: { callbacks: { afterLabel: (ctx: any) => `Ø ${ctx.raw?.toFixed(2)} (n=${dataWithAvg[ctx.dataIndex]?.n ?? 0})` } }
         },
         scales: {
           x: {
             min: 1,
             max: 5,
-            reverse: true // Bessere Noten (1.0) rechts
+            ticks: { color: 'rgba(255,255,255,0.6)' },
+            grid: { color: 'rgba(255,255,255,0.06)' }
+          },
+          y: {
+            ticks: { color: 'rgba(255,255,255,0.6)', font: { size: 11 } },
+            grid: { display: false }
           }
         }
       }

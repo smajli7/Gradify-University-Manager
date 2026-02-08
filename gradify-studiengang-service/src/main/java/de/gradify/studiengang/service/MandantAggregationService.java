@@ -126,16 +126,17 @@ public class MandantAggregationService {
 
     private List<Modul> loadDozentenModuleInTenant(String suffix, Long dozentId) {
         JdbcTemplate jdbc = jdbcForSuffix(suffix);
-        List<Long> modulIds = jdbc.queryForList(
+        List<Long> rawIds = jdbc.queryForList(
                 "SELECT modul_id FROM modul_zuweisungen WHERE dozent_id = ?",
                 Long.class,
                 dozentId);
+        List<Long> modulIds = rawIds.stream().distinct().toList();
         if (modulIds.isEmpty()) return List.of();
 
         String placeholders = String.join(",", Collections.nCopies(modulIds.size(), "?"));
         return jdbc.query(
-                "SELECT id, po_id, modul_nr, name, name_en, ects, semester, dauer_semester, pruefungsform, pruefungsdauer, sprache, modultyp, bewertungsart, gewichtung, in_gesamtnote, vorleistung, wahlpflicht_gruppe FROM module WHERE id IN (" + placeholders + ")",
-                (rs, rowNum) -> mapModul(rs),
+                "SELECT m.id, m.po_id, m.modul_nr, m.name, m.name_en, m.ects, m.semester, m.dauer_semester, m.pruefungsform, m.pruefungsdauer, m.sprache, m.modultyp, m.bewertungsart, m.gewichtung, m.in_gesamtnote, m.vorleistung, m.wahlpflicht_gruppe, sg.kuerzel AS studiengang_kuerzel FROM module m JOIN pruefungsordnungen po ON m.po_id = po.id JOIN studiengaenge sg ON po.studiengang_id = sg.id WHERE m.id IN (" + placeholders + ")",
+                (rs, rowNum) -> mapModulWithStudiengang(rs),
                 modulIds.toArray());
     }
 
@@ -164,6 +165,39 @@ public class MandantAggregationService {
                 .inGesamtnote(rs.getBoolean("in_gesamtnote"))
                 .vorleistung(rs.getString("vorleistung"))
                 .wahlpflichtGruppe(rs.getString("wahlpflicht_gruppe"))
+                .build();
+    }
+
+    private Modul mapModulWithStudiengang(java.sql.ResultSet rs) throws java.sql.SQLException {
+        Long poId = rs.getLong("po_id");
+        Pruefungsordnung po = Pruefungsordnung.builder().id(poId).build();
+        String pruefungsformStr = rs.getString("pruefungsform");
+        String modultypStr = rs.getString("modultyp");
+        String bewertungsartStr = rs.getString("bewertungsart");
+        String spracheStr = rs.getString("sprache");
+        String studiengangKuerzel = null;
+        try {
+            studiengangKuerzel = rs.getString("studiengang_kuerzel");
+        } catch (java.sql.SQLException ignored) { /* Spalte fehlt bei alter Query */ }
+        return Modul.builder()
+                .id(rs.getLong("id"))
+                .pruefungsordnung(po)
+                .modulNr(rs.getString("modul_nr"))
+                .name(rs.getString("name"))
+                .nameEn(rs.getString("name_en"))
+                .ects(rs.getInt("ects"))
+                .semester(rs.getString("semester"))
+                .dauerSemester(rs.getInt("dauer_semester"))
+                .pruefungsform(pruefungsformStr != null ? Modul.Pruefungsform.valueOf(pruefungsformStr) : Modul.Pruefungsform.KLAUSUR)
+                .pruefungsdauer(rs.getString("pruefungsdauer"))
+                .sprache(spracheStr != null ? Modul.Sprache.valueOf(spracheStr) : Modul.Sprache.DEUTSCH)
+                .modultyp(modultypStr != null ? Modul.Modultyp.valueOf(modultypStr) : Modul.Modultyp.PFLICHT)
+                .bewertungsart(bewertungsartStr != null ? Modul.Bewertungsart.valueOf(bewertungsartStr) : Modul.Bewertungsart.NOTE)
+                .gewichtung(BigDecimal.valueOf(rs.getDouble("gewichtung")))
+                .inGesamtnote(rs.getBoolean("in_gesamtnote"))
+                .vorleistung(rs.getString("vorleistung"))
+                .wahlpflichtGruppe(rs.getString("wahlpflicht_gruppe"))
+                .studiengangKuerzel(studiengangKuerzel)
                 .build();
     }
 

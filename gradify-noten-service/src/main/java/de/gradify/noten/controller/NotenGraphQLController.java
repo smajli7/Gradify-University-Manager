@@ -11,6 +11,8 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.Argument;
 import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
+import org.springframework.security.core.Authentication;
+import org.springframework.security.core.context.SecurityContextHolder;
 import org.springframework.stereotype.Controller;
 
 import java.math.BigDecimal;
@@ -170,7 +172,8 @@ public class NotenGraphQLController {
             request.setKommentar((String) input.get("kommentar"));
         }
 
-        notenService.updateNote(Long.parseLong(id), request);
+        Long currentUserId = resolveCurrentUserId();
+        notenService.updateNote(Long.parseLong(id), request, currentUserId);
         return noteRepository.findById(Long.parseLong(id)).orElse(null);
     }
 
@@ -192,7 +195,8 @@ public class NotenGraphQLController {
     public Note releaseNote(@Argument("id") String id) {
         log.info("GraphQL: Releasing note: {}", id);
 
-        notenService.releaseNote(Long.parseLong(id));
+        Long currentUserId = resolveCurrentUserId();
+        notenService.releaseNote(Long.parseLong(id), currentUserId);
         return noteRepository.findById(Long.parseLong(id)).orElse(null);
     }
 
@@ -202,6 +206,24 @@ public class NotenGraphQLController {
     @MutationMapping
     public Boolean deleteNote(@Argument("id") String id) {
         log.info("GraphQL: Deleting note: {}", id);
-        return notenService.deleteNote(Long.parseLong(id));
+        Long currentUserId = resolveCurrentUserId();
+        return notenService.deleteNote(Long.parseLong(id), currentUserId);
+    }
+
+    /**
+     * Ermittelt die User-ID aus dem SecurityContext (JWT).
+     */
+    private Long resolveCurrentUserId() {
+        Authentication auth = SecurityContextHolder.getContext().getAuthentication();
+        if (auth == null || auth.getPrincipal() == null || !auth.isAuthenticated()
+                || "anonymousUser".equals(auth.getPrincipal())) {
+            return 0L;
+        }
+        try {
+            return Long.parseLong(auth.getPrincipal().toString());
+        } catch (NumberFormatException e) {
+            log.warn("Could not parse user ID from principal: {}", auth.getPrincipal());
+            return 0L;
+        }
     }
 }

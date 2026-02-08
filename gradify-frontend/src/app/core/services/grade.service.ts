@@ -157,15 +157,10 @@ export class GradeService {
   }
 
   /**
-   * Note-Farbe basierend auf Wert
+   * Note-Farbe: einheitlich grau (keine Bewertungsfarben nach Wert)
    */
-  getNoteColor(noteWert: number | undefined): string {
-    if (noteWert === undefined || noteWert === null) return 'muted';
-    if (noteWert <= 1.5) return 'success';
-    if (noteWert <= 2.5) return 'info';
-    if (noteWert <= 3.5) return 'warning';
-    if (noteWert <= 4.0) return 'caution';
-    return 'danger';
+  getNoteColor(_noteWert: number | undefined): string {
+    return 'muted';
   }
 
   /**

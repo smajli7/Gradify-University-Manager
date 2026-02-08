@@ -74,6 +74,10 @@ public class Modul {
     @Column(length = 20)
     private String wahlpflichtGruppe;
 
+    /** Nur für GraphQL/Aggregation: Kuerzel des zugehörigen Studiengangs (Modul -> PO -> Studiengang). */
+    @Transient
+    private String studiengangKuerzel;
+
     public enum Pruefungsform {
         KLAUSUR,
         HAUSARBEIT,

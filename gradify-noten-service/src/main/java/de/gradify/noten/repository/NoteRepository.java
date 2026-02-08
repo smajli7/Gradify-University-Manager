@@ -16,6 +16,8 @@ public interface NoteRepository extends JpaRepository<Note, Long> {
 
     List<Note> findByModulId(Long modulId);
 
+    List<Note> findByModulIdIn(List<Long> modulIds);
+
     Optional<Note> findByEinschreibungIdAndModulIdAndVersuch(Long einschreibungId, Long modulId, int versuch);
 
     @Query("SELECT n FROM Note n WHERE n.einschreibungId = :einschreibungId AND n.modulId = :modulId ORDER BY n.versuch DESC")

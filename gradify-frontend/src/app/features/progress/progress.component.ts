@@ -34,7 +34,7 @@ const GET_EINSCHREIBUNGEN_QUERY = gql`
   }
 `;
 
-// Query für Fortschrittsdaten (Studiengang-Service)
+// Query für Fortschrittsdaten (Studiengang-Service) – ohne Module (werden separat geladen)
 const PROGRESS_EINSCHREIBUNG_QUERY = gql`
   query GetProgressData($einschreibungId: ID!) {
     einschreibung(id: $einschreibungId) {
@@ -52,15 +52,6 @@ const PROGRESS_EINSCHREIBUNG_QUERY = gql`
       pruefungsordnung {
         id
         version
-        module {
-          id
-          modulNr
-          name
-          ects
-          semester
-          gewichtung
-          inGesamtnote
-        }
       }
     }
   }
@@ -76,6 +67,21 @@ const PROGRESS_NOTEN_QUERY = gql`
       bestanden
       status
       pruefungsdatum
+    }
+  }
+`;
+
+// Module separat laden (Studiengang-Service) – zuverlässiger als verschachtelte Auflösung
+const PROGRESS_MODULE_QUERY = gql`
+  query GetModuleForProgress($studiengangId: ID, $poId: ID) {
+    module(studiengangId: $studiengangId, poId: $poId) {
+      id
+      modulNr
+      name
+      ects
+      semester
+      gewichtung
+      inGesamtnote
     }
   }
 `;
@@ -102,7 +108,7 @@ interface SemesterProgress {
   durchschnitt: number | null;
 }
 
-export type ModulStatus = 'offen' | 'in-bearbeitung' | 'bestanden' | 'nicht-bestanden';
+export type ModulStatus = 'offen' | 'bestanden' | 'nicht-bestanden';
 
 interface ModulWithStatus {
   id: string;
@@ -222,7 +228,7 @@ interface RoadmapSemester {
           <div class="progress-sticky-actions">
             <button type="button" class="filter-chip" [class.filter-chip--active]="filterStatus() === 'all'" (click)="filterStatus.set('all')">Alle</button>
             <button type="button" class="filter-chip" [class.filter-chip--active]="filterStatus() === 'offen'" (click)="filterStatus.set('offen')">Nur offen</button>
-            <button type="button" class="filter-chip" [class.filter-chip--active]="filterStatus() === 'in-bearbeitung'" (click)="filterStatus.set('in-bearbeitung')">In Bearbeitung</button>
+            <button type="button" class="filter-chip" [class.filter-chip--active]="filterStatus() === 'bestanden'" (click)="filterStatus.set('bestanden')">Bestanden</button>
             <a routerLink="/study-plan" class="btn btn--primary btn--sm">Plan ansehen</a>
           </div>
         </header>
@@ -268,8 +274,8 @@ interface RoadmapSemester {
                         <li class="roadmap-module-row" (click)="selectedModul.set(m)">
                           <span class="roadmap-module-name">{{ m.name }}</span>
                           <span class="roadmap-module-ects">{{ m.ects }} ECTS</span>
-                          <span class="roadmap-module-status roadmap-module-status--{{ m.status }}">{{ m.status === 'bestanden' ? '✓' : m.status === 'offen' ? '○' : m.status === 'in-bearbeitung' ? '…' : '✕' }}</span>
-                          <span class="roadmap-module-note">{{ m.noteWert != null ? (m.noteWert | number:'1.1-1') : '—' }}</span>
+                          <span class="roadmap-module-status roadmap-module-status--{{ m.status }}">{{ m.status === 'bestanden' ? '✓' : m.status === 'offen' ? '○' : '✕' }}</span>
+                          <span class="roadmap-module-note">{{ m.noteWert != null ? (m.noteWert | number:'1.1-1') : '-' }}</span>
                           <span class="roadmap-module-arrow">›</span>
                         </li>
                         }
@@ -316,7 +322,7 @@ interface RoadmapSemester {
               </div>
               <div class="side-panel-body">
                 <p class="side-panel-meta">{{ modul.modulNr }} · {{ modul.ects }} ECTS · {{ modul.semester }}. Sem</p>
-                <p class="side-panel-status">Status: {{ modul.status === 'bestanden' ? 'Bestanden' : modul.status === 'offen' ? 'Offen' : modul.status === 'in-bearbeitung' ? 'In Bearbeitung' : 'Nicht bestanden' }}</p>
+                <p class="side-panel-status">Status: {{ modul.status === 'bestanden' ? 'Bestanden' : modul.status === 'offen' ? 'Offen' : 'Nicht bestanden' }}</p>
                 @if (modul.noteWert != null) {
                   <p class="side-panel-note">Note: {{ modul.noteWert | number:'1.1-1' }}</p>
                 }
@@ -925,7 +931,15 @@ export class ProgressComponent implements OnInit {
     return typeof v === 'number' ? v : Number(v) || 0;
   }
 
-  /** Gesamt-ECTS: bevorzugt Summe der PO-Module (wie in Roadmap), sonst Studiengang. */
+  /**
+   * Nur freigegebene Noten zählen für den Studienfortschritt.
+   * ERFASST/VALIDIERT sind Zwischenstände, die der Student nicht sieht.
+   */
+  freigegebeneNoten = computed(() =>
+    this.noten().filter(n => n.status === 'FREIGEGEBEN')
+  );
+
+  /** Gesamt-ECTS: bevorzugt Summe der PO-Module, sonst aus Studiengang. */
   totalEcts = computed(() => {
     const mods = this.module();
     if (mods.length > 0) {
@@ -936,9 +950,12 @@ export class ProgressComponent implements OnInit {
   });
   totalModules = computed(() => this.module().length);
 
+  /** IDs der Module, die offiziell bestanden sind (nur FREIGEGEBEN). */
   bestandenModulIds = computed(() => {
     return new Set(
-      this.noten().filter(n => n.bestanden === true).map(n => String(n.modulId ?? ''))
+      this.freigegebeneNoten()
+        .filter(n => n.bestanden === true && n.modulId != null)
+        .map(n => String(n.modulId))
     );
   });
 
@@ -954,8 +971,7 @@ export class ProgressComponent implements OnInit {
   progressPercent = computed(() => {
     const total = this.totalEcts();
     if (total <= 0) return 0;
-    const achieved = this.ectsErreicht();
-    return Math.min(100, (achieved / total) * 100);
+    return Math.min(100, (this.ectsErreicht() / total) * 100);
   });
   
   progressOffset = computed(() => {
@@ -964,33 +980,33 @@ export class ProgressComponent implements OnInit {
   });
   
   durchschnitt = computed(() => {
-    const bewertet = this.noten().filter(n => n.noteWert !== null && n.bestanden === true);
+    const bewertet = this.freigegebeneNoten().filter(n => n.noteWert != null && n.bestanden === true);
     if (bewertet.length === 0) return 0;
     const sum = bewertet.reduce((acc, n) => acc + n.noteWert, 0);
     return sum / bewertet.length;
   });
   
-  inProgressCount = computed(() => {
-    return this.noten().filter(n => n.status === 'ERFASST' || n.status === 'VALIDIERT').length;
-  });
+  /** Nicht bestanden: freigegebene Note mit bestanden === false. */
+  nichtBestandenCount = computed(() =>
+    this.freigegebeneNoten().filter(n => n.bestanden === false).length
+  );
   
-  nichtBestandenCount = computed(() => {
-    return this.noten().filter(n => n.bestanden === false).length;
-  });
-  
+  /** Offen: Module, die noch KEINE freigegebene Note haben. */
   offenCount = computed(() => {
-    const modulMitNote = new Set(this.noten().map(n => String(n.modulId ?? '')));
-    return this.module().filter(m => !modulMitNote.has(String(m.id ?? ''))).length;
+    const modulMitFreigegebenerNote = new Set(
+      this.freigegebeneNoten().map(n => String(n.modulId ?? ''))
+    );
+    return this.module().filter(m => !modulMitFreigegebenerNote.has(String(m.id ?? ''))).length;
   });
   
   bestandenPercent = computed(() => (this.bestandenCount() / Math.max(this.totalModules(), 1)) * 100);
-  inProgressPercent = computed(() => (this.inProgressCount() / Math.max(this.totalModules(), 1)) * 100);
-  offenPercent = computed(() => (this.offenCount() / Math.max(this.totalModules(), 1)) * 100);
   nichtBestandenPercent = computed(() => (this.nichtBestandenCount() / Math.max(this.totalModules(), 1)) * 100);
+  offenPercent = computed(() => (this.offenCount() / Math.max(this.totalModules(), 1)) * 100);
   
   semesterProgress = computed((): SemesterProgress[] => {
     const moduleList = this.module();
-    const notenMap = new Map(this.noten().map(n => [String(n.modulId ?? ''), n]));
+    // Nur freigegebene Noten für Fortschritt
+    const notenMap = new Map(this.freigegebeneNoten().map(n => [String(n.modulId ?? ''), n]));
     const regelzeit = this.regelstudienzeit();
     
     const result: SemesterProgress[] = [];
@@ -1045,11 +1061,13 @@ export class ProgressComponent implements OnInit {
     return this.ectsErreicht() / sem;
   });
 
-  /** Module mit Status für Roadmap & Next Actions */
+  /** Module mit Status für Roadmap & Next Actions (nur freigegebene Noten). */
   modulesWithStatus = computed((): ModulWithStatus[] => {
     const moduleList = this.module();
-    const notenList = this.noten();
-    const notenByModul = new Map(notenList.map(n => [String(n.modulId ?? ''), n]));
+    // Nur freigegebene Noten bestimmen den Status
+    const notenByModul = new Map(
+      this.freigegebeneNoten().map(n => [String(n.modulId ?? ''), n])
+    );
     return moduleList.map(m => {
       const n = notenByModul.get(String(m.id ?? ''));
       let status: ModulStatus = 'offen';
@@ -1058,7 +1076,6 @@ export class ProgressComponent implements OnInit {
         noteWert = n.noteWert ?? null;
         if (n.bestanden === true) status = 'bestanden';
         else if (n.bestanden === false) status = 'nicht-bestanden';
-        else if (n.status === 'ERFASST' || n.status === 'VALIDIERT') status = 'in-bearbeitung';
       }
       return {
         id: String(m.id ?? ''),
@@ -1101,7 +1118,7 @@ export class ProgressComponent implements OnInit {
   /** Top 3 „Next Actions“: Offen + In Bearbeitung, nach ECTS absteigend */
   nextActions = computed((): ModulWithStatus[] => {
     return [...this.modulesWithStatus()]
-      .filter(m => m.status === 'offen' || m.status === 'in-bearbeitung')
+      .filter(m => m.status === 'offen')
       .sort((a, b) => (b.ects ?? 0) - (a.ects ?? 0))
       .slice(0, 3);
   });
@@ -1120,7 +1137,7 @@ export class ProgressComponent implements OnInit {
 
   /** Notenverlauf für Mini-Sparkline (z. B. letzte 10 Noten nach Datum) */
   noteTrendData = computed(() => {
-    const noten = [...this.noten()].filter((n): n is typeof n & { noteWert: number } => n.noteWert != null);
+    const noten = [...this.freigegebeneNoten()].filter((n): n is typeof n & { noteWert: number } => n.noteWert != null);
     return noten
       .slice()
       .sort((a, b) => (b.pruefungsdatum ?? '').localeCompare(a.pruefungsdatum ?? ''))
@@ -1133,7 +1150,7 @@ export class ProgressComponent implements OnInit {
   roadmapExpandedSemester = signal<number | null>(null);
 
   // Filter/Sort (für spätere Nutzung)
-  filterStatus = signal<'all' | 'offen' | 'in-bearbeitung'>('all');
+  filterStatus = signal<'all' | 'offen' | 'bestanden'>('all');
   filterSemester = signal<number | 'all'>('all');
 
   // Side-Panel: ausgewähltes Modul
@@ -1303,81 +1320,108 @@ export class ProgressComponent implements OnInit {
     this.error.set(null);
     this.dataLoaded.set(false);
 
-    const einschreibungQuery = this.apollo.query<any>({
+    // ── Schritt 1: Einschreibung + Noten parallel laden ──────────────
+    const einschreibungQuery = firstValueFrom(this.apollo.query<any>({
       query: PROGRESS_EINSCHREIBUNG_QUERY,
       variables: { einschreibungId: this.selectedEinschreibung },
       fetchPolicy: 'network-only',
       errorPolicy: 'all'
+    })).catch(err => {
+      console.error('[Progress] Einschreibung Query Error:', err);
+      return { data: null, errors: [{ message: err.message || 'Unbekannter Fehler' }] } as any;
     });
 
-    const notenQuery = this.apollo.query<any>({
+    const notenQuery = firstValueFrom(this.apollo.query<any>({
       query: PROGRESS_NOTEN_QUERY,
       variables: { einschreibungId: this.selectedEinschreibung },
       context: { clientName: 'noten' },
       fetchPolicy: 'network-only',
       errorPolicy: 'all'
+    })).catch(err => {
+      console.error('[Progress] Noten Query Error:', err);
+      return { data: { notenByStudent: [] }, errors: [] } as any;
     });
 
-    Promise.all([
-      firstValueFrom(einschreibungQuery).catch(err => {
-        console.error('Einschreibung Query Error:', err);
-        return { data: null, errors: [{ message: err.message || 'Unbekannter Fehler' }] };
-      }),
-      firstValueFrom(notenQuery).catch(err => {
-        console.error('Noten Query Error:', err);
-        return { data: { notenByStudent: [] }, errors: [] };
-      })
-    ]).then(([einschreibungResult, notenResult]) => {
-      console.log('Progress Einschreibung Result:', einschreibungResult);
-      console.log('Progress Noten Result:', notenResult);
-      
-      // Prüfe auf GraphQL-Fehler
-      if (einschreibungResult.errors && einschreibungResult.errors.length > 0) {
-        console.error('GraphQL Errors (Einschreibung):', einschreibungResult.errors);
-        this.error.set(`Fehler beim Laden der Einschreibung: ${einschreibungResult.errors[0].message}`);
-        this.loading.set(false);
-        return;
-      }
-
-      if (notenResult.errors && notenResult.errors.length > 0) {
-        console.warn('GraphQL Errors (Noten):', notenResult.errors);
-        // Noten-Fehler sind nicht kritisch
-      }
-
+    Promise.all([einschreibungQuery, notenQuery]).then(async ([einschreibungResult, notenResult]) => {
+      // ── Einschreibung auswerten ────────────────────────────────────
       const data = einschreibungResult?.data?.einschreibung;
-      
       if (!data) {
-        this.error.set('Einschreibung nicht gefunden');
+        const msg = einschreibungResult?.errors?.[0]?.message || 'Einschreibung nicht gefunden';
+        console.error('[Progress] Einschreibung fehlt:', msg);
+        this.error.set(msg);
         this.loading.set(false);
         return;
       }
-
       this.einschreibung.set(data);
-      
-      // Module aus Prüfungsordnung laden (kann null sein)
-      const moduleList = data.pruefungsordnung?.module || [];
-      console.log('Loaded modules from PO:', moduleList.length);
-      this.module.set(moduleList);
-      
-      // Noten laden
-      const notenList = notenResult?.data?.notenByStudent || [];
-      console.log('Loaded noten:', notenList.length);
+
+      // ── Noten setzen ───────────────────────────────────────────────
+      const notenList: any[] = notenResult?.data?.notenByStudent || [];
       this.noten.set(notenList);
-      
+
+      // ── Schritt 2: Module separat laden (nicht nested) ─────────────
+      // Primär über poId, Fallback über studiengangId.
+      // Eigene Top-Level-Query ist zuverlässiger als die verschachtelte
+      // Lazy-Auflösung über pruefungsordnung.module.
+      const poId = data.poId ?? data.pruefungsordnung?.id;
+      const sgId = data.studiengang?.id;
+
+      let moduleList: any[] = [];
+      try {
+        // Versuch 1: per poId
+        if (poId) {
+          const res = await firstValueFrom(this.apollo.query<{ module: any[] }>({
+            query: PROGRESS_MODULE_QUERY,
+            variables: { poId: String(poId) },
+            context: { clientName: 'studiengang' },
+            fetchPolicy: 'network-only',
+            errorPolicy: 'all'
+          }));
+          moduleList = res?.data?.module ?? [];
+        }
+        // Versuch 2: per studiengangId (greift auf aktuelle PO im Backend)
+        if (moduleList.length === 0 && sgId) {
+          console.warn('[Progress] Module per poId leer – versuche über studiengangId', sgId);
+          const res = await firstValueFrom(this.apollo.query<{ module: any[] }>({
+            query: PROGRESS_MODULE_QUERY,
+            variables: { studiengangId: String(sgId) },
+            context: { clientName: 'studiengang' },
+            fetchPolicy: 'network-only',
+            errorPolicy: 'all'
+          }));
+          moduleList = res?.data?.module ?? [];
+        }
+      } catch (e) {
+        console.error('[Progress] Module laden fehlgeschlagen:', e);
+      }
+
+      this.module.set(moduleList);
+
+      // ── Diagnostik ─────────────────────────────────────────────────
+      const freigegebene = notenList.filter(n => n.status === 'FREIGEGEBEN');
+      const bestandenIds = new Set(
+        freigegebene.filter(n => n.bestanden === true).map(n => String(n.modulId))
+      );
+      const matchedModules = moduleList.filter(m => bestandenIds.has(String(m.id)));
+      const ectsSum = matchedModules.reduce((s, m) => s + (Number(m.ects) || 0), 0);
+
+      console.log('[Progress] ──────────────────────────────────────');
+      console.log('[Progress] poId:', poId, '| studiengangId:', sgId);
+      console.log('[Progress] Module geladen:', moduleList.length);
+      console.log('[Progress] Noten gesamt:', notenList.length, '| davon FREIGEGEBEN:', freigegebene.length);
+      console.log('[Progress] Bestanden modulIds:', [...bestandenIds]);
+      console.log('[Progress] Match:', matchedModules.length, 'Module →', ectsSum, 'ECTS');
+      console.log('[Progress] ──────────────────────────────────────');
+
       this.dataLoaded.set(true);
       this.loading.set(false);
-    }).catch((err) => {
-      console.error('Error loading progress data:', err);
+    }).catch(err => {
+      console.error('[Progress] Unerwarteter Fehler:', err);
       this.error.set(`Fehler beim Laden der Daten: ${err.message || 'Unbekannter Fehler'}`);
       this.loading.set(false);
     });
   }
 
-  getGradeColor(noteWert: number | null): string {
-    if (noteWert === null || noteWert === undefined || noteWert === 0) return 'muted';
-    if (noteWert <= 1.5) return 'success';
-    if (noteWert <= 2.5) return 'info';
-    if (noteWert <= 3.5) return 'warning';
-    return 'danger';
+  getGradeColor(_noteWert: number | null): string {
+    return 'muted';
   }
 }

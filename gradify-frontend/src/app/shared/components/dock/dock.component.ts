@@ -28,7 +28,7 @@ export interface DockItem {
               class="sidebar-item"
               [routerLink]="item.route"
               routerLinkActive="sidebar-item--active"
-              [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/admin' || item.route === '/todos' }"
+              [routerLinkActiveOptions]="{ exact: item.route === '/dashboard' || item.route === '/admin' }"
               [title]="item.label">
               
               <div class="sidebar-icon">
@@ -303,7 +303,7 @@ export class DockComponent {
 
   /** Gruppierung für Sidebar: Studium / Leistung / Konto etc. */
   get groupedItems(): { section: string; items: DockItem[] }[] {
-    const order = ['', 'Studium', 'Leistung', 'Verwaltung', 'Akademisch', 'Lehre', 'LEHRE', 'Konto'];
+    const order = ['Prüfungsamt', '', 'Studium', 'Leistung', 'Verwaltung', 'Akademisch', 'Lehre', 'LEHRE', 'Konto'];
     const map = new Map<string, DockItem[]>();
     for (const item of this.visibleItems) {
       const s = item.section ?? '';

@@ -42,6 +42,8 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         ParsedToken parsed = GradifyTokenParser.parseAndValidate(token);
         if (parsed != null) {
             var authorities = parsed.getRoles().stream()
+                    .filter(r -> r != null && !r.isBlank())
+                    .map(r -> r.startsWith("ROLE_") ? r.trim() : "ROLE_" + r.trim())
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
             AuthPrincipal principal = AuthPrincipal.from(

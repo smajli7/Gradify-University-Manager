@@ -30,6 +30,9 @@ public interface ModulRepository extends JpaRepository<Modul, Long> {
 
     @Query("SELECT SUM(m.ects) FROM Modul m WHERE m.pruefungsordnung.id = :poId")
     Integer sumEctsByPoId(@Param("poId") Long poId);
+
+    @Query("SELECT sg.kuerzel FROM Modul m JOIN m.pruefungsordnung po JOIN po.studiengang sg WHERE m.id = :modulId")
+    Optional<String> findStudiengangKuerzelByModulId(@Param("modulId") Long modulId);
 }
 
 

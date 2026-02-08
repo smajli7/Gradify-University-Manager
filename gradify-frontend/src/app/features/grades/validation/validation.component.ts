@@ -133,8 +133,8 @@ interface UserInfo {
         </div>
       </div>
 
-      <!-- Toolbar -->
-      <div class="toolbar">
+      <!-- Toolbar (sticky für Queue-Arbeit) -->
+      <div class="toolbar toolbar--sticky">
         <div class="filter-group">
           <select class="filter-select" [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()">
             <option value="all">Alle Status</option>
@@ -468,10 +468,23 @@ interface UserInfo {
 
     .toolbar {
       display: flex;
-      gap: var(--spacing-md);
-      margin-bottom: var(--spacing-lg);
       flex-wrap: wrap;
       align-items: center;
+      gap: var(--spacing-md);
+      margin-bottom: var(--spacing-lg);
+    }
+    .toolbar--sticky {
+      position: sticky;
+      top: 0;
+      z-index: 10;
+      background: var(--bg-deep);
+      padding: var(--spacing-md) 0;
+      margin-left: calc(-1 * var(--spacing-lg));
+      margin-right: calc(-1 * var(--spacing-lg));
+      padding-left: var(--spacing-lg);
+      padding-right: var(--spacing-lg);
+      border-bottom: 1px solid var(--border-color);
+      margin-bottom: var(--spacing-lg);
     }
 
     .filter-select {
@@ -702,6 +715,7 @@ interface UserInfo {
       font-size: var(--font-size-sm);
     }
 
+    .note-value--muted { background: var(--bg-hover); color: var(--text-muted); }
     .note-value--success { background: rgba(16, 185, 129, 0.15); color: var(--color-success); }
     .note-value--info { background: rgba(59, 130, 246, 0.15); color: var(--color-info); }
     .note-value--warning { background: rgba(245, 158, 11, 0.15); color: var(--color-warning); }
@@ -1023,14 +1037,14 @@ export class ValidationComponent implements OnInit {
     return filtered.length > 0 && filtered.every(n => n.selected);
   });
 
+  private pendingNoteId = signal<string | null>(null);
+
   ngOnInit(): void {
-    // Read query params for student filter (from students page)
     this.route.queryParams.subscribe(params => {
-      if (params['student']) {
-        this.searchTerm.set(params['student']);
-      } else if (params['matrikel']) {
-        this.searchTerm.set(params['matrikel']);
-      }
+      if (params['student']) this.searchTerm.set(params['student']);
+      else if (params['matrikel']) this.searchTerm.set(params['matrikel']);
+      if (params['status']) this.statusFilter.set(params['status']);
+      if (params['noteId']) this.pendingNoteId.set(params['noteId']);
     });
     this.loadData();
   }
@@ -1101,7 +1115,12 @@ export class ValidationComponent implements OnInit {
       this.usersMap.clear();
       (usersResult.data?.users || []).forEach(u => this.usersMap.set(String(u.id), u));
 
-      const enrichedNoten = rawNoten.map(n => this.enrichNote(n));
+      let enrichedNoten = rawNoten.map(n => this.enrichNote(n));
+      const noteId = this.pendingNoteId();
+      if (noteId) {
+        this.pendingNoteId.set(null);
+        enrichedNoten = enrichedNoten.map(n => (String(n.id) === String(noteId) ? { ...n, selected: true } : n));
+      }
       this.noten.set(enrichedNoten);
     } catch (err: unknown) {
       const e = err as { error?: { message?: string }; message?: string };
@@ -1268,11 +1287,8 @@ export class ValidationComponent implements OnInit {
     }
   }
 
-  getNoteClass(noteWert: number): string {
-    if (noteWert <= 1.5) return 'note-value--success';
-    if (noteWert <= 2.5) return 'note-value--info';
-    if (noteWert <= 3.5) return 'note-value--warning';
-    return 'note-value--danger';
+  getNoteClass(_noteWert: number): string {
+    return 'note-value--muted';
   }
 
   getStatusLabel(status: string): string {

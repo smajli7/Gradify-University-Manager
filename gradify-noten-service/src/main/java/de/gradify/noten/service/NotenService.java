@@ -1,17 +1,23 @@
 package de.gradify.noten.service;
 
+import de.gradify.noten.dto.AuditEintragDto;
 import de.gradify.noten.dto.CreateNoteRequest;
 import de.gradify.noten.dto.NoteDto;
+import de.gradify.noten.dto.NotenStatsDto;
 import de.gradify.noten.dto.UpdateNoteRequest;
 import de.gradify.noten.entity.Note;
+import de.gradify.noten.entity.NotenHistorie;
 import de.gradify.noten.messaging.NoteEventPublisher;
 import de.gradify.noten.repository.NoteRepository;
+import de.gradify.noten.repository.NotenHistorieRepository;
 import de.gradify.noten.validation.NoteValidator;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+// PageRequest entfernt – native Queries verwenden LIMIT direkt
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.math.BigDecimal;
 import java.time.LocalDateTime;
 import java.util.List;
 import java.util.Optional;
@@ -23,6 +29,7 @@ import java.util.stream.Collectors;
 public class NotenService {
 
     private final NoteRepository noteRepository;
+    private final NotenHistorieRepository notenHistorieRepository;
     private final NoteValidator noteValidator;
     private final NoteEventPublisher eventPublisher;
 
@@ -119,6 +126,9 @@ public class NotenService {
         note = noteRepository.save(note);
         log.info("Note created with id: {}", note.getId());
 
+        saveHistorie(note.getId(), note.getEinschreibungId(), note.getModulId(), erfasstVon != null ? erfasstVon : 0L,
+                NotenHistorie.AenderungsTyp.ERSTELLT, null, note.getNoteWert(), request.getKommentar());
+
         // Event an Message Queue senden für automatische Neuberechnung
         eventPublisher.publishNoteCreated(note, erfasstVon != null ? erfasstVon.toString() : "system");
 
@@ -129,12 +139,14 @@ public class NotenService {
      * Aktualisiert eine bestehende Note.
      */
     @Transactional
-    public Optional<NoteDto> updateNote(Long id, UpdateNoteRequest request) {
+    public Optional<NoteDto> updateNote(Long id, UpdateNoteRequest request, Long geaendertVon) {
         return noteRepository.findById(id).map(note -> {
             // Nur ERFASST-Noten können bearbeitet werden
             if (note.getStatus() != Note.NoteStatus.ERFASST) {
                 throw new IllegalStateException("Note kann nur im Status ERFASST bearbeitet werden");
             }
+
+            BigDecimal alterWert = note.getNoteWert();
 
             // Notenwert validieren
             if (request.getNoteWert() != null) {
@@ -160,10 +172,13 @@ public class NotenService {
 
             note = noteRepository.save(note);
             log.info("Note updated: {}", id);
-            
+
+            saveHistorie(note.getId(), note.getEinschreibungId(), note.getModulId(), geaendertVon != null ? geaendertVon : 0L,
+                    NotenHistorie.AenderungsTyp.NOTE_GEAENDERT, alterWert, note.getNoteWert(), request.getKommentar());
+
             // Event an Message Queue senden für automatische Neuberechnung
             eventPublisher.publishNoteUpdated(note, "system");
-            
+
             return toDto(note);
         });
     }
@@ -191,19 +206,22 @@ public class NotenService {
 
             note = noteRepository.save(note);
             log.info("Note validated: {}", id);
-            
+
+            saveHistorie(note.getId(), note.getEinschreibungId(), note.getModulId(), validiertVon != null ? validiertVon : 0L,
+                    NotenHistorie.AenderungsTyp.VALIDIERT, null, note.getNoteWert(), kommentar);
+
             // Event an Message Queue senden
             eventPublisher.publishNoteValidated(note, validiertVon != null ? validiertVon.toString() : "system");
-            
+
             return toDto(note);
         });
     }
 
     /**
-     * Gibt eine Note frei (Studiengangleitung).
+     * Gibt eine Note frei (Studiengangleitung / Prüfungsamt).
      */
     @Transactional
-    public Optional<NoteDto> releaseNote(Long id) {
+    public Optional<NoteDto> releaseNote(Long id, Long releasedBy) {
         return noteRepository.findById(id).map(note -> {
             if (note.getStatus() != Note.NoteStatus.VALIDIERT) {
                 throw new IllegalStateException("Nur VALIDIERT-Noten können freigegeben werden");
@@ -212,10 +230,13 @@ public class NotenService {
             note.setStatus(Note.NoteStatus.FREIGEGEBEN);
             note = noteRepository.save(note);
             log.info("Note released: {}", id);
-            
+
+            saveHistorie(note.getId(), note.getEinschreibungId(), note.getModulId(), releasedBy != null ? releasedBy : 0L,
+                    NotenHistorie.AenderungsTyp.FREIGEGEBEN, null, note.getNoteWert(), null);
+
             // Event an Message Queue senden
             eventPublisher.publishNoteReleased(note, "system");
-            
+
             return toDto(note);
         });
     }
@@ -224,19 +245,115 @@ public class NotenService {
      * Löscht eine Note (nur im Status ERFASST).
      */
     @Transactional
-    public boolean deleteNote(Long id) {
+    public boolean deleteNote(Long id, Long geloeschtVon) {
         return noteRepository.findById(id).map(note -> {
             if (note.getStatus() != Note.NoteStatus.ERFASST) {
                 throw new IllegalStateException("Nur ERFASST-Noten können gelöscht werden");
             }
-            
+
+            saveHistorie(note.getId(), note.getEinschreibungId(), note.getModulId(), geloeschtVon != null ? geloeschtVon : 0L,
+                    NotenHistorie.AenderungsTyp.STORNIERT, note.getNoteWert(), null, "Note gelöscht");
+
             // Event VOR dem Löschen senden (damit die Daten noch verfügbar sind)
             eventPublisher.publishNoteDeleted(note, "system");
-            
+
             noteRepository.delete(note);
             log.info("Note deleted: {}", id);
             return true;
         }).orElse(false);
+    }
+
+    /**
+     * Audit-Einträge abrufen (Protokoll) – uneingeschränkt (PA/ADMIN/HV).
+     * Sieht alle Einträge im aktuellen Tenant (Hochschule), optional gefiltert.
+     */
+    @Transactional(readOnly = true)
+    public List<AuditEintragDto> getAuditEintraege(Long noteId, Long einschreibungId, Long modulId,
+                                                    LocalDateTime vonDatum, LocalDateTime bisDatum,
+                                                    NotenHistorie.AenderungsTyp aenderungsTyp, Long benutzerId,
+                                                    int limit) {
+        if (limit <= 0 || limit > 1000) {
+            limit = 500;
+        }
+        // Enum → String, da PostgreSQL bei null-Enum-Parametern den Typ nicht inferieren kann
+        String typStr = aenderungsTyp != null ? aenderungsTyp.name() : null;
+        List<NotenHistorie> list = notenHistorieRepository.findAuditEintraege(
+                noteId, einschreibungId, modulId, vonDatum, bisDatum, typStr, benutzerId, limit);
+        return list.stream().map(this::toAuditDto).collect(Collectors.toList());
+    }
+
+    /**
+     * Audit-Einträge abrufen – eingeschränkt auf bestimmte Modul-IDs (Dozent).
+     * Sieht nur Einträge zu Modulen, die ihm zugewiesen sind.
+     */
+    @Transactional(readOnly = true)
+    public List<AuditEintragDto> getAuditEintraegeForModulIds(List<Long> allowedModulIds, Long noteId,
+                                                               Long einschreibungId,
+                                                               LocalDateTime vonDatum, LocalDateTime bisDatum,
+                                                               NotenHistorie.AenderungsTyp aenderungsTyp,
+                                                               int limit) {
+        if (allowedModulIds == null || allowedModulIds.isEmpty()) {
+            return List.of();
+        }
+        if (limit <= 0 || limit > 1000) {
+            limit = 500;
+        }
+        String typStr = aenderungsTyp != null ? aenderungsTyp.name() : null;
+        List<NotenHistorie> list = notenHistorieRepository.findAuditEintraegeByModulIds(
+                allowedModulIds, noteId, einschreibungId, vonDatum, bisDatum, typStr, limit);
+        return list.stream().map(this::toAuditDto).collect(Collectors.toList());
+    }
+
+    private AuditEintragDto toAuditDto(NotenHistorie h) {
+        return AuditEintragDto.builder()
+                .id(h.getId())
+                .noteId(h.getNoteId())
+                .einschreibungId(h.getEinschreibungId())
+                .modulId(h.getModulId())
+                .geaendertVon(h.getGeaendertVon())
+                .aenderungsTyp(h.getAenderungsTyp().name())
+                .alterWert(h.getAlterWert())
+                .neuerWert(h.getNeuerWert())
+                .kommentar(h.getKommentar())
+                .geaendertAm(h.getGeaendertAm())
+                .build();
+    }
+
+    /**
+     * Aggregierte Statistik für Noten, optional gefiltert nach Modul-IDs (z. B. Dozenten-Module).
+     */
+    @Transactional(readOnly = true)
+    public NotenStatsDto getStatsForModule(List<Long> modulIds) {
+        List<Note> noten;
+        if (modulIds == null || modulIds.isEmpty()) {
+            noten = noteRepository.findAll();
+        } else {
+            noten = noteRepository.findByModulIdIn(modulIds);
+        }
+        long erfasst = noten.stream().filter(n -> n.getStatus() == Note.NoteStatus.ERFASST).count();
+        long validiert = noten.stream().filter(n -> n.getStatus() == Note.NoteStatus.VALIDIERT).count();
+        long freigegeben = noten.stream().filter(n -> n.getStatus() == Note.NoteStatus.FREIGEGEBEN).count();
+        return NotenStatsDto.builder()
+                .total(noten.size())
+                .erfasst(erfasst)
+                .validiert(validiert)
+                .freigegeben(freigegeben)
+                .build();
+    }
+
+    private void saveHistorie(Long noteId, Long einschreibungId, Long modulId, Long geaendertVon,
+                              NotenHistorie.AenderungsTyp typ, BigDecimal alterWert, BigDecimal neuerWert, String kommentar) {
+        NotenHistorie h = NotenHistorie.builder()
+                .noteId(noteId)
+                .einschreibungId(einschreibungId)
+                .modulId(modulId)
+                .geaendertVon(geaendertVon)
+                .aenderungsTyp(typ)
+                .alterWert(alterWert)
+                .neuerWert(neuerWert)
+                .kommentar(kommentar != null && kommentar.length() > 500 ? kommentar.substring(0, 500) : kommentar)
+                .build();
+        notenHistorieRepository.save(h);
     }
 
     /**

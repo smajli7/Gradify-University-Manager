@@ -40,7 +40,10 @@ public class JwtAuthFilter extends OncePerRequestFilter {
         String token = authHeader.substring(7);
         ParsedToken parsed = GradifyTokenParser.parseAndValidate(token);
         if (parsed != null) {
+            // Spring Security hasRole() erwartet Authorities mit Prefix "ROLE_"
             var authorities = parsed.getRoles().stream()
+                    .filter(r -> r != null && !r.isBlank())
+                    .map(r -> r.startsWith("ROLE_") ? r.trim() : "ROLE_" + r.trim())
                     .map(SimpleGrantedAuthority::new)
                     .collect(Collectors.toList());
             var auth = new UsernamePasswordAuthenticationToken(

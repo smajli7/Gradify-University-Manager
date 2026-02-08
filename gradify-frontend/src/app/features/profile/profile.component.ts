@@ -140,7 +140,7 @@ interface EinschreibungData {
               @if (authService.currentUser()?.roles?.length) {
                 <span class="chip chip--role">{{ formatRole(authService.currentUser()!.roles[0]) }}</span>
               }
-              @if (studentData()?.benutzer?.aktiv !== false) {
+              @if (isAktivChipVisible()) {
                 <span class="chip chip--aktiv">Aktiv</span>
               }
               @if (studentData()?.matrikelnummer) {
@@ -149,10 +149,10 @@ interface EinschreibungData {
                   <button type="button" class="copy-btn" (click)="copyToClipboard(studentData()!.matrikelnummer, $event)" title="Kopieren" aria-label="Kopieren"><svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
                 </span>
               }
-              @if (primaryEmail()) {
-                <span class="chip chip--email" [title]="'Kopieren: ' + primaryEmail()">
-                  {{ primaryEmail() }}
-                  <button type="button" class="copy-btn" (click)="copyToClipboard(primaryEmail()!, $event)" title="Kopieren" aria-label="Kopieren"><svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+              @if (headerEmailOrLogin(); as val) {
+                <span class="chip chip--email" [title]="'Kopieren: ' + val">
+                  {{ val }}
+                  <button type="button" class="copy-btn" (click)="copyToClipboard(val, $event)" title="Kopieren" aria-label="Kopieren"><svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
                 </span>
               }
             </div>
@@ -236,7 +236,54 @@ interface EinschreibungData {
             </div>
           }
 
-          <!-- 4) Einschreibung als Highlight-Card (Primary) -->
+          <!-- Lehrende: Profil-Karte (gleiche Struktur wie Student) -->
+          @if (!authService.isStudent() && authService.currentUser(); as user) {
+            <div class="card card--accordion">
+              <button type="button" class="card-header card-header--tappable" (click)="toggleSection('lehrende')" [attr.aria-expanded]="sectionOpen('lehrende')">
+                <h2 class="card-title">{{ lehrendeSectionTitle() }}</h2>
+                <span class="card-header__chevron" [class.card-header__chevron--open]="sectionOpen('lehrende')">▼</span>
+              </button>
+              @if (sectionOpen('lehrende')) {
+                <div class="card-body">
+                  <div class="detail-grid">
+                    <div class="detail-row">
+                      <span class="detail-label">Benutzername</span>
+                      <span class="detail-value detail-value--copyable">
+                        {{ user.username || '–' }}
+                        @if (user.username) {
+                          <button type="button" class="copy-btn copy-btn--inline" (click)="copyToClipboard(user.username, $event)" title="Kopieren" aria-label="Kopieren"><svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                        }
+                      </span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Name</span>
+                      <span class="detail-value detail-value--num">{{ (user.vorname && user.nachname) ? (user.vorname + ' ' + user.nachname) : '–' }}</span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">E-Mail</span>
+                      <span class="detail-value detail-value--copyable">
+                        {{ headerEmailOrLogin() || '–' }}
+                        @if (headerEmailOrLogin()) {
+                          <button type="button" class="copy-btn copy-btn--inline" (click)="copyToClipboard(headerEmailOrLogin()!, $event)" title="Kopieren" aria-label="Kopieren"><svg class="copy-icon" viewBox="0 0 24 24" width="14" height="14" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2" ry="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg></button>
+                        }
+                      </span>
+                    </div>
+                    <div class="detail-row">
+                      <span class="detail-label">Rolle</span>
+                      <span class="detail-value">
+                        @for (role of user.roles || []; track role) {
+                          <span class="role-badge" [ngClass]="getRoleBadgeClass(role)">{{ formatRole(role) }}</span>
+                        }
+                        @if (!user.roles?.length) { – }
+                      </span>
+                    </div>
+                  </div>
+                </div>
+              }
+            </div>
+          }
+
+          <!-- 4) Einschreibung als Highlight-Card (Primary) – Student -->
           @if (authService.isStudent() && primaryEinschreibung(); as e) {
             <div class="card card--primary">
               <div class="card-body card-body--einschreibung">
@@ -278,6 +325,33 @@ interface EinschreibungData {
                 <div class="empty-state">
                   <span class="empty-icon" aria-hidden="true"></span>
                   <p>Keine Einschreibungen gefunden</p>
+                </div>
+              </div>
+            </div>
+          }
+
+          <!-- Highlight-Card für Lehrende (gleiche Optik wie Einschreibung, ohne Buttons wie beim Studenten) -->
+          @if (!authService.isStudent() && authService.currentUser()) {
+            <div class="card card--primary">
+              <div class="card-body card-body--einschreibung">
+                <div class="einschreibung-hero">
+                  <div class="einschreibung-hero__text">
+                    <h2 class="einschreibung-hero__title">{{ lehrendeHeroTitle() }}</h2>
+                    <span class="status-badge status-badge--aktiv">Aktiv</span>
+                  </div>
+                  <p class="einschreibung-hero__subline">{{ lehrendeHeroSubline() }}</p>
+                  <div class="einschreibung-kpis">
+                    <div class="einschreibung-kpi">
+                      <span class="einschreibung-kpi__label">Rolle</span>
+                      <span class="einschreibung-kpi__value">{{ authService.userRole() || '–' }}</span>
+                    </div>
+                    @if (headerEmailOrLogin()) {
+                      <div class="einschreibung-kpi">
+                        <span class="einschreibung-kpi__label">E-Mail / Login</span>
+                        <span class="einschreibung-kpi__value">{{ headerEmailOrLogin() }}</span>
+                      </div>
+                    }
+                  </div>
                 </div>
               </div>
             </div>
@@ -566,6 +640,9 @@ interface EinschreibungData {
     }
 
     .einschreibung-hero__action {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-sm);
       flex-shrink: 0;
     }
 
@@ -645,6 +722,14 @@ interface EinschreibungData {
 
     .btn--primary:hover:not(:disabled) { opacity: 0.9; }
 
+    .btn--outline {
+      background: transparent;
+      color: var(--text-primary);
+      border-color: var(--border-color);
+    }
+
+    .btn--outline:hover:not(:disabled) { background: var(--bg-hover); }
+
     @media (max-width: 768px) {
       .profile-header { flex-direction: column; align-items: flex-start; }
       .profile-header__right { width: 100%; }
@@ -665,8 +750,8 @@ export class ProfileComponent implements OnInit {
   studentData = signal<StudentData | null>(null);
   einschreibungen = signal<EinschreibungData[]>([]);
 
-  /** Accordion: 'account' und 'student' standardmäßig offen. */
-  sectionsOpen = signal<Record<string, boolean>>({ account: true, student: true });
+  /** Accordion: 'account', 'student', 'lehrende' standardmäßig offen. */
+  sectionsOpen = signal<Record<string, boolean>>({ account: true, student: true, lehrende: true });
 
   displayName = computed(() => {
     const u = this.authService.currentUser();
@@ -686,12 +771,44 @@ export class ProfileComponent implements OnInit {
   });
 
   headerSubline = computed(() => {
-    if (!this.authService.isStudent()) return 'Benutzer';
-    const e = this.einschreibungen()[0];
-    const parts = ['Student'];
-    if (e?.studiengang?.kuerzel) parts.push(e.studiengang.kuerzel);
-    if (e?.aktuellesSemester) parts.push(`${e.aktuellesSemester}. Semester`);
-    return parts.join(' · ');
+    if (this.authService.isStudent()) {
+      const e = this.einschreibungen()[0];
+      const parts = ['Student'];
+      if (e?.studiengang?.kuerzel) parts.push(e.studiengang.kuerzel);
+      if (e?.aktuellesSemester) parts.push(`${e.aktuellesSemester}. Semester`);
+      return parts.join(' · ');
+    }
+    if (this.authService.isDozent()) return 'Lehrende';
+    if (this.authService.isPruefungsamt()) return 'Prüfungsamt';
+    if (this.authService.isAdmin()) return 'Administration';
+    if (this.authService.isHochschulVerwalter()) return 'Hochschulverwaltung';
+    return 'Benutzer';
+  });
+
+  /** Chip „Aktiv“: bei Studierenden wenn benutzer.aktiv, sonst wenn eingeloggt. */
+  isAktivChipVisible = computed(() => {
+    if (this.authService.isStudent() && this.studentData()?.benutzer?.aktiv === false) return false;
+    return !!this.authService.currentUser();
+  });
+
+  lehrendeSectionTitle = computed(() => {
+    if (this.authService.isDozent()) return 'Lehrende';
+    if (this.authService.isPruefungsamt()) return 'Prüfungsamt';
+    if (this.authService.isAdmin()) return 'Administration';
+    return 'Profil';
+  });
+
+  lehrendeHeroTitle = computed(() => {
+    if (this.authService.isDozent()) return 'Lehrende';
+    if (this.authService.isPruefungsamt()) return 'Prüfungsamt';
+    if (this.authService.isAdmin()) return 'Administration';
+    return 'Übersicht';
+  });
+
+  lehrendeHeroSubline = computed(() => {
+    if (this.authService.isDozent()) return 'Noten erfassen und Statistik';
+    if (this.authService.isAdmin() || this.authService.isPruefungsamt()) return 'Verwaltung und Zuweisungen';
+    return 'Ihr Bereich';
   });
 
   primaryEinschreibung = computed(() => this.einschreibungen()[0] ?? null);
@@ -700,6 +817,12 @@ export class ProfileComponent implements OnInit {
     const s = this.studentData();
     if (s?.email) return s.email;
     return this.authService.currentUser()?.username?.includes('@') ? this.authService.currentUser()?.username : null;
+  });
+
+  /** Im Header und in Karten: E-Mail oder Login (Studierende: E-Mail; sonst Benutzername, damit Lehrende immer E-Mail/Login sehen). */
+  headerEmailOrLogin = computed(() => {
+    if (this.authService.isStudent() && this.studentData()?.email) return this.studentData()!.email;
+    return this.authService.currentUser()?.username ?? null;
   });
 
   sectionOpen(key: string): boolean {

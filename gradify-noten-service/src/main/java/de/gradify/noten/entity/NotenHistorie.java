@@ -23,6 +23,10 @@ public class NotenHistorie {
     @Column(nullable = false)
     private Long noteId;
 
+    private Long einschreibungId;
+
+    private Long modulId;
+
     @Column(nullable = false)
     private Long geaendertVon;
 

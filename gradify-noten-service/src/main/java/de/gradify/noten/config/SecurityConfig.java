@@ -56,6 +56,8 @@ public class SecurityConfig {
                 // Noten loeschen: nur ADMIN
                 .requestMatchers(HttpMethod.DELETE, "/api/noten/**").hasRole("ADMIN")
                 
+                // Audit-Log (Protokoll): PRUEFUNGSAMT, ADMIN, HV, LEHRENDER (Datenfilterung im Controller)
+                .requestMatchers(HttpMethod.GET, "/api/noten/audit").hasAnyRole("PRUEFUNGSAMT", "ADMIN", "HOCHSCHUL_VERWALTER", "LEHRENDER")
                 // Noten lesen: alle authentifizierten Nutzer (Detailfilterung im Service)
                 .requestMatchers(HttpMethod.GET, "/api/noten/**").authenticated()
                 

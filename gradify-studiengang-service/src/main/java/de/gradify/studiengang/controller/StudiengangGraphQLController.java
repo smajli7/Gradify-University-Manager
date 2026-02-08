@@ -297,6 +297,14 @@ public class StudiengangGraphQLController {
 
     // ==================== DOZENTEN-MODUL-ZUWEISUNGEN ====================
 
+    @SchemaMapping(typeName = "Modul", field = "studiengangKuerzel")
+    public String studiengangKuerzel(Modul modul) {
+        if (modul.getStudiengangKuerzel() != null) {
+            return modul.getStudiengangKuerzel();
+        }
+        return modulRepository.findStudiengangKuerzelByModulId(modul.getId()).orElse(null);
+    }
+
     /**
      * Holt alle Module, die einem Dozenten zugewiesen sind.
      * Nutzt JDBC-Aggregation über alle Tenant-DBs, damit Bioinformatik/GU-Dozenten sichtbar sind.
@@ -314,6 +322,7 @@ public class StudiengangGraphQLController {
         List<ModulZuweisung> zuweisungen = modulZuweisungRepository.findByDozentId(id);
         List<Long> modulIds = zuweisungen.stream()
             .map(ModulZuweisung::getModulId)
+            .distinct()
             .toList();
         return modulRepository.findAllById(modulIds);
     }

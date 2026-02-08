@@ -20,9 +20,9 @@ export const roleRedirectGuard = () => {
     case 'ROLE_HOCHSCHUL_VERWALTER':
       return router.parseUrl('/admin/mandanten');
     case 'ROLE_LEHRENDER':
-      return router.parseUrl('/todos');
+      return router.parseUrl('/dashboard');
     case 'ROLE_PRUEFUNGSAMT':
-      return router.parseUrl('/students');
+      return router.parseUrl('/dashboard');
     case 'ROLE_STUDENT':
       return router.parseUrl('/dashboard');
     default:

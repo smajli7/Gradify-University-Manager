@@ -222,7 +222,7 @@ interface DemoUser {
               </div>
               @if (activeRole) {
                 <select class="demo-select" [(ngModel)]="selectedDemoUser" (ngModelChange)="onDemoUserSelect($event)" name="demoUser">
-                  <option value="">— Nutzer wählen —</option>
+                  <option value="">- Nutzer wählen -</option>
                   @for (u of usersForActiveRole; track u.username) {
                     <option [value]="u.username">{{ u.label }}</option>
                   }
