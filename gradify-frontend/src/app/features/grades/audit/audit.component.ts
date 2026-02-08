@@ -25,8 +25,10 @@ export interface AuditEintrag {
   neuerWert: number | null;
   kommentar: string | null;
   geaendertAm: string;
-  // Angereichert im Frontend
+  /** Angereichert im Frontend */
   modulName?: string;
+  /** Student (z. B. "Max Mustermann") zur Einschreibung */
+  studentName?: string;
 }
 
 interface ModulInfo {
@@ -60,6 +62,35 @@ const GET_ALL_MODULE = gql`
       id
       name
       modulNr
+    }
+  }
+`;
+
+const GET_USERS_NAMES = gql`
+  query GetUsersForAudit {
+    users {
+      id
+      vorname
+      nachname
+    }
+  }
+`;
+
+const GET_STUDENTS_NAMES = gql`
+  query GetStudentsForAudit {
+    students {
+      id
+      vorname
+      nachname
+    }
+  }
+`;
+
+const GET_EINSCHREIBUNGEN_FOR_AUDIT = gql`
+  query GetEinschreibungenForAudit {
+    einschreibungen {
+      id
+      studentId
     }
   }
 `;
@@ -112,13 +143,17 @@ const GET_ALL_MODULE = gql`
           </div>
         </div>
         <div class="filter-actions">
-          <button type="button" class="btn btn-primary" (click)="load()" [disabled]="loading()">
-            {{ loading() ? 'Lädt…' : 'Filter anwenden' }}
-          </button>
-          <button type="button" class="btn btn-secondary" (click)="exportCsv()" [disabled]="entries().length === 0">
-            CSV exportieren
-          </button>
-          <span class="result-count" *ngIf="entries().length > 0">{{ entries().length }} Einträge</span>
+          @if (entries().length > 0) {
+            <span class="result-count">{{ entries().length }} Einträge</span>
+          }
+          <div class="filter-actions-buttons">
+            <button type="button" class="btn btn-primary btn-sm" (click)="load()" [disabled]="loading()">
+              {{ loading() ? 'Lädt…' : 'Filter anwenden' }}
+            </button>
+            <button type="button" class="btn btn-export btn-sm" (click)="exportCsv()" [disabled]="entries().length === 0">
+              CSV exportieren
+            </button>
+          </div>
         </div>
       </div>
 
@@ -146,22 +181,22 @@ const GET_ALL_MODULE = gql`
                   <th>Note</th>
                   <th>Modul</th>
                   <th>Wer</th>
+                  <th>Student</th>
                   <th>Vorher</th>
                   <th>Nachher</th>
-                  <th>Kommentar</th>
                 </tr>
               </thead>
               <tbody>
                 @for (e of entries(); track e.id) {
-                  <tr>
+                  <tr class="audit-row-clickable" (click)="openDetail(e)" role="button" tabindex="0" (keydown.enter)="openDetail(e)" (keydown.space)="openDetail(e)">
                     <td class="cell-time">{{ formatDate(e.geaendertAm) }}</td>
                     <td><span [class]="'badge badge-' + e.aenderungsTyp">{{ labelForTyp(e.aenderungsTyp) }}</span></td>
                     <td>#{{ e.noteId }}</td>
                     <td>{{ e.modulName ?? ('Modul ' + e.modulId) }}</td>
-                    <td>{{ e.geaendertVonName ?? ('User ' + e.geaendertVon) }}</td>
+                    <td class="cell-wer">{{ e.geaendertVonName ?? ('User ' + e.geaendertVon) }}</td>
+                    <td class="cell-student">{{ e.studentName ?? (e.einschreibungId ? 'Einschr. ' + e.einschreibungId : '–') }}</td>
                     <td class="cell-note">{{ e.alterWert != null ? e.alterWert : '–' }}</td>
                     <td class="cell-note">{{ e.neuerWert != null ? e.neuerWert : '–' }}</td>
-                    <td class="cell-kommentar" [title]="e.kommentar ?? ''">{{ e.kommentar ?? '–' }}</td>
                   </tr>
                 }
               </tbody>
@@ -169,6 +204,29 @@ const GET_ALL_MODULE = gql`
           </div>
         }
       </div>
+
+      @if (detailEntry()) {
+        <div class="detail-overlay" (click)="closeDetail()" role="button" tabindex="0" (keydown)="$event.key === 'Escape' && closeDetail()">
+          <div class="detail-modal" (click)="$event.stopPropagation()" role="dialog" aria-labelledby="audit-detail-title">
+            <div class="detail-header">
+              <h2 id="audit-detail-title">Detail – Eintrag #{{ detailEntry()!.id }}</h2>
+              <button type="button" class="detail-close" (click)="closeDetail()" aria-label="Schließen">&times;</button>
+            </div>
+            @let e = detailEntry()!;
+            <dl class="detail-list">
+              <dt>Zeit</dt><dd>{{ formatDate(e.geaendertAm) }}</dd>
+              <dt>Aktion</dt><dd><span [class]="'badge badge-' + e.aenderungsTyp">{{ labelForTyp(e.aenderungsTyp) }}</span></dd>
+              <dt>Note</dt><dd>#{{ e.noteId }}</dd>
+              <dt>Modul</dt><dd>{{ e.modulName ?? ('Modul ' + e.modulId) }}</dd>
+              <dt>Geändert von</dt><dd>{{ e.geaendertVonName ?? ('User ' + e.geaendertVon) }}</dd>
+              <dt>Student</dt><dd>{{ e.studentName ?? (e.einschreibungId ? 'Einschr. ' + e.einschreibungId : '–') }}</dd>
+              <dt>Vorher</dt><dd>{{ e.alterWert != null ? e.alterWert : '–' }}</dd>
+              <dt>Nachher</dt><dd>{{ e.neuerWert != null ? e.neuerWert : '–' }}</dd>
+              <dt>Kommentar</dt><dd class="detail-kommentar">{{ e.kommentar || '–' }}</dd>
+            </dl>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -206,15 +264,38 @@ const GET_ALL_MODULE = gql`
       color: var(--text-primary);
       min-width: 0;
     }
-    .filter-actions { display: flex; align-items: center; gap: var(--spacing-md); margin-top: var(--spacing-lg); }
-    .result-count { font-size: 0.8125rem; color: var(--text-muted); margin-left: auto; }
-    .btn {
-      display: inline-flex; align-items: center; gap: 8px; padding: 10px 18px; border-radius: 8px;
-      font-weight: 500; border: none; cursor: pointer; font-size: 0.875rem; text-decoration: none;
+    .filter-actions {
+      display: flex; align-items: center; justify-content: flex-end; flex-wrap: wrap;
+      gap: var(--spacing-md); margin-top: var(--spacing-lg); padding-top: var(--spacing-md);
+      border-top: 1px solid var(--border-color);
     }
-    .btn:disabled { opacity: 0.6; cursor: not-allowed; }
-    .btn-primary { background: var(--text-primary); color: var(--bg-deep); }
-    .btn-secondary { background: var(--bg-muted, #e5e7eb); color: var(--text-primary); }
+    .filter-actions .result-count { margin-right: auto; }
+    .filter-actions-buttons { display: flex; align-items: center; gap: var(--spacing-sm); flex-wrap: wrap; }
+    .result-count {
+      font-size: 0.875rem; font-weight: 500; color: var(--text-secondary);
+      background: var(--bg-muted, rgba(0,0,0,0.04)); padding: 6px 12px; border-radius: 8px;
+    }
+    .btn {
+      display: inline-flex; align-items: center; justify-content: center; gap: 6px;
+      padding: 10px 20px; border-radius: 8px; font-weight: 500; border: none;
+      cursor: pointer; font-size: 0.875rem; text-decoration: none; transition: opacity 0.15s, transform 0.1s;
+    }
+    .btn.btn-sm {
+      padding: 5px 10px; font-size: 0.8125rem;
+    }
+    .btn:hover:not(:disabled) { opacity: 0.92; }
+    .btn:active:not(:disabled) { transform: scale(0.98); }
+    .btn:disabled { opacity: 0.5; cursor: not-allowed; }
+    .btn-primary {
+      background: #1f2937; color: #f9fafb;
+    }
+    .btn-primary:hover:not(:disabled) { background: #111827; }
+    .btn-export {
+      background: #374151; color: #e5e7eb; border: 1px solid #4b5563;
+    }
+    .btn-export:hover:not(:disabled) {
+      background: #4b5563; color: #f3f4f6;
+    }
     .error-card { border-color: var(--error-color, #dc2626); }
     .error-text { color: var(--error-color, #dc2626); margin: 0; }
     .empty-state-text { color: var(--text-secondary); margin: 0; text-align: center; padding: var(--spacing-xl) 0; }
@@ -224,10 +305,11 @@ const GET_ALL_MODULE = gql`
       padding: 10px 12px; text-align: left; border-bottom: 1px solid var(--border-color);
     }
     .audit-table th { font-weight: 600; color: var(--text-secondary); background: var(--bg-muted, rgba(0,0,0,0.03)); position: sticky; top: 0; }
-    .audit-table tbody tr:hover { background: var(--bg-muted, rgba(0,0,0,0.02)); }
+    .audit-row-clickable { cursor: pointer; }
+    .audit-table tbody tr.audit-row-clickable:hover { background: var(--bg-muted, rgba(0,0,0,0.06)); }
     .cell-time { white-space: nowrap; font-variant-numeric: tabular-nums; }
+    .cell-wer, .cell-student { max-width: 180px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .cell-note { font-variant-numeric: tabular-nums; text-align: center; }
-    .cell-kommentar { max-width: 220px; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
     .badge {
       display: inline-block; padding: 2px 8px; border-radius: 6px; font-size: 0.75rem; font-weight: 500;
     }
@@ -244,6 +326,31 @@ const GET_ALL_MODULE = gql`
       animation: spin 0.7s linear infinite;
     }
     @keyframes spin { to { transform: rotate(360deg); } }
+    .detail-overlay {
+      position: fixed; inset: 0; background: rgba(0,0,0,0.4); display: flex; align-items: center; justify-content: center;
+      z-index: 1000; padding: var(--spacing-lg); cursor: pointer;
+    }
+    .detail-modal {
+      background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: 12px;
+      max-width: 420px; width: 100%; max-height: 90vh; overflow: auto; cursor: default;
+      box-shadow: 0 8px 32px rgba(0,0,0,0.2);
+    }
+    .detail-header {
+      display: flex; align-items: center; justify-content: space-between; padding: var(--spacing-lg);
+      border-bottom: 1px solid var(--border-color);
+    }
+    .detail-header h2 { margin: 0; font-size: 1.125rem; font-weight: 600; color: var(--text-primary); }
+    .detail-close {
+      width: 32px; height: 32px; border: none; background: transparent; font-size: 1.5rem; line-height: 1;
+      color: var(--text-secondary); cursor: pointer; border-radius: 6px;
+    }
+    .detail-close:hover { background: var(--bg-muted); color: var(--text-primary); }
+    .detail-list {
+      padding: var(--spacing-lg); margin: 0; display: grid; grid-template-columns: auto 1fr; gap: 8px 24px; align-items: baseline;
+    }
+    .detail-list dt { font-size: 0.8125rem; color: var(--text-secondary); font-weight: 500; }
+    .detail-list dd { margin: 0; font-size: 0.9375rem; color: var(--text-primary); }
+    .detail-kommentar { white-space: pre-wrap; word-break: break-word; }
   `]
 })
 export class AuditComponent implements OnInit {
@@ -261,6 +368,8 @@ export class AuditComponent implements OnInit {
   loading = signal(false);
   error = signal<string | null>(null);
   availableModules = signal<ModulInfo[]>([]);
+  /** Ausgewählter Eintrag für Detail-Modal */
+  detailEntry = signal<AuditEintrag | null>(null);
 
   /** true wenn aktueller User nur Dozent (LEHRENDER) ist, kein PA/ADMIN/HV */
   isDozent = signal(false);
@@ -268,6 +377,10 @@ export class AuditComponent implements OnInit {
   private dozentModulIds: string[] = [];
   /** Lookup: modulId → ModulInfo */
   private readonly modulMap = new Map<string, ModulInfo>();
+  /** Lookup: userId → "Vorname Nachname" */
+  private readonly userMap = new Map<string, string>();
+  /** Lookup: einschreibungId → "Vorname Nachname" (Student) */
+  private readonly studentNameByEinschreibung = new Map<string, string>();
 
   ngOnInit(): void {
     const to = new Date();
@@ -341,9 +454,7 @@ export class AuditComponent implements OnInit {
 
     this.http.get<ApiResponse<AuditEintrag[]>>('/api/noten/audit', { params }).subscribe({
       next: (res) => {
-        const enriched = (res?.data ?? []).map(e => this.enrichEntry(e));
-        this.entries.set(enriched);
-        this.loading.set(false);
+        void this.applyAuditData(res?.data ?? []);
       },
       error: (err) => {
         const msg = err?.error?.message ?? err?.message ?? 'Fehler beim Laden des Protokolls';
@@ -354,19 +465,72 @@ export class AuditComponent implements OnInit {
     });
   }
 
+  private async applyAuditData(raw: AuditEintrag[]): Promise<void> {
+    await this.loadUserAndStudentLookups();
+    const enriched = raw.map(e => this.enrichEntry(e));
+    this.entries.set(enriched);
+    this.loading.set(false);
+  }
+
+  private async loadUserAndStudentLookups(): Promise<void> {
+    try {
+      const [usersRes, studentsRes, einschRes] = await Promise.all([
+        firstValueFrom(this.apollo.query<{ users: { id: string; vorname: string; nachname: string }[] }>({
+          query: GET_USERS_NAMES,
+          context: { clientName: 'user' },
+          fetchPolicy: 'network-only'
+        })).catch(() => ({ data: { users: [] } })),
+        firstValueFrom(this.apollo.query<{ students: { id: string; vorname: string; nachname: string }[] }>({
+          query: GET_STUDENTS_NAMES,
+          context: { clientName: 'user' },
+          fetchPolicy: 'network-only'
+        })).catch(() => ({ data: { students: [] } })),
+        firstValueFrom(this.apollo.query<{ einschreibungen: { id: string; studentId: string }[] }>({
+          query: GET_EINSCHREIBUNGEN_FOR_AUDIT,
+          fetchPolicy: 'network-only'
+        })).catch(() => ({ data: { einschreibungen: [] } }))
+      ]);
+      this.userMap.clear();
+      (usersRes.data?.users ?? []).forEach(u =>
+        this.userMap.set(String(u.id), [u.vorname, u.nachname].filter(Boolean).join(' ').trim() || String(u.id))
+      );
+      const studentNameById = new Map<string, string>();
+      (studentsRes.data?.students ?? []).forEach(s =>
+        studentNameById.set(String(s.id), [s.vorname, s.nachname].filter(Boolean).join(' ').trim() || String(s.id))
+      );
+      this.studentNameByEinschreibung.clear();
+      (einschRes.data?.einschreibungen ?? []).forEach(e => {
+        const name = studentNameById.get(String(e.studentId));
+        if (name) this.studentNameByEinschreibung.set(String(e.id), name);
+      });
+    } catch {
+      // Lookups optional – Einträge werden trotzdem mit IDs angezeigt
+    }
+  }
+
   private enrichEntry(e: AuditEintrag): AuditEintrag {
     const mod = this.modulMap.get(String(e.modulId));
     let modulName: string | undefined;
     if (mod) {
       modulName = mod.modulNr ? `${mod.modulNr} – ${mod.name}` : mod.name;
     }
-    return { ...e, modulName };
+    const geaendertVonName = e.geaendertVonName ?? this.userMap.get(String(e.geaendertVon));
+    const studentName = e.einschreibungId == null ? undefined : this.studentNameByEinschreibung.get(String(e.einschreibungId));
+    return { ...e, modulName, geaendertVonName, studentName };
+  }
+
+  openDetail(e: AuditEintrag): void {
+    this.detailEntry.set(e);
+  }
+
+  closeDetail(): void {
+    this.detailEntry.set(null);
   }
 
   exportCsv(): void {
     const rows = this.entries();
     if (rows.length === 0) return;
-    const headers = ['Zeit', 'Aktion', 'Note-ID', 'Modul', 'Geändert von', 'Vorher', 'Nachher', 'Kommentar'];
+    const headers = ['Zeit', 'Aktion', 'Note-ID', 'Modul', 'Geändert von', 'Student', 'Vorher', 'Nachher', 'Kommentar'];
     const lines = [headers.join(';')];
     for (const e of rows) {
       const row = [
@@ -375,6 +539,7 @@ export class AuditComponent implements OnInit {
         e.noteId,
         e.modulName ?? e.modulId ?? '',
         e.geaendertVonName ?? e.geaendertVon,
+        e.studentName ?? (e.einschreibungId ?? ''),
         e.alterWert ?? '',
         e.neuerWert ?? '',
         (e.kommentar ?? '').replaceAll(';', ',')

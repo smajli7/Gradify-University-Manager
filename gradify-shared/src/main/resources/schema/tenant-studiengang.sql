@@ -7,6 +7,7 @@ CREATE TABLE IF NOT EXISTS module (id BIGSERIAL PRIMARY KEY, po_id BIGINT NOT NU
 CREATE TABLE IF NOT EXISTS einschreibungen (id BIGSERIAL PRIMARY KEY, student_id BIGINT NOT NULL, studiengang_id BIGINT NOT NULL REFERENCES studiengaenge(id), po_id BIGINT NOT NULL REFERENCES pruefungsordnungen(id), studienvariante VARCHAR(20) NOT NULL DEFAULT 'ALLGEMEIN', immatrikuliert_am DATE NOT NULL, exmatrikuliert_am DATE, aktuelles_semester INT NOT NULL DEFAULT 1, status VARCHAR(20) NOT NULL DEFAULT 'AKTIV', erstellt_am TIMESTAMP);
 CREATE TABLE IF NOT EXISTS po_regelwerke (id BIGSERIAL PRIMARY KEY, po_id BIGINT NOT NULL UNIQUE REFERENCES pruefungsordnungen(id), regel_name VARCHAR(100) NOT NULL, beschreibung TEXT, formel VARCHAR(500) NOT NULL, parameter_json TEXT);
 CREATE TABLE IF NOT EXISTS modul_zuweisungen (id BIGSERIAL PRIMARY KEY, dozent_id BIGINT NOT NULL, modul_id BIGINT NOT NULL, bemerkung VARCHAR(255));
+CREATE TABLE IF NOT EXISTS wahlpflicht_wahlen (id BIGSERIAL PRIMARY KEY, einschreibung_id BIGINT NOT NULL REFERENCES einschreibungen(id), wahlpflicht_gruppe VARCHAR(20) NOT NULL, modul_id BIGINT NOT NULL REFERENCES module(id), erstellt_am TIMESTAMP DEFAULT CURRENT_TIMESTAMP, UNIQUE(einschreibung_id, wahlpflicht_gruppe));
 -- Performance Indexes
 CREATE INDEX IF NOT EXISTS idx_studiengaenge_mandant_id ON studiengaenge(mandant_id);
 CREATE INDEX IF NOT EXISTS idx_einschreibungen_student_id ON einschreibungen(student_id);

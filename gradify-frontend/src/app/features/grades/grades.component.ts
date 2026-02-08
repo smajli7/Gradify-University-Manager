@@ -1708,7 +1708,8 @@ export class GradesComponent implements OnInit, OnDestroy {
     const groups = new Map<number, Note[]>();
     for (const n of noten) {
       const modul = map.get(String(n.modulId));
-      const sem = modul?.semester != null ? Number.parseInt(String(modul.semester), 10) : 0;
+      const semStr = modul?.semester != null ? String(modul.semester).trim() : '';
+      const sem = semStr === '6-7' ? 7 : (Number.parseInt(semStr, 10) || 0);
       const key = Number.isNaN(sem) ? 0 : sem;
       if (!groups.has(key)) groups.set(key, []);
       groups.get(key)!.push(n);
@@ -2186,7 +2187,9 @@ export class GradesComponent implements OnInit, OnDestroy {
 
   getSemesterForNote(note: Note): string {
     const modul = this.moduleService.moduleMap().get(String(note.modulId));
-    return modul?.semester != null ? String(modul.semester) : '-';
+    if (modul?.semester == null) return '-';
+    const s = String(modul.semester).trim();
+    return s === '6-7' ? '7' : s;
   }
 
   toStr(val: any): string {

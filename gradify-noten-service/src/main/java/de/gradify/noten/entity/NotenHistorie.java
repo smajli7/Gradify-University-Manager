@@ -51,6 +51,7 @@ public class NotenHistorie {
         NOTE_GEAENDERT,
         VALIDIERT,
         FREIGEGEBEN,
+        FREIGABE_ZURUECKGENOMMEN,
         STORNIERT
     }
 }

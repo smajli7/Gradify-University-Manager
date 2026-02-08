@@ -49,16 +49,6 @@ export const routes: Routes = [
           .then(m => m.ValidationComponent)
       },
       {
-        path: 'grades/release',
-        loadComponent: () => import('./features/grades/release/release.component')
-          .then(m => m.ReleaseComponent)
-      },
-      {
-        path: 'grades/conflicts',
-        loadComponent: () => import('./features/grades/conflicts/conflicts.component')
-          .then(m => m.ConflictsComponent)
-      },
-      {
         path: 'grades/audit',
         loadComponent: () => import('./features/grades/audit/audit.component')
           .then(m => m.AuditComponent)
@@ -67,11 +57,6 @@ export const routes: Routes = [
         path: 'grades/entry',
         loadComponent: () => import('./features/grades/entry/grade-entry.component')
           .then(m => m.GradeEntryComponent)
-      },
-      {
-        path: 'calculation',
-        loadComponent: () => import('./features/calculation/calculation.component')
-          .then(m => m.CalculationComponent)
       },
       {
         path: 'stats',

@@ -11,6 +11,9 @@ spring:
       max-request-size: 10MB
   cloud:
     gateway:
+      # Default-Filter für alle Routes: Authorization-Header explizit weiterleiten
+      default-filters:
+        - PreserveHostHeader
       # CORS Konfiguration
       globalcors:
         cors-configurations:

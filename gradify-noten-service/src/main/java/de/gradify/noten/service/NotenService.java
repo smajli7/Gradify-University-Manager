@@ -105,9 +105,11 @@ public class NotenService {
             versuch = (maxVersuch != null ? maxVersuch : 0) + 1;
         }
 
-        // Bestanden-Status berechnen falls nicht angegeben
+        // Bestanden-Status berechnen: 5.0 ist IMMER nicht bestanden (PO-Regel)
         Boolean bestanden = request.getBestanden();
-        if (bestanden == null && request.getNoteWert() != null) {
+        if (request.getNoteWert() != null && request.getNoteWert().doubleValue() >= 5.0) {
+            bestanden = false; // 5.0 kann nie bestanden sein
+        } else if (bestanden == null && request.getNoteWert() != null) {
             bestanden = request.getNoteWert().doubleValue() <= 4.0;
         }
 
@@ -141,10 +143,9 @@ public class NotenService {
     @Transactional
     public Optional<NoteDto> updateNote(Long id, UpdateNoteRequest request, Long geaendertVon) {
         return noteRepository.findById(id).map(note -> {
-            // Nur ERFASST-Noten können bearbeitet werden
-            if (note.getStatus() != Note.NoteStatus.ERFASST) {
-                throw new IllegalStateException("Note kann nur im Status ERFASST bearbeitet werden");
-            }
+            // Alle Status erlaubt (Prüfungsamt/Admin dürfen auch validierte/freigegebene Noten korrigieren).
+            // Die Zugriffskontrolle erfolgt über SecurityConfig + @PreAuthorize im Controller.
+            log.info("Editing note {} in status {} by user {}", id, note.getStatus(), geaendertVon);
 
             BigDecimal alterWert = note.getNoteWert();
 
@@ -155,13 +156,22 @@ public class NotenService {
                             "Ungültiger Notenwert. Erlaubt: 1.0, 1.3, 1.7, 2.0, 2.3, 2.7, 3.0, 3.3, 3.7, 4.0, 5.0");
                 }
                 note.setNoteWert(request.getNoteWert());
-                // Bestanden-Status neu berechnen
-                if (request.getBestanden() == null) {
+                // Bestanden-Status ableiten: 5.0 ist IMMER nicht bestanden (PO-Regel)
+                if (request.getNoteWert().doubleValue() >= 5.0) {
+                    note.setBestanden(false);
+                } else if (request.getBestanden() == null) {
                     note.setBestanden(request.getNoteWert().doubleValue() <= 4.0);
+                } else {
+                    note.setBestanden(request.getBestanden());
                 }
-            }
-            if (request.getBestanden() != null) {
-                note.setBestanden(request.getBestanden());
+            } else if (request.getBestanden() != null) {
+                // Nur bestanden-Flag ändern ohne Note: prüfe Konsistenz
+                if (request.getBestanden() && note.getNoteWert() != null && note.getNoteWert().doubleValue() >= 5.0) {
+                    note.setBestanden(false); // 5.0 kann nicht bestanden sein
+                    log.warn("Versuch bestanden=true zu setzen bei Note 5.0 – automatisch auf false korrigiert (Note {})", id);
+                } else {
+                    note.setBestanden(request.getBestanden());
+                }
             }
             if (request.getPruefungsdatum() != null) {
                 note.setPruefungsdatum(request.getPruefungsdatum());
@@ -236,6 +246,28 @@ public class NotenService {
 
             // Event an Message Queue senden
             eventPublisher.publishNoteReleased(note, "system");
+
+            return toDto(note);
+        });
+    }
+
+    /**
+     * Freigabe zurücknehmen (Zurückweisen) – nur bei bereits freigegebenen Noten.
+     * Setzt Status auf VALIDIERT zurück (kann danach erneut freigegeben werden).
+     */
+    @Transactional
+    public Optional<NoteDto> rejectNote(Long id, Long rejectedBy, String kommentar) {
+        return noteRepository.findById(id).map(note -> {
+            if (note.getStatus() != Note.NoteStatus.FREIGEGEBEN) {
+                throw new IllegalStateException("Nur FREIGEGEBENE Noten können zurückgewiesen werden");
+            }
+
+            note.setStatus(Note.NoteStatus.VALIDIERT);
+            note = noteRepository.save(note);
+            log.info("Note release rejected (zurückgewiesen): {}", id);
+
+            saveHistorie(note.getId(), note.getEinschreibungId(), note.getModulId(), rejectedBy != null ? rejectedBy : 0L,
+                    NotenHistorie.AenderungsTyp.FREIGABE_ZURUECKGENOMMEN, null, note.getNoteWert(), kommentar);
 
             return toDto(note);
         });

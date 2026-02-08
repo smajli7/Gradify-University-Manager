@@ -2,6 +2,8 @@
 spring:
   cloud:
     gateway:
+      httpclient:
+        sensitive-headers: []
       # CORS Konfiguration (Requests kommen via Nginx, aber fuer direkte API-Aufrufe)
       globalcors:
         cors-configurations:

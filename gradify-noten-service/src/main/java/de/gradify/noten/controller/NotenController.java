@@ -20,6 +20,7 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import org.springframework.security.access.prepost.PreAuthorize;
 import org.springframework.security.core.Authentication;
 import org.springframework.security.core.context.SecurityContextHolder;
 
@@ -192,6 +193,7 @@ public class NotenController {
     }
 
     @Operation(summary = "Note freigeben", description = "Gibt eine validierte Note endgueltig frei. Benoetigt PRUEFUNGSAMT oder ADMIN Rolle.")
+    @PreAuthorize("hasAnyRole('PRUEFUNGSAMT', 'ADMIN', 'HOCHSCHUL_VERWALTER')")
     @PostMapping("/{id}/release")
     public ResponseEntity<ApiResponse<NoteDto>> releaseNote(
             @Parameter(description = "ID der Note") @PathVariable("id") Long id,
@@ -206,6 +208,28 @@ public class NotenController {
                             .body(ApiResponse.error("Note nicht gefunden")));
         } catch (IllegalStateException e) {
             log.error("Error releasing note: {}", e.getMessage());
+            return ResponseEntity.badRequest()
+                    .body(ApiResponse.error(e.getMessage()));
+        }
+    }
+
+    @Operation(summary = "Freigabe zurücknehmen (Zurückweisen)", description = "Nur bei bereits freigegebenen Noten. Setzt Status auf VALIDIERT.")
+    @PreAuthorize("hasAnyRole('PRUEFUNGSAMT', 'ADMIN', 'HOCHSCHUL_VERWALTER')")
+    @PostMapping("/{id}/reject")
+    public ResponseEntity<ApiResponse<NoteDto>> rejectNote(
+            @Parameter(description = "ID der Note") @PathVariable("id") Long id,
+            @RequestParam(value = "kommentar", required = false) String kommentar,
+            @RequestHeader(name = "X-User-Id", required = false) Long headerUserId) {
+        log.info("Rejecting (Freigabe zurücknehmen) Note: {}", id);
+        Long rejectedBy = resolveUserId(headerUserId);
+
+        try {
+            return notenService.rejectNote(id, rejectedBy, kommentar)
+                    .map(note -> ResponseEntity.ok(ApiResponse.success(note, "Freigabe zurückgenommen")))
+                    .orElse(ResponseEntity.status(HttpStatus.NOT_FOUND)
+                            .body(ApiResponse.error("Note nicht gefunden")));
+        } catch (IllegalStateException e) {
+            log.error("Error rejecting note: {}", e.getMessage());
             return ResponseEntity.badRequest()
                     .body(ApiResponse.error(e.getMessage()));
         }

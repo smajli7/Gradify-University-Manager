@@ -74,7 +74,9 @@ interface Note {
   validiertVon: string | null;
   // Extended fields
   studentName?: string;
+  studentMatrikel?: string;
   modulName?: string;
+  modulNr?: string;
   erfasstVonName?: string;
   validiertVonName?: string;
   selected?: boolean;
@@ -110,62 +112,54 @@ interface UserInfo {
   standalone: true,
   imports: [CommonModule, FormsModule, SkeletonStateComponent],
   template: `
-    <div class="page animate-slide-up">
-      <!-- Header -->
-      <div class="page-header">
-        <div class="header-content">
-          <h1>Notenvalidierung</h1>
-          <p class="text-muted">Noten prüfen und freigeben</p>
-        </div>
-        <div class="header-stats">
-          <div class="stat-badge stat-badge--warning">
-            <span class="stat-value">{{ pendingCount() }}</span>
-            <span class="stat-label">Ausstehend</span>
-          </div>
-          <div class="stat-badge stat-badge--info">
-            <span class="stat-value">{{ validatedCount() }}</span>
-            <span class="stat-label">Validiert</span>
-          </div>
-          <div class="stat-badge stat-badge--success">
-            <span class="stat-value">{{ releasedCount() }}</span>
-            <span class="stat-label">Freigegeben</span>
-          </div>
-        </div>
+    <div class="page animate-slide-up" [class.drawer-open]="selectedNote()">
+      <!-- Kompakter Titel -->
+      <div class="page-header page-header--compact">
+        <h1>Notenvalidierung</h1>
+        <p class="page-subtitle">1. Validieren → 2. Freigeben. Zuerst ausstehende Noten prüfen.</p>
       </div>
 
-      <!-- Toolbar (sticky für Queue-Arbeit) -->
+      <!-- Sticky Arbeitsleiste: Filter + Status-Chips + Suche + Batch-Actions -->
       <div class="toolbar toolbar--sticky">
-        <div class="filter-group">
-          <select class="filter-select" [(ngModel)]="statusFilter" (ngModelChange)="applyFilters()">
-            <option value="all">Alle Status</option>
-            <option value="ERFASST">Erfasst (ausstehend)</option>
-            <option value="VALIDIERT">Validiert</option>
-            <option value="FREIGEGEBEN">Freigegeben</option>
-          </select>
-        </div>
-        
-        <div class="search-wrapper">
-          <span class="search-icon material-icons-outlined">search</span>
-          <input 
-            type="text" 
-            class="search-input" 
-            placeholder="Suche nach Student, Modul..."
-            [(ngModel)]="searchTerm"
-            (ngModelChange)="applyFilters()">
-        </div>
-
-        @if (selectedCount() > 0) {
-          <div class="batch-actions">
-            <button class="btn btn--primary" (click)="batchValidate()" [disabled]="processing()">
-              <span class="material-icons-outlined">check</span>
-              {{ selectedCount() }} validieren
+        <div class="toolbar-left">
+          <div class="filter-bar">
+            <select class="filter-select" [ngModel]="statusFilter()" (ngModelChange)="setStatusFilter($event)">
+              <option value="ERFASST">Ausstehend (zu prüfen)</option>
+              <option value="VALIDIERT">Validiert (wartet auf Freigabe)</option>
+              <option value="FREIGEGEBEN">Freigegeben</option>
+              <option value="all">Alle Status</option>
+            </select>
+            <span class="filter-sep"></span>
+            <div class="search-wrapper">
+              <span class="search-icon material-icons-outlined">search</span>
+              <input type="text" class="search-input" placeholder="Suche nach Student, Modul…"
+                [ngModel]="searchTerm()" (ngModelChange)="setSearchTerm($event)">
+            </div>
+          </div>
+          <div class="status-chips">
+            <button type="button" class="chip" [class.chip--active]="statusFilter() === 'ERFASST'" (click)="setStatusFilter('ERFASST')">
+              Ausstehend {{ pendingCount() }}
             </button>
-            <button class="btn btn--success" (click)="batchRelease()" [disabled]="processing()">
-              <span class="material-icons-outlined">verified</span>
-              {{ selectedCount() }} freigeben
+            <button type="button" class="chip" [class.chip--active]="statusFilter() === 'VALIDIERT'" (click)="setStatusFilter('VALIDIERT')">
+              Validiert {{ validatedCount() }}
+            </button>
+            <button type="button" class="chip" [class.chip--active]="statusFilter() === 'FREIGEGEBEN'" (click)="setStatusFilter('FREIGEGEBEN')">
+              Freigegeben {{ releasedCount() }}
             </button>
           </div>
-        }
+        </div>
+        <div class="toolbar-right">
+          <div class="batch-actions">
+            <button class="btn btn--primary btn--sm" (click)="batchValidate()" [disabled]="selectedValidatable() === 0 || processing()" [title]="selectedValidatable() === 0 ? 'Keine ausstehenden Noten ausgewählt' : selectedValidatable() + ' Note(n) validieren'">
+              <span class="material-icons-outlined">check</span>
+              {{ selectedValidatable() }} validieren
+            </button>
+            <button class="btn btn--success btn--sm" (click)="batchRelease()" [disabled]="selectedReleasable() === 0 || processing()" [title]="selectedReleasable() === 0 ? 'Keine validierten Noten ausgewählt' : selectedReleasable() + ' Note(n) freigeben'">
+              <span class="material-icons-outlined">verified</span>
+              {{ selectedReleasable() }} freigeben
+            </button>
+          </div>
+        </div>
       </div>
 
       <!-- Loading State -->
@@ -182,206 +176,248 @@ interface UserInfo {
         </div>
       }
 
-      <!-- Data Table -->
+      <!-- Layout: Tabelle + rechter Drawer -->
       @if (!loading() && !error()) {
-        <div class="table-container">
-          <table class="data-table">
-            <thead>
-              <tr>
-                <th class="col-checkbox">
-                  <input 
-                    type="checkbox" 
-                    [checked]="allSelected()"
-                    (change)="toggleSelectAll($event)">
-                </th>
-                <th class="col-student">Student</th>
-                <th class="col-modul">Modul</th>
-                <th class="col-note">Note</th>
-                <th class="col-status">Status</th>
-                <th class="col-datum">Prüfungsdatum</th>
-                <th class="col-versuch">Versuch</th>
-                <th class="col-actions">Aktionen</th>
-              </tr>
-            </thead>
-            <tbody>
-              @for (note of filteredNoten(); track note.id) {
-                <tr [class.selected]="note.selected" [class.status-erfasst]="note.status === 'ERFASST'" [class.status-validiert]="note.status === 'VALIDIERT'">
-                  <td class="col-checkbox">
-                    <input 
-                      type="checkbox" 
-                      [checked]="note.selected"
-                      (change)="toggleSelect(note)">
-                  </td>
-                  <td class="col-student">
-                    @if (note.studentName) {
-                      <div class="cell-content">
-                        <span class="student-name">{{ note.studentName }}</span>
-                      </div>
-                    } @else {
-                      <div class="cell-content cell-content--muted">
-                        <span class="material-icons-outlined">person</span>
-                        <span class="id-text">{{ note.einschreibungId.substring(0, 8) }}...</span>
-                      </div>
-                    }
-                  </td>
-                  <td class="col-modul">
-                    @if (note.modulName) {
-                      <div class="cell-content">
-                        <span class="modul-name">{{ note.modulName }}</span>
-                      </div>
-                    } @else {
-                      <div class="cell-content cell-content--muted">
-                        <span class="material-icons-outlined">book</span>
-                        <span class="id-text">{{ note.modulId.substring(0, 8) }}...</span>
-                      </div>
-                    }
-                  </td>
-                  <td class="col-note">
-                    @if (note.noteWert !== null) {
-                      <span class="note-value" [class]="getNoteClass(note.noteWert)">
-                        {{ note.noteWert | number:'1.1-1' }}
-                      </span>
-                    } @else {
-                      <span class="note-value note-value--bestanden">
-                        {{ note.bestanden ? 'Bestanden' : '-' }}
-                      </span>
-                    }
-                  </td>
-                  <td class="col-status">
-                    <span class="status-badge" [class]="'status-badge--' + note.status.toLowerCase()">
-                      {{ getStatusLabel(note.status) }}
-                    </span>
-                  </td>
-                  <td class="col-datum">{{ formatDate(note.pruefungsdatum) }}</td>
-                  <td class="col-versuch">{{ note.versuch }}. Versuch</td>
-                  <td class="col-actions">
-                    <div class="action-buttons">
-                      @if (note.status === 'ERFASST') {
-                        <button 
-                          class="action-btn action-btn--validate" 
-                          title="Validieren"
-                          (click)="validateNote(note)"
-                          [disabled]="processing()">
-                          <span class="material-icons-outlined">check</span>
-                        </button>
-                      }
-                      @if (note.status === 'ERFASST' || note.status === 'VALIDIERT') {
-                        <button 
-                          class="action-btn action-btn--release" 
-                          title="Freigeben"
-                          (click)="releaseNote(note)"
-                          [disabled]="processing()">
-                          <span class="material-icons-outlined">verified</span>
-                        </button>
-                      }
-                      <button 
-                        class="action-btn action-btn--info" 
-                        title="Details anzeigen"
-                        (click)="showDetails(note)">
-                        <span class="material-icons-outlined">info</span>
-                      </button>
-                    </div>
-                  </td>
-                </tr>
-              } @empty {
-                <tr>
-                  <td colspan="8" class="empty-cell">
-                    @if (statusFilter() === 'all' && !searchTerm()) {
-                      Keine Noten vorhanden
-                    } @else {
-                      Keine Noten gefunden für die ausgewählten Filter
-                    }
-                  </td>
-                </tr>
-              }
-            </tbody>
-          </table>
-        </div>
-
-        <!-- Summary -->
-        <div class="summary-bar">
-          <span>{{ filteredNoten().length }} von {{ noten().length }} Noten angezeigt</span>
-        </div>
-      }
-
-      <!-- Detail Modal -->
-      @if (selectedNote()) {
-        <div class="modal-overlay" (click)="closeDetails()">
-          <div class="modal" (click)="$event.stopPropagation()">
-            <div class="modal-header">
-              <h2>Notendetails</h2>
-              <button class="modal-close" (click)="closeDetails()">
-                <span class="material-icons-outlined">close</span>
-              </button>
+        <div class="validation-layout">
+          <div class="table-wrap">
+            <div class="table-container table-container--sticky">
+              <table class="data-table">
+                <thead>
+                  <tr>
+                    <th class="col-flag"></th>
+                    <th class="col-checkbox">
+                      <input type="checkbox" [checked]="allSelected()" (change)="toggleSelectAll($event)">
+                    </th>
+                    <th class="col-student">Student</th>
+                    <th class="col-modul">Modul</th>
+                    <th class="col-note">Note</th>
+                    <th class="col-status">Status</th>
+                    <th class="col-datum">Prüfungsdatum</th>
+                    <th class="col-versuch">Versuch</th>
+                    <th class="col-actions">Aktionen</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (note of filteredNoten(); track note.id; let i = $index) {
+                    <tr
+                      [class.row-zebra]="i % 2 === 1"
+                      [class.selected]="note.selected"
+                      [class.row-selected]="note.selected"
+                      (click)="showDetails(note)">
+                      <td class="col-flag">
+                        @if (hasConflict(note)) {
+                          <span class="flag-warning material-icons-outlined" title="Konflikt/Unklarheit">warning</span>
+                        }
+                      </td>
+                      <td class="col-checkbox" (click)="$event.stopPropagation()">
+                        <input type="checkbox" [checked]="note.selected" (change)="toggleSelect(note)">
+                      </td>
+                      <td class="col-student">
+                        <div class="cell-student">
+                          <span class="cell-student-name">{{ note.studentName || (note.einschreibungId | slice:0:8) + '…' }}</span>
+                          <span class="cell-student-meta">{{ note.studentMatrikel || '–' }}</span>
+                        </div>
+                      </td>
+                      <td class="col-modul">
+                        <div class="cell-modul">
+                          @if (note.modulNr) {
+                            <span class="modul-badge">{{ note.modulNr }}</span>
+                            <span class="modul-name">{{ getModulDisplayName(note) }}</span>
+                          } @else {
+                            <span class="modul-name">{{ note.modulName || (note.modulId | slice:0:8) + '…' }}</span>
+                          }
+                        </div>
+                      </td>
+                      <td class="col-note" (click)="$event.stopPropagation(); quickEditNote(note)">
+                        <div class="note-cell-editable" title="Klicken zum Bearbeiten">
+                          @if (note.noteWert !== null) {
+                            <span class="note-value" [class]="getNoteClass(note.noteWert)">{{ note.noteWert | number:'1.1-1' }}</span>
+                          } @else {
+                            <span class="note-value note-value--bestanden">{{ note.bestanden ? 'Bestanden' : '–' }}</span>
+                          }
+                          <span class="note-edit-icon material-icons-outlined">edit</span>
+                        </div>
+                      </td>
+                      <td class="col-status">
+                        <span class="status-badge" [class]="'status-badge--' + note.status.toLowerCase()">{{ getStatusLabel(note.status) }}</span>
+                      </td>
+                      <td class="col-datum">{{ formatDate(note.pruefungsdatum) }}</td>
+                      <td class="col-versuch">{{ note.versuch }}</td>
+                      <td class="col-actions" (click)="$event.stopPropagation()">
+                        <div class="action-buttons">
+                          <button type="button" class="action-btn" title="Details anzeigen" (click)="showDetails(note)">
+                            <span class="material-icons-outlined">visibility</span>
+                          </button>
+                          <button type="button" class="action-btn action-btn--edit" title="Note bearbeiten" (click)="quickEditNote(note)">
+                            <span class="material-icons-outlined">edit</span>
+                          </button>
+                          @if (note.status === 'ERFASST') {
+                            <button type="button" class="action-btn action-btn--validate" title="Validieren" (click)="validateNote(note)" [disabled]="processing()">
+                              <span class="material-icons-outlined">check</span>
+                            </button>
+                          }
+                          @if (note.status === 'VALIDIERT') {
+                            <button type="button" class="action-btn action-btn--release" title="Freigeben" (click)="releaseNote(note)" [disabled]="processing()">
+                              <span class="material-icons-outlined">verified</span>
+                            </button>
+                          }
+                          @if (note.status === 'FREIGEGEBEN') {
+                            <button type="button" class="action-btn action-btn--reject" title="Freigabe zurücknehmen" (click)="rejectNote(note)" [disabled]="processing()">
+                              <span class="material-icons-outlined">undo</span>
+                            </button>
+                          }
+                        </div>
+                      </td>
+                    </tr>
+                  } @empty {
+                    <tr>
+                      <td colspan="9" class="empty-cell">
+                        @if (statusFilter() === 'all' && !searchTerm()) {
+                          Keine Noten vorhanden
+                        } @else {
+                          Keine Noten gefunden für die ausgewählten Filter
+                        }
+                      </td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
             </div>
-            <div class="modal-body">
-              <div class="detail-grid">
-                <div class="detail-item">
-                  <span class="detail-label">Student</span>
-                  <span class="detail-value">{{ selectedNote()!.studentName || selectedNote()!.einschreibungId }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Modul</span>
-                  <span class="detail-value">{{ selectedNote()!.modulName || selectedNote()!.modulId }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Note</span>
-                  <span class="detail-value">
-                    {{ selectedNote()!.noteWert !== null ? (selectedNote()!.noteWert | number:'1.1-1') : (selectedNote()!.bestanden ? 'Bestanden' : '-') }}
-                  </span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Status</span>
-                  <span class="detail-value">{{ getStatusLabel(selectedNote()!.status) }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Prüfungsdatum</span>
-                  <span class="detail-value">{{ formatDate(selectedNote()!.pruefungsdatum) }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Versuch</span>
-                  <span class="detail-value">{{ selectedNote()!.versuch }}. Versuch</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Erfasst am</span>
-                  <span class="detail-value">{{ formatDate(selectedNote()!.erfasstAm) }}</span>
-                </div>
-                <div class="detail-item">
-                  <span class="detail-label">Erfasst von</span>
-                  <span class="detail-value">{{ selectedNote()!.erfasstVonName || selectedNote()!.erfasstVon || '-' }}</span>
-                </div>
-                @if (selectedNote()!.validiertAm) {
-                  <div class="detail-item">
-                    <span class="detail-label">Validiert am</span>
-                    <span class="detail-value">{{ formatDate(selectedNote()!.validiertAm!) }}</span>
-                  </div>
-                  <div class="detail-item">
-                    <span class="detail-label">Validiert von</span>
-                    <span class="detail-value">{{ selectedNote()!.validiertVonName || selectedNote()!.validiertVon || '-' }}</span>
-                  </div>
-                }
-                @if (selectedNote()!.kommentar) {
-                  <div class="detail-item detail-item--full">
-                    <span class="detail-label">Kommentar</span>
-                    <span class="detail-value">{{ selectedNote()!.kommentar }}</span>
-                  </div>
-                }
-              </div>
-            </div>
-            <div class="modal-footer">
-              @if (selectedNote()!.status === 'ERFASST') {
-                <button class="btn btn--primary" (click)="validateNote(selectedNote()!); closeDetails()">
-                  Validieren
-                </button>
-              }
-              @if (selectedNote()!.status === 'ERFASST' || selectedNote()!.status === 'VALIDIERT') {
-                <button class="btn btn--success" (click)="releaseNote(selectedNote()!); closeDetails()">
-                  Freigeben
-                </button>
-              }
-              <button class="btn btn--secondary" (click)="closeDetails()">Schließen</button>
+            <div class="summary-bar">
+              <span>{{ filteredNoten().length }} von {{ noten().length }} Noten angezeigt</span>
             </div>
           </div>
+
+          <!-- Rechter Drawer (Detail) -->
+          @if (selectedNote(); as note) {
+            <aside class="detail-drawer" (click)="$event.stopPropagation()">
+              <div class="drawer-header">
+                <h2 class="drawer-title">{{ editingNote()?.id === note.id ? 'Note bearbeiten' : 'Notendetails' }}</h2>
+                <button type="button" class="drawer-close" (click)="closeDetails(); cancelEdit(); dismissEditConfirm()">
+                  <span class="material-icons-outlined">close</span>
+                </button>
+              </div>
+              <div class="drawer-body">
+                @if (confirmEditNote()?.id === note.id) {
+                  <div class="drawer-warning">
+                    <span class="material-icons-outlined">warning</span>
+                    <p>Diese Note ist bereits {{ note.status === 'FREIGEGEBEN' ? 'freigegeben' : 'validiert' }}. Änderungen werden protokolliert.</p>
+                    <p class="drawer-warning-question">Trotzdem bearbeiten?</p>
+                    <div class="drawer-warning-actions">
+                      <button type="button" class="btn btn--primary" (click)="confirmEditAndOpen()">Ja, bearbeiten</button>
+                      <button type="button" class="btn btn--secondary" (click)="dismissEditConfirm()">Abbrechen</button>
+                    </div>
+                  </div>
+                } @else if (editingNote()?.id === note.id) {
+                  <div class="drawer-edit-form">
+                    <div class="drawer-block">
+                      <span class="drawer-label">Note</span>
+                      <select class="drawer-input drawer-select" [(ngModel)]="editFormData.noteWert" (ngModelChange)="onNoteWertChange($event)">
+                        <option value="">– Bestanden –</option>
+                        <option value="1.0">1,0 (sehr gut)</option>
+                        <option value="1.3">1,3</option>
+                        <option value="1.7">1,7</option>
+                        <option value="2.0">2,0 (gut)</option>
+                        <option value="2.3">2,3</option>
+                        <option value="2.7">2,7</option>
+                        <option value="3.0">3,0 (befriedigend)</option>
+                        <option value="3.3">3,3</option>
+                        <option value="3.7">3,7</option>
+                        <option value="4.0">4,0 (ausreichend)</option>
+                        <option value="5.0">5,0 (nicht bestanden)</option>
+                      </select>
+                    </div>
+                    <div class="drawer-block">
+                      <label class="drawer-check" [class.disabled]="editFormData.noteWert !== ''">
+                        <input type="checkbox" [(ngModel)]="editFormData.bestanden" [disabled]="editFormData.noteWert !== ''" />
+                        <span>Bestanden</span>
+                        @if (editFormData.noteWert === '5.0') {
+                          <span class="drawer-hint">5,0 = nicht bestanden</span>
+                        } @else if (editFormData.noteWert !== '') {
+                          <span class="drawer-hint">automatisch (≤ 4,0)</span>
+                        }
+                      </label>
+                    </div>
+                    <div class="drawer-block">
+                      <span class="drawer-label">Prüfungsdatum</span>
+                      <input type="date" class="drawer-input" [(ngModel)]="editFormData.pruefungsdatum" />
+                    </div>
+                    <div class="drawer-block">
+                      <span class="drawer-label">Kommentar</span>
+                      <textarea class="drawer-textarea" [(ngModel)]="editFormData.kommentar" rows="3" placeholder="Optional"></textarea>
+                    </div>
+                    <div class="drawer-edit-actions">
+                      <button class="btn btn--primary" (click)="saveEditNote(note)" [disabled]="processing()">Speichern</button>
+                      <button class="btn btn--secondary" (click)="cancelEdit()">Abbrechen</button>
+                    </div>
+                  </div>
+                } @else {
+                  <div class="drawer-block">
+                    <span class="drawer-label">Student</span>
+                    <span class="drawer-value">{{ note.studentName || note.einschreibungId }}</span>
+                    @if (note.studentMatrikel) {
+                      <span class="drawer-meta">{{ note.studentMatrikel }}</span>
+                    }
+                  </div>
+                  <div class="drawer-block">
+                    <span class="drawer-label">Modul</span>
+                    <span class="drawer-value">{{ note.modulNr ? note.modulNr + ' ' + getModulDisplayName(note) : (note.modulName || note.modulId) }}</span>
+                  </div>
+                  <div class="drawer-block">
+                    <span class="drawer-label">Status</span>
+                    <span class="status-badge" [class]="'status-badge--' + note.status.toLowerCase()">{{ getStatusLabel(note.status) }}</span>
+                  </div>
+                  <div class="drawer-block">
+                    <span class="drawer-label">Note</span>
+                    <span class="drawer-value">
+                      {{ note.noteWert !== null ? (note.noteWert | number:'1.1-1') : (note.bestanden ? 'Bestanden' : '–') }}
+                    </span>
+                  </div>
+                  <div class="drawer-block">
+                    <span class="drawer-label">Prüfungsdatum</span>
+                    <span class="drawer-value">{{ formatDate(note.pruefungsdatum) }}</span>
+                  </div>
+                  <div class="drawer-block">
+                    <span class="drawer-label">Versuch</span>
+                    <span class="drawer-value">{{ note.versuch }}</span>
+                  </div>
+                  <div class="drawer-block">
+                    <span class="drawer-label">Erfasst am / von</span>
+                    <span class="drawer-value">{{ formatDate(note.erfasstAm) }} · {{ note.erfasstVonName || note.erfasstVon || '–' }}</span>
+                  </div>
+                  @if (note.validiertAm) {
+                    <div class="drawer-block">
+                      <span class="drawer-label">Validiert am / von</span>
+                      <span class="drawer-value">{{ formatDate(note.validiertAm) }} · {{ note.validiertVonName || note.validiertVon || '–' }}</span>
+                    </div>
+                  }
+                  @if (note.kommentar) {
+                    <div class="drawer-block drawer-block--full">
+                      <span class="drawer-label">Kommentar</span>
+                      <span class="drawer-value">{{ note.kommentar }}</span>
+                    </div>
+                  }
+                }
+              </div>
+              <div class="drawer-footer">
+                @if (editingNote()?.id === note.id) {
+                  <!-- Buttons sind im Formular direkt unter Kommentar -->
+                } @else if (confirmEditNote()?.id !== note.id) {
+                  @if (note.status === 'ERFASST') {
+                    <button class="btn btn--primary" (click)="validateNote(note); closeDetails()" [disabled]="processing()">Validieren</button>
+                  }
+                  @if (note.status === 'VALIDIERT') {
+                    <button class="btn btn--success" (click)="releaseNote(note); closeDetails()" [disabled]="processing()">Freigeben</button>
+                  }
+                  @if (note.status === 'FREIGEGEBEN') {
+                    <button type="button" class="btn btn--secondary" (click)="rejectNote(note); closeDetails()" [disabled]="processing()">Freigabe zurücknehmen</button>
+                  }
+                  <button type="button" class="btn btn--secondary" (click)="requestEditNote(note)">Bearbeiten</button>
+                  <button class="btn btn--secondary" (click)="closeDetails()">Schließen</button>
+                }
+              </div>
+            </aside>
+          }
         </div>
       }
 
@@ -397,72 +433,22 @@ interface UserInfo {
   styles: [`
     .page {
       padding: var(--spacing-md) 0;
+      width: 100%;
     }
 
-    .page-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: flex-start;
-      margin-bottom: var(--spacing-lg);
-      flex-wrap: wrap;
-      gap: var(--spacing-md);
+    .page-header--compact {
+      margin-bottom: var(--spacing-sm);
     }
 
-    .header-content h1 {
-      margin: 0 0 var(--spacing-xs) 0;
-      font-size: 1.75rem;
-      font-weight: 600;
-    }
-
-    .header-stats {
-      display: flex;
-      gap: var(--spacing-sm);
-    }
-
-    .stat-badge {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      padding: var(--spacing-sm) var(--spacing-md);
-      border-radius: var(--radius-lg);
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-    }
-
-    .stat-badge--warning {
-      border-color: rgba(245, 158, 11, 0.3);
-      background: rgba(245, 158, 11, 0.1);
-    }
-
-    .stat-badge--warning .stat-value {
-      color: var(--color-warning);
-    }
-
-    .stat-badge--info {
-      border-color: rgba(59, 130, 246, 0.3);
-      background: rgba(59, 130, 246, 0.1);
-    }
-
-    .stat-badge--info .stat-value {
-      color: var(--color-info);
-    }
-
-    .stat-badge--success {
-      border-color: rgba(16, 185, 129, 0.3);
-      background: rgba(16, 185, 129, 0.1);
-    }
-
-    .stat-badge--success .stat-value {
-      color: var(--color-success);
-    }
-
-    .stat-value {
+    .page-header--compact h1 {
+      margin: 0;
       font-size: 1.5rem;
       font-weight: 600;
     }
 
-    .stat-label {
-      font-size: var(--font-size-xs);
+    .page-subtitle {
+      margin: 2px 0 0 0;
+      font-size: var(--font-size-sm);
       color: var(--text-muted);
     }
 
@@ -470,82 +456,151 @@ interface UserInfo {
       display: flex;
       flex-wrap: wrap;
       align-items: center;
+      justify-content: space-between;
       gap: var(--spacing-md);
-      margin-bottom: var(--spacing-lg);
+      margin-bottom: var(--spacing-md);
     }
+
     .toolbar--sticky {
       position: sticky;
       top: 0;
-      z-index: 10;
+      z-index: 20;
       background: var(--bg-deep);
-      padding: var(--spacing-md) 0;
+      padding: var(--spacing-sm) 0;
       margin-left: calc(-1 * var(--spacing-lg));
       margin-right: calc(-1 * var(--spacing-lg));
       padding-left: var(--spacing-lg);
       padding-right: var(--spacing-lg);
       border-bottom: 1px solid var(--border-color);
-      margin-bottom: var(--spacing-lg);
+      margin-bottom: var(--spacing-md);
+    }
+
+    .toolbar-left {
+      display: flex;
+      flex-wrap: wrap;
+      align-items: center;
+      gap: var(--spacing-md);
+    }
+
+    .toolbar-right {
+      margin-left: auto;
+    }
+
+    .filter-bar {
+      display: flex;
+      align-items: center;
+      height: 42px;
+      background: var(--bg-elevated);
+      border: 1px solid var(--border-color-light);
+      border-radius: var(--radius-lg);
+      overflow: hidden;
+      box-shadow: 0 1px 2px rgba(0, 0, 0, 0.2);
     }
 
     .filter-select {
-      padding: 12px 36px 12px 16px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
+      height: 100%;
+      min-width: 200px;
+      padding: 0 36px 0 14px;
+      background: var(--bg-elevated);
+      border: none;
       color: var(--text-primary);
-      font-size: 0.95rem;
+      font-size: var(--font-size-sm);
+      font-weight: 500;
       cursor: pointer;
       appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='24' height='24' viewBox='0 0 24 24' fill='%238B949E'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='%2394a3b8'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
       background-repeat: no-repeat;
-      background-position: right 8px center;
+      background-position: right 10px center;
+    }
+
+    .filter-select:hover {
+      background-color: var(--bg-hover);
     }
 
     .filter-select:focus {
       outline: none;
-      border-color: var(--text-secondary);
+    }
+
+    .filter-select option {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      padding: 10px 12px;
+    }
+
+    .filter-sep {
+      width: 1px;
+      height: 24px;
+      background: var(--border-color-light);
+      flex-shrink: 0;
     }
 
     .search-wrapper {
       position: relative;
-      flex: 1;
-      max-width: 400px;
+      width: 260px;
+      height: 100%;
     }
 
     .search-icon {
       position: absolute;
-      left: 14px;
+      left: 10px;
       top: 50%;
       transform: translateY(-50%);
       color: var(--text-muted);
-      font-size: 20px;
+      font-size: 18px;
     }
 
     .search-input {
       width: 100%;
-      padding: 12px 40px 12px 44px;
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
+      height: 100%;
+      padding: 0 12px 0 36px;
+      background: transparent;
+      border: none;
       color: var(--text-primary);
-      font-size: 0.95rem;
-      transition: all 0.2s ease;
-    }
-
-    .search-input:focus {
-      outline: none;
-      border-color: var(--text-secondary);
-      box-shadow: 0 0 0 3px rgba(255, 255, 255, 0.1);
+      font-size: var(--font-size-sm);
     }
 
     .search-input::placeholder {
       color: var(--text-muted);
+      opacity: 0.9;
+    }
+
+    .search-input:focus {
+      outline: none;
+    }
+
+    .status-chips {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-xs);
+    }
+
+    .chip {
+      display: inline-flex;
+      align-items: center;
+      height: 32px;
+      padding: 0 var(--spacing-sm);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      background: var(--bg-surface);
+      color: var(--text-secondary);
+      font-size: var(--font-size-xs);
+      cursor: pointer;
+      transition: background 0.15s, border-color 0.15s;
+    }
+
+    .chip:hover {
+      background: var(--bg-hover);
+    }
+
+    .chip--active {
+      border-color: var(--text-secondary);
+      background: var(--bg-hover);
+      color: var(--text-primary);
     }
 
     .batch-actions {
       display: flex;
-      gap: var(--spacing-sm);
-      margin-left: auto;
+      gap: var(--spacing-xs);
     }
 
     .btn {
@@ -561,27 +616,35 @@ interface UserInfo {
       transition: all 0.2s ease;
     }
 
+    .btn--sm {
+      padding: 6px 12px;
+      font-size: var(--font-size-xs);
+    }
+
     .btn:disabled {
       opacity: 0.5;
       cursor: not-allowed;
     }
 
     .btn--primary {
-      background: var(--text-primary);
-      color: var(--bg-primary);
+      background: var(--bg-elevated);
+      color: var(--text-primary);
+      border: 1px solid var(--border-color-light);
     }
 
     .btn--primary:hover:not(:disabled) {
-      opacity: 0.9;
+      background: var(--bg-hover);
+      border-color: var(--text-muted);
     }
 
     .btn--success {
-      background: var(--color-success);
-      color: white;
+      background: rgba(var(--color-success-rgb), 0.25);
+      color: #86efac;
+      border: 1px solid rgba(var(--color-success-rgb), 0.4);
     }
 
     .btn--success:hover:not(:disabled) {
-      opacity: 0.9;
+      background: rgba(var(--color-success-rgb), 0.35);
     }
 
     .btn--secondary {
@@ -590,12 +653,8 @@ interface UserInfo {
       border: 1px solid var(--border-color);
     }
 
-    .btn--secondary:hover {
-      background: var(--bg-hover);
-    }
-
     .btn .material-icons-outlined {
-      font-size: 1.125rem;
+      font-size: 1rem;
     }
 
     .loading-state, .error-state {
@@ -607,162 +666,336 @@ interface UserInfo {
       color: var(--text-muted);
     }
 
-    .spinner-lg {
-      width: 40px;
-      height: 40px;
-      border: 3px solid var(--border-color);
-      border-top-color: var(--text-secondary);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-      margin-bottom: var(--spacing-md);
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
     .error-state .material-icons-outlined {
       font-size: 48px;
       color: var(--color-danger);
       margin-bottom: var(--spacing-md);
     }
 
+    .validation-layout {
+      display: flex;
+      gap: 0;
+      width: 100%;
+      min-width: 0;
+    }
+
+    .page.drawer-open .table-wrap {
+      flex: 1;
+      min-width: 0;
+    }
+
+    .table-wrap {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+    }
+
     .table-container {
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-xl);
-      overflow: hidden;
+      border-radius: var(--radius-lg);
+      overflow: auto;
+      flex: 1;
+      box-shadow: 0 1px 3px rgba(0, 0, 0, 0.15);
+    }
+
+    .table-container--sticky {
+      overflow: auto;
     }
 
     .data-table {
       width: 100%;
+      min-width: 800px;
       border-collapse: collapse;
     }
 
-    .data-table th {
-      padding: var(--spacing-md);
-      text-align: left;
-      font-weight: 500;
-      font-size: var(--font-size-sm);
-      color: var(--text-muted);
-      background: rgba(0, 0, 0, 0.2);
-      border-bottom: 1px solid var(--border-color);
+    /* Header: klare Trennung, eine Stufe dunkler */
+    .data-table thead {
+      position: sticky;
+      top: 0;
+      z-index: 5;
     }
 
+    .data-table th {
+      padding: 12px 14px;
+      text-align: left;
+      font-weight: 600;
+      font-size: 11px;
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      color: var(--text-muted);
+      background: var(--bg-deep);
+      border-bottom: 2px solid var(--border-color-light);
+      white-space: nowrap;
+    }
+
+    .data-table thead th {
+      background: var(--bg-deep);
+    }
+
+    /* Körper: einheitliche Zeilen, dezente Trennlinien */
     .data-table td {
-      padding: var(--spacing-md);
+      padding: 12px 14px;
       border-bottom: 1px solid var(--border-color);
+      font-size: var(--font-size-sm);
+      background: var(--bg-surface);
     }
 
     .data-table tbody tr {
-      transition: background 0.15s ease;
+      transition: background 0.12s ease;
+      cursor: pointer;
     }
 
-    .data-table tbody tr:hover {
-      background: var(--bg-hover);
+    .data-table tbody tr td {
+      border-bottom: 1px solid var(--border-color);
+    }
+
+    .data-table tbody tr.row-zebra td {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .data-table tbody tr:hover td {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .data-table tbody tr.row-zebra:hover td {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .data-table tbody tr.row-selected td,
+    .data-table tbody tr.selected td {
+      background: rgba(255, 255, 255, 0.05);
+    }
+
+    .data-table tbody tr.row-selected,
+    .data-table tbody tr.selected {
+      border-left: 3px solid var(--text-secondary);
     }
 
     .data-table tbody tr:last-child td {
       border-bottom: none;
     }
 
-    .data-table tbody tr.selected {
+    .col-flag { width: 4%; min-width: 36px; text-align: center; }
+    .col-checkbox { width: 3%; min-width: 44px; text-align: center; }
+    .col-student { width: 20%; min-width: 140px; }
+    .col-modul { width: 28%; min-width: 180px; }
+    .col-note { width: 8%; min-width: 64px; }
+    .col-status { width: 12%; min-width: 100px; }
+    .col-datum { width: 12%; min-width: 90px; }
+    .col-versuch { width: 8%; min-width: 80px; }
+    .col-actions { width: 9%; min-width: 160px; white-space: nowrap; }
+
+    .data-table th.col-flag,
+    .data-table th.col-checkbox,
+    .data-table td.col-flag,
+    .data-table td.col-checkbox {
+      position: sticky;
+      left: 0;
+      z-index: 2;
+    }
+
+    .data-table thead th.col-flag { left: 0; background: var(--bg-deep); }
+    .data-table thead th.col-checkbox { left: 36px; background: var(--bg-deep); }
+    .data-table thead th.col-student { left: 80px; background: var(--bg-deep); }
+
+    .data-table th.col-student,
+    .data-table td.col-student {
+      position: sticky;
+      left: 80px;
+      z-index: 2;
+    }
+
+    .data-table tbody td.col-flag,
+    .data-table tbody td.col-checkbox,
+    .data-table tbody td.col-student {
+      background: var(--bg-surface);
+    }
+
+    .data-table tbody tr.row-zebra td.col-flag,
+    .data-table tbody tr.row-zebra td.col-checkbox,
+    .data-table tbody tr.row-zebra td.col-student {
+      background: rgba(255, 255, 255, 0.02);
+    }
+
+    .data-table tbody tr:hover td.col-flag,
+    .data-table tbody tr:hover td.col-checkbox,
+    .data-table tbody tr:hover td.col-student {
+      background: rgba(255, 255, 255, 0.04);
+    }
+
+    .data-table tbody tr.row-selected td.col-flag,
+    .data-table tbody tr.row-selected td.col-checkbox,
+    .data-table tbody tr.row-selected td.col-student {
       background: rgba(255, 255, 255, 0.05);
     }
 
-    .data-table tbody tr.status-erfasst {
-      border-left: 3px solid var(--color-warning);
+    .flag-warning {
+      color: var(--color-warning);
+      font-size: 18px;
     }
 
-    .data-table tbody tr.status-validiert {
-      border-left: 3px solid var(--color-info);
+    .cell-student {
+      display: flex;
+      flex-direction: column;
+      gap: 2px;
     }
 
-    .col-checkbox {
-      width: 40px;
-      text-align: center;
+    .cell-student-name {
+      font-weight: 600;
+      font-size: var(--font-size-sm);
     }
 
-    .cell-content {
+    .cell-student-meta {
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+    }
+
+    .cell-modul {
       display: flex;
       align-items: center;
       gap: var(--spacing-xs);
+      flex-wrap: wrap;
     }
 
-    .cell-content--muted {
-      color: var(--color-text-muted);
-      font-size: 0.8125rem;
-    }
-
-    .cell-content--muted .material-icons-outlined {
-      font-size: 1rem;
-      opacity: 0.6;
-    }
-
-    .id-text {
-      font-family: monospace;
-      font-size: 0.75rem;
-    }
-
-    .student-name, .modul-name {
+    .modul-badge {
+      font-size: 11px;
+      padding: 2px 6px;
+      border-radius: var(--radius-sm);
+      background: var(--bg-hover);
+      color: var(--text-muted);
       font-weight: 500;
+      flex-shrink: 0;
+    }
+
+    .modul-name {
+      font-size: var(--font-size-sm);
     }
 
     .note-value {
       font-weight: 600;
-      padding: 4px 10px;
-      border-radius: var(--radius-full);
-      font-size: var(--font-size-sm);
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      font-size: var(--font-size-xs);
     }
 
-    .note-value--muted { background: var(--bg-hover); color: var(--text-muted); }
-    .note-value--success { background: rgba(16, 185, 129, 0.15); color: var(--color-success); }
-    .note-value--info { background: rgba(59, 130, 246, 0.15); color: var(--color-info); }
-    .note-value--warning { background: rgba(245, 158, 11, 0.15); color: var(--color-warning); }
-    .note-value--danger { background: rgba(239, 68, 68, 0.15); color: var(--color-danger); }
-    .note-value--bestanden { background: rgba(16, 185, 129, 0.15); color: var(--color-success); }
+    .note-value--muted {
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+    }
+
+    .note-value--success {
+      background: var(--bg-elevated);
+      color: var(--color-success);
+    }
+
+    .note-value--info {
+      background: var(--bg-elevated);
+      color: var(--color-info);
+    }
+
+    .note-value--warning {
+      background: var(--bg-elevated);
+      color: var(--color-warning);
+    }
+
+    .note-value--danger {
+      background: var(--bg-elevated);
+      color: var(--color-danger);
+    }
+
+    /* Klickbare Note-Zelle */
+    .note-cell-editable {
+      display: inline-flex;
+      align-items: center;
+      gap: 4px;
+      cursor: pointer;
+      padding: 2px 4px;
+      border-radius: var(--radius-sm);
+      transition: background 0.15s ease;
+    }
+
+    .note-cell-editable:hover {
+      background: rgba(255, 255, 255, 0.08);
+    }
+
+    .note-edit-icon {
+      font-size: 14px;
+      color: var(--text-muted);
+      opacity: 0;
+      transition: opacity 0.15s ease;
+    }
+
+    .note-cell-editable:hover .note-edit-icon {
+      opacity: 1;
+    }
+
+    .action-btn--edit {
+      color: var(--text-secondary);
+    }
+
+    .action-btn--edit:hover {
+      color: var(--color-info);
+      background: rgba(96, 165, 250, 0.1);
+    }
+
+    .note-value--bestanden {
+      background: var(--bg-elevated);
+      color: var(--color-success);
+    }
 
     .status-badge {
       display: inline-block;
-      padding: 4px 10px;
-      border-radius: var(--radius-full);
-      font-size: var(--font-size-xs);
+      padding: 4px 8px;
+      border-radius: var(--radius-sm);
+      font-size: 11px;
       font-weight: 500;
     }
 
     .status-badge--erfasst {
-      background: rgba(245, 158, 11, 0.15);
-      color: var(--color-warning);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color-light);
     }
 
     .status-badge--validiert {
-      background: rgba(59, 130, 246, 0.15);
-      color: var(--color-info);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color-light);
     }
 
     .status-badge--freigegeben {
-      background: rgba(16, 185, 129, 0.15);
-      color: var(--color-success);
+      background: var(--bg-elevated);
+      color: var(--text-secondary);
+      border: 1px solid var(--border-color-light);
     }
 
     .action-buttons {
-      display: flex;
-      gap: var(--spacing-xs);
+      display: inline-flex;
+      flex-wrap: nowrap;
+      align-items: center;
+      gap: 2px;
     }
 
     .action-btn {
+      flex-shrink: 0;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
       background: none;
       border: none;
-      padding: 6px;
+      padding: 0;
       cursor: pointer;
       color: var(--text-muted);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-sm);
       transition: all 0.15s ease;
     }
 
-    .action-btn:disabled {
-      opacity: 0.5;
-      cursor: not-allowed;
+    .action-btn .material-icons-outlined {
+      font-size: 18px;
     }
 
     .action-btn:hover:not(:disabled) {
@@ -770,17 +1003,9 @@ interface UserInfo {
       color: var(--text-primary);
     }
 
-    .action-btn--validate:hover:not(:disabled) {
-      color: var(--text-primary);
-    }
-
-    .action-btn--release:hover:not(:disabled) {
-      color: var(--color-success);
-    }
-
-    .action-btn--info:hover {
-      color: var(--color-info);
-    }
+    .action-btn--validate:hover:not(:disabled) { color: var(--color-primary); }
+    .action-btn--release:hover:not(:disabled) { color: var(--color-success); }
+    .action-btn--reject:hover:not(:disabled) { color: var(--color-warning); }
 
     .empty-cell {
       text-align: center;
@@ -788,83 +1013,45 @@ interface UserInfo {
       color: var(--text-muted);
     }
 
-    .empty-cell .material-icons-outlined {
-      font-size: 48px;
-      margin-bottom: var(--spacing-sm);
-      opacity: 0.5;
-    }
-
     .summary-bar {
-      display: flex;
-      justify-content: space-between;
-      padding: var(--spacing-md);
+      padding: var(--spacing-sm) var(--spacing-md);
       background: rgba(0, 0, 0, 0.1);
-      border-top: 1px solid var(--border-color);
-      font-size: var(--font-size-sm);
+      border: 1px solid var(--border-color);
+      border-top: none;
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
+      font-size: var(--font-size-xs);
       color: var(--text-muted);
     }
 
-    /* Modal */
-    .modal-overlay {
-      position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
-      background: rgba(0, 0, 0, 0.7);
-      backdrop-filter: blur(8px);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      z-index: 1000;
-      animation: fadeIn 0.2s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; }
-      to { opacity: 1; }
-    }
-
-    .modal {
+    .detail-drawer {
+      width: 35%;
+      min-width: 320px;
+      max-width: 420px;
+      flex-shrink: 0;
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-xl);
-      width: 90%;
-      max-width: 500px;
-      max-height: 90vh;
-      overflow: hidden;
+      border-radius: var(--radius-lg);
+      margin-left: var(--spacing-md);
       display: flex;
       flex-direction: column;
-      box-shadow: 0 25px 50px rgba(0, 0, 0, 0.5);
-      animation: slideUp 0.2s ease;
+      overflow: hidden;
     }
 
-    @keyframes slideUp {
-      from { 
-        opacity: 0; 
-        transform: translateY(10px) scale(0.98);
-      }
-      to { 
-        opacity: 1; 
-        transform: translateY(0) scale(1);
-      }
-    }
-
-    .modal-header {
+    .drawer-header {
       display: flex;
       justify-content: space-between;
       align-items: center;
-      padding: var(--spacing-lg);
+      padding: var(--spacing-md) var(--spacing-lg);
       border-bottom: 1px solid var(--border-color);
     }
 
-    .modal-header h2 {
+    .drawer-title {
       margin: 0;
-      font-size: 1.25rem;
+      font-size: 1.125rem;
       font-weight: 600;
     }
 
-    .modal-close {
+    .drawer-close {
       display: flex;
       align-items: center;
       justify-content: center;
@@ -875,57 +1062,157 @@ interface UserInfo {
       cursor: pointer;
       color: var(--text-muted);
       border-radius: var(--radius-md);
-      transition: all 0.15s ease;
     }
 
-    .modal-close:hover {
+    .drawer-close:hover {
       background: var(--bg-hover);
       color: var(--text-primary);
     }
 
-    .modal-body {
+    .drawer-body {
       padding: var(--spacing-lg);
       overflow-y: auto;
+      flex: 1;
     }
 
-    .modal-footer {
-      display: flex;
-      justify-content: flex-end;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-lg);
-      border-top: 1px solid var(--border-color);
-      background: rgba(0, 0, 0, 0.1);
+    .drawer-block {
+      margin-bottom: var(--spacing-md);
     }
 
-    .detail-grid {
-      display: grid;
-      grid-template-columns: repeat(2, 1fr);
-      gap: var(--spacing-lg);
-    }
-
-    .detail-item {
-      display: flex;
-      flex-direction: column;
-      gap: 4px;
-    }
-
-    .detail-item--full {
+    .drawer-block--full {
       grid-column: 1 / -1;
     }
 
-    .detail-label {
+    .drawer-label {
+      display: block;
       font-size: var(--font-size-xs);
       color: var(--text-muted);
       text-transform: uppercase;
       letter-spacing: 0.5px;
+      margin-bottom: 4px;
     }
 
-    .detail-value {
-      font-size: 0.95rem;
+    .drawer-value {
+      font-size: 0.9375rem;
       color: var(--text-primary);
     }
 
-    /* Toast */
+    .drawer-meta {
+      display: block;
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+
+    .drawer-warning {
+      padding: var(--spacing-md);
+      background: rgba(var(--color-warning-rgb), 0.1);
+      border: 1px solid rgba(var(--color-warning-rgb), 0.3);
+      border-radius: var(--radius-md);
+    }
+
+    .drawer-warning .material-icons-outlined {
+      color: #fcd34d;
+      font-size: 24px;
+      margin-bottom: var(--spacing-sm);
+    }
+
+    .drawer-warning p {
+      margin: 0 0 var(--spacing-xs) 0;
+      font-size: var(--font-size-sm);
+      color: var(--text-secondary);
+    }
+
+    .drawer-warning-question {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin-bottom: var(--spacing-md) !important;
+    }
+
+    .drawer-warning-actions {
+      display: flex;
+      gap: var(--spacing-sm);
+    }
+
+    .drawer-edit-form .drawer-block {
+      margin-bottom: var(--spacing-md);
+    }
+
+    .drawer-edit-actions {
+      display: flex;
+      gap: var(--spacing-sm);
+      margin-top: var(--spacing-sm);
+    }
+
+    .drawer-input,
+    .drawer-textarea {
+      width: 100%;
+      padding: var(--spacing-sm) var(--spacing-md);
+      background: var(--bg-deep);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-md);
+      color: var(--text-primary);
+      font-size: var(--font-size-sm);
+    }
+
+    .drawer-textarea {
+      resize: vertical;
+      min-height: 60px;
+    }
+
+    .drawer-select {
+      appearance: none;
+      cursor: pointer;
+      padding-right: 36px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='%2394a3b8'%3E%3Cpath d='M7 10l5 5 5-5z'/%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 10px center;
+    }
+
+    .drawer-select option {
+      background: var(--bg-surface);
+      color: var(--text-primary);
+      padding: 8px 12px;
+    }
+
+    .drawer-check {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      font-size: var(--font-size-sm);
+      color: var(--text-primary);
+      cursor: pointer;
+    }
+
+    .drawer-check input {
+      width: 18px;
+      height: 18px;
+    }
+
+    .drawer-check.disabled {
+      opacity: 0.5;
+      cursor: not-allowed;
+    }
+
+    .drawer-check.disabled input {
+      cursor: not-allowed;
+    }
+
+    .drawer-hint {
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      margin-left: 4px;
+    }
+
+    .drawer-footer {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md) var(--spacing-lg);
+      border-top: 1px solid var(--border-color);
+      background: rgba(0, 0, 0, 0.1);
+    }
+
     .toast {
       position: fixed;
       bottom: var(--spacing-lg);
@@ -944,14 +1231,16 @@ interface UserInfo {
       color: white;
     }
 
-    @media (max-width: 768px) {
-      .page-header {
+    @media (max-width: 900px) {
+      .validation-layout {
         flex-direction: column;
       }
 
-      .header-stats {
+      .detail-drawer {
         width: 100%;
-        justify-content: space-between;
+        max-width: none;
+        margin-left: 0;
+        margin-top: var(--spacing-md);
       }
 
       .toolbar {
@@ -959,21 +1248,23 @@ interface UserInfo {
         align-items: stretch;
       }
 
+      .toolbar-left {
+        flex-direction: column;
+        align-items: stretch;
+      }
+
+      .filter-bar {
+        flex-direction: column;
+        height: auto;
+      }
+
       .search-wrapper {
-        max-width: none;
+        width: 100%;
+        height: 40px;
       }
 
-      .batch-actions {
-        margin-left: 0;
-        justify-content: stretch;
-      }
-
-      .batch-actions .btn {
-        flex: 1;
-      }
-
-      .detail-grid {
-        grid-template-columns: 1fr;
+      .status-chips {
+        flex-wrap: wrap;
       }
     }
   `]
@@ -998,10 +1289,18 @@ export class ValidationComponent implements OnInit {
 
   noten = signal<Note[]>([]);
   
-  statusFilter = signal<string>('all');
+  statusFilter = signal<string>('ERFASST');
   searchTerm = signal<string>('');
   
   selectedNote = signal<Note | null>(null);
+  /** Bestätigung vor Bearbeitung (validierte/freigegebene Note) */
+  confirmEditNote = signal<Note | null>(null);
+  /** Note, die gerade bearbeitet wird */
+  editingNote = signal<Note | null>(null);
+  /** Formulardaten für Bearbeitung */
+  editFormData: { noteWert: string; bestanden: boolean; pruefungsdatum: string; kommentar: string } = {
+    noteWert: '', bestanden: false, pruefungsdatum: '', kommentar: ''
+  };
 
   // Computed
   filteredNoten = computed(() => {
@@ -1032,6 +1331,10 @@ export class ValidationComponent implements OnInit {
   releasedCount = computed(() => this.noten().filter(n => n.status === 'FREIGEGEBEN').length);
   
   selectedCount = computed(() => this.filteredNoten().filter(n => n.selected).length);
+  /** Anzahl ausgewählter Noten, die validiert werden können (nur ERFASST) */
+  selectedValidatable = computed(() => this.filteredNoten().filter(n => n.selected && n.status === 'ERFASST').length);
+  /** Anzahl ausgewählter Noten, die freigegeben werden können (nur VALIDIERT) */
+  selectedReleasable = computed(() => this.filteredNoten().filter(n => n.selected && n.status === 'VALIDIERT').length);
   allSelected = computed(() => {
     const filtered = this.filteredNoten();
     return filtered.length > 0 && filtered.every(n => n.selected);
@@ -1148,14 +1451,35 @@ export class ValidationComponent implements OnInit {
       validiertVon: n.validiertVon != null ? String(n.validiertVon) : null,
       selected: false,
       studentName: student ? `${student.vorname} ${student.nachname}` : undefined,
+      studentMatrikel: student?.matrikelnummer,
       modulName: modul ? `${modul.modulNr} - ${modul.name}` : undefined,
+      modulNr: modul?.modulNr,
       erfasstVonName: erfasstVonUser ? `${erfasstVonUser.vorname} ${erfasstVonUser.nachname}` : undefined,
       validiertVonName: validiertVonUser ? `${validiertVonUser.vorname} ${validiertVonUser.nachname}` : undefined
     };
   }
 
+  setStatusFilter(value: string): void {
+    this.statusFilter.set(value);
+  }
+
+  setSearchTerm(value: string): void {
+    this.searchTerm.set(value);
+  }
+
   applyFilters(): void {
     // Filters are applied via computed signal
+  }
+
+  hasConflict(note: Note): boolean {
+    return (note.noteWert == null && !note.bestanden) || !!(note.kommentar?.trim());
+  }
+
+  getModulDisplayName(note: Note): string {
+    if (!note.modulName) return '';
+    if (note.modulNr && note.modulName.startsWith(note.modulNr + ' - '))
+      return note.modulName.slice(note.modulNr.length + 3);
+    return note.modulName;
   }
 
   toggleSelectAll(event: Event): void {
@@ -1198,16 +1522,48 @@ export class ValidationComponent implements OnInit {
   }
 
   async releaseNote(note: Note): Promise<void> {
+    if (note.status !== 'VALIDIERT') {
+      this.error.set('Nur validierte Noten können freigegeben werden. Bitte zuerst validieren.');
+      return;
+    }
     this.processing.set(true);
+    this.error.set(null);
     try {
       await firstValueFrom(
         this.http.post(`/api/noten/${note.id}/release`, null)
       );
       this.showSuccess('Note freigegeben');
       await this.loadData();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const e = err as { error?: { message?: string }; message?: string };
       console.error('Error releasing note:', err);
-      this.error.set('Fehler beim Freigeben: ' + (err.error?.message || err.message || 'Unbekannter Fehler'));
+      const msg = e?.error?.message ?? e?.message ?? 'Unbekannter Fehler';
+      this.error.set(msg.includes('VALIDIERT') ? msg : 'Nur validierte Noten können freigegeben werden. Bitte zuerst validieren.');
+    } finally {
+      this.processing.set(false);
+    }
+  }
+
+  async rejectNote(note: Note): Promise<void> {
+    if (note.status !== 'FREIGEGEBEN') return;
+    this.processing.set(true);
+    this.error.set(null);
+    try {
+      await firstValueFrom(
+        this.http.post(`/api/noten/${note.id}/reject`, null)
+      );
+      this.showSuccess('Freigabe zurückgenommen');
+      await this.loadData();
+    } catch (err: unknown) {
+      const e = err as { error?: { message?: string }; message?: string; status?: number };
+      console.error('Error rejecting note:', err);
+      const status = (e as { status?: number }).status;
+      const msg = e?.error?.message ?? e?.message ?? '';
+      if (status === 403 || msg.toLowerCase().includes('forbidden')) {
+        this.error.set('Keine Berechtigung: Nur Prüfungsamt, Admin oder Hochschul-Verwalter können die Freigabe zurücknehmen.');
+      } else {
+        this.error.set(msg ? 'Fehler beim Zurückweisen: ' + msg : 'Fehler beim Zurückweisen.');
+      }
     } finally {
       this.processing.set(false);
     }
@@ -1234,27 +1590,32 @@ export class ValidationComponent implements OnInit {
   }
 
   async batchRelease(): Promise<void> {
-    const selected = this.filteredNoten().filter(n => n.selected && (n.status === 'ERFASST' || n.status === 'VALIDIERT'));
+    const selected = this.filteredNoten().filter(n => n.selected && n.status === 'VALIDIERT');
+    const ausstehendSelected = this.filteredNoten().filter(n => n.selected && n.status === 'ERFASST');
+    if (selected.length === 0) {
+      this.error.set(ausstehendSelected.length > 0
+        ? 'Nur validierte Noten können freigegeben werden. Bitte zuerst validieren.'
+        : 'Keine Noten ausgewählt.');
+      return;
+    }
     this.processing.set(true);
-    
+    this.error.set(null);
     try {
       for (const note of selected) {
-        // Wenn ERFASST, erst validieren
-        if (note.status === 'ERFASST') {
-          await firstValueFrom(
-            this.http.post(`/api/noten/${note.id}/validate`, null)
-          );
-        }
-        // Dann freigeben
         await firstValueFrom(
           this.http.post(`/api/noten/${note.id}/release`, null)
         );
       }
-      this.showSuccess(`${selected.length} Noten freigegeben`);
+      const msg = ausstehendSelected.length > 0
+        ? `${selected.length} Noten freigegeben. ${ausstehendSelected.length} ausstehende übersprungen (zuerst validieren).`
+        : `${selected.length} Noten freigegeben`;
+      this.showSuccess(msg);
       await this.loadData();
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const e = err as { error?: { message?: string }; message?: string };
       console.error('Error batch releasing:', err);
-      this.error.set('Fehler beim Batch-Freigeben: ' + (err.error?.message || err.message || 'Unbekannter Fehler'));
+      const msg = e?.error?.message ?? e?.message ?? 'Unbekannter Fehler';
+      this.error.set(msg.includes('VALIDIERT') ? msg : 'Nur validierte Noten können freigegeben werden. Bitte zuerst validieren.');
     } finally {
       this.processing.set(false);
     }
@@ -1266,6 +1627,81 @@ export class ValidationComponent implements OnInit {
 
   closeDetails(): void {
     this.selectedNote.set(null);
+  }
+
+  /** Schnell-Bearbeitung: direkt vom Tabellenklick oder Edit-Button */
+  quickEditNote(note: Note): void {
+    this.selectedNote.set(note);
+    this.requestEditNote(note);
+  }
+
+  requestEditNote(note: Note): void {
+    if (note.status === 'VALIDIERT' || note.status === 'FREIGEGEBEN') {
+      this.confirmEditNote.set(note);
+    } else {
+      this.openEditForm(note);
+    }
+  }
+
+  confirmEditAndOpen(): void {
+    const note = this.confirmEditNote();
+    if (note) {
+      this.dismissEditConfirm();
+      this.openEditForm(note);
+    }
+  }
+
+  dismissEditConfirm(): void {
+    this.confirmEditNote.set(null);
+  }
+
+  private openEditForm(note: Note): void {
+    this.editFormData = {
+      noteWert: note.noteWert != null ? String(note.noteWert) : '',
+      bestanden: note.bestanden ?? false,
+      pruefungsdatum: note.pruefungsdatum ? note.pruefungsdatum.substring(0, 10) : '',
+      kommentar: note.kommentar ?? ''
+    };
+    this.editingNote.set(note);
+  }
+
+  /** Bestanden-Status automatisch setzen wenn Notenwert gewählt wird */
+  onNoteWertChange(value: string): void {
+    if (value === '') {
+      // Keine Note → Bestanden-Checkbox manuell steuerbar (bleibt wie sie ist)
+      return;
+    }
+    const num = parseFloat(value);
+    this.editFormData.bestanden = !isNaN(num) && num <= 4.0;
+  }
+
+  cancelEdit(): void {
+    this.editingNote.set(null);
+  }
+
+  async saveEditNote(note: Note): Promise<void> {
+    this.processing.set(true);
+    try {
+      const v = this.editFormData.noteWert.trim();
+      const payload: { noteWert?: number; bestanden: boolean; pruefungsdatum?: string; kommentar?: string } = {
+        bestanden: this.editFormData.bestanden,
+        kommentar: this.editFormData.kommentar.trim() || undefined
+      };
+      if (v) {
+        const num = Number.parseFloat(v.replace(',', '.'));
+        if (!Number.isNaN(num)) payload.noteWert = num;
+      }
+      if (this.editFormData.pruefungsdatum) payload.pruefungsdatum = this.editFormData.pruefungsdatum;
+      await firstValueFrom(this.http.put<ApiResponse<Note>>(`/api/noten/${note.id}`, payload));
+      this.showSuccess('Note wurde geändert');
+      this.cancelEdit();
+      await this.loadData();
+    } catch (err: unknown) {
+      const e = err as { error?: { message?: string }; message?: string };
+      this.error.set('Fehler beim Speichern: ' + (e?.error?.message ?? e?.message ?? 'Unbekannter Fehler'));
+    } finally {
+      this.processing.set(false);
+    }
   }
 
   private showSuccess(message: string): void {
@@ -1293,7 +1729,7 @@ export class ValidationComponent implements OnInit {
 
   getStatusLabel(status: string): string {
     const labels: Record<string, string> = {
-      'ERFASST': 'Erfasst',
+      'ERFASST': 'Ausstehend',
       'VALIDIERT': 'Validiert',
       'FREIGEGEBEN': 'Freigegeben'
     };

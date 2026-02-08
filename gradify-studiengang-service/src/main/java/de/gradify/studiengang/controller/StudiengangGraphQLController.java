@@ -11,6 +11,7 @@ import lombok.RequiredArgsConstructor;
 import org.springframework.beans.factory.annotation.Autowired;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.graphql.data.method.annotation.Argument;
+import org.springframework.graphql.data.method.annotation.MutationMapping;
 import org.springframework.graphql.data.method.annotation.QueryMapping;
 import org.springframework.graphql.data.method.annotation.SchemaMapping;
 import org.springframework.stereotype.Controller;
@@ -38,6 +39,7 @@ public class StudiengangGraphQLController {
     private final EinschreibungRepository einschreibungRepository;
     private final PruefungsordnungRepository pruefungsordnungRepository;
     private final ModulZuweisungRepository modulZuweisungRepository;
+    private final WahlpflichtWahlRepository wahlpflichtWahlRepository;
 
     // ==================== MANDANT QUERIES ====================
 
@@ -175,10 +177,13 @@ public class StudiengangGraphQLController {
      */
     @QueryMapping
     public List<Einschreibung> einschreibungen(@Argument("studentId") String studentId, @Argument("studiengangId") String studiengangId) {
-        log.info("GraphQL: Fetching einschreibungen - studentId: {}, studiengangId: {}", studentId, studiengangId);
+        String currentTenant = de.gradify.shared.tenant.TenantContext.getTenantSuffix();
+        log.info("GraphQL: Fetching einschreibungen - studentId: {}, studiengangId: {}, tenant: {}", studentId, studiengangId, currentTenant);
         
         if (studentId != null) {
-            return einschreibungRepository.findByStudentId(Long.parseLong(studentId));
+            List<Einschreibung> result = einschreibungRepository.findByStudentId(Long.parseLong(studentId));
+            log.info("GraphQL: Found {} einschreibungen for studentId={} in tenant={}", result.size(), studentId, currentTenant);
+            return result;
         }
         if (studiengangId != null) {
             return einschreibungRepository.findByStudiengangId(Long.parseLong(studiengangId));
@@ -336,6 +341,44 @@ public class StudiengangGraphQLController {
     @SchemaMapping(typeName = "Pruefungsordnung", field = "module")
     public List<Modul> getModuleForPruefungsordnung(Pruefungsordnung po) {
         return modulRepository.findByPruefungsordnungId(po.getId());
+    }
+
+    // ==================== WAHLPFLICHT QUERIES + MUTATIONS ====================
+
+    /**
+     * Holt alle Wahlpflicht-Wahlen einer Einschreibung.
+     * GraphQL: query { wahlpflichtWahlen(einschreibungId: "...") { id, wahlpflichtGruppe, modulId } }
+     */
+    @QueryMapping
+    public List<WahlpflichtWahl> wahlpflichtWahlen(@Argument("einschreibungId") String einschreibungId) {
+        log.info("GraphQL: Fetching wahlpflicht selections for einschreibung: {}", einschreibungId);
+        return wahlpflichtWahlRepository.findByEinschreibungId(Long.valueOf(einschreibungId));
+    }
+
+    /**
+     * Setzt die Wahlpflicht-Auswahl eines Studenten (upsert).
+     * GraphQL: mutation { setWahlpflichtWahl(einschreibungId: "...", wahlpflichtGruppe: "FP", modulId: "...") { id } }
+     */
+    @MutationMapping
+    public WahlpflichtWahl setWahlpflichtWahl(
+            @Argument("einschreibungId") String einschreibungId,
+            @Argument("wahlpflichtGruppe") String wahlpflichtGruppe,
+            @Argument("modulId") String modulId) {
+        log.info("GraphQL: Setting wahlpflicht wahl - einschreibung: {}, gruppe: {}, modul: {}",
+                einschreibungId, wahlpflichtGruppe, modulId);
+
+        Long eid = Long.valueOf(einschreibungId);
+        Long mid = Long.valueOf(modulId);
+
+        WahlpflichtWahl wahl = wahlpflichtWahlRepository
+                .findByEinschreibungIdAndWahlpflichtGruppe(eid, wahlpflichtGruppe)
+                .orElse(WahlpflichtWahl.builder()
+                        .einschreibungId(eid)
+                        .wahlpflichtGruppe(wahlpflichtGruppe)
+                        .build());
+
+        wahl.setModulId(mid);
+        return wahlpflichtWahlRepository.save(wahl);
     }
 }
 

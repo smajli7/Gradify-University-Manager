@@ -124,7 +124,7 @@ export class ShellComponent {
 
   // Navigation Items – Prüfungsamt reduziert (Queue-Fokus), Rest wie bisher
   dockItems: DockItem[] = [
-    // === PRÜFUNGSAMT (reduzierte Sidebar: Dashboard → Validierung → Freigaben → …) ===
+    // === PRÜFUNGSAMT (Dashboard → Validierung → Protokoll → …) ===
     {
       id: 'dashboard-pa',
       label: 'Dashboard',
@@ -142,26 +142,10 @@ export class ShellComponent {
       section: 'Prüfungsamt'
     },
     {
-      id: 'release-pa',
-      label: 'Freigaben',
-      route: '/grades/release',
-      icon: 'assets/icons/grades.svg',
-      roles: ['PRUEFUNGSAMT'],
-      section: 'Prüfungsamt'
-    },
-    {
-      id: 'conflicts-pa',
-      label: 'Rückfragen / Konflikte',
-      route: '/grades/conflicts',
-      icon: 'assets/icons/validation.svg',
-      roles: ['PRUEFUNGSAMT'],
-      section: 'Prüfungsamt'
-    },
-    {
       id: 'audit-pa',
       label: 'Protokoll',
       route: '/grades/audit',
-      icon: 'assets/icons/stats.svg',
+      icon: 'assets/icons/audit.svg',
       roles: ['PRUEFUNGSAMT', 'ADMIN', 'HOCHSCHUL_VERWALTER'],
       section: 'Prüfungsamt'
     },
@@ -240,14 +224,6 @@ export class ShellComponent {
       section: 'Akademisch'
     },
     {
-      id: 'calculation',
-      label: 'Berechnung',
-      route: '/calculation',
-      icon: 'assets/icons/calculation.svg',
-      roles: ['ADMIN', 'HOCHSCHUL_VERWALTER'],
-      section: 'Akademisch'
-    },
-    {
       id: 'stats',
       label: 'Statistik',
       route: '/stats',
@@ -293,7 +269,7 @@ export class ShellComponent {
       id: 'audit-dozent',
       label: 'Protokoll',
       route: '/grades/audit',
-      icon: 'assets/icons/stats.svg',
+      icon: 'assets/icons/audit.svg',
       roles: ['LEHRENDER'],
       section: 'LEHRE'
     },

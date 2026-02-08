@@ -1094,7 +1094,7 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
   /**
    * Prüft, ob eine Note gemäß PO in die Gesamtnote zählt.
    * Validierungsregeln laut PO:
-   *  1. Nur bestandene Module (Note ≤ 4.0) → bestanden === true
+   *  1. Nur bestandene Module (Note ≤ 4.0) – 5.0 zählt NIEMALS, auch wenn bestanden=true (Dateninkonsistenz)
    *  2. Module mit Gewichtung 0 werden ausgeschlossen
    *  3. "Bestanden/nicht bestanden" Module werden ausgeschlossen (bewertungsart ≠ NOTE)
    *  4. inGesamtnote muss true sein
@@ -1109,10 +1109,12 @@ export class StatsComponent implements OnInit, AfterViewInit, OnDestroy {
     // PO-Regel 2: Gewichtung > 0
     const g = typeof modul.gewichtung === 'number' ? modul.gewichtung : 1;
     if (g <= 0) return false;
-    // PO-Regel 1: nur bestandene (Note ≤ 4.0)
-    if (!note.bestanden) return false;
-    // noteWert muss vorhanden sein
+    // noteWert muss vorhanden und > 0 sein
     if ((note.noteWert ?? 0) <= 0) return false;
+    // PO-Regel 1: Note muss <= 4.0 sein (5.0 = nicht bestanden, zählt NIE in Gesamtnote)
+    if (note.noteWert > 4.0) return false;
+    // Zusätzlich: explizit als nicht bestanden markiert
+    if (!note.bestanden) return false;
     return true;
   }
 

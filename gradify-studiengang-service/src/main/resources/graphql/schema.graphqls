@@ -18,6 +18,13 @@ type Query {
     # Einschreibungen Queries
     einschreibungen(studentId: ID, studiengangId: ID): [Einschreibung!]!
     einschreibung(id: ID!): Einschreibung
+
+    # Wahlpflicht-Wahlen
+    wahlpflichtWahlen(einschreibungId: ID!): [WahlpflichtWahl!]!
+}
+
+type Mutation {
+    setWahlpflichtWahl(einschreibungId: ID!, wahlpflichtGruppe: String!, modulId: ID!): WahlpflichtWahl!
 }
 
 type Mandant {
@@ -127,5 +134,12 @@ enum EinschreibungStatus {
     AKTIV
     ABGESCHLOSSEN
     ABGEBROCHEN
+}
+
+type WahlpflichtWahl {
+    id: ID!
+    einschreibungId: ID!
+    wahlpflichtGruppe: String!
+    modulId: ID!
 }
 

@@ -240,8 +240,10 @@ public class BerechnungsService {
         }
 
         // Nur bestandene Module (Note ≤ 4.0) in die Berechnung
+        // §11 BVT / §9 FSA: 5.0 zählt NICHT in Gesamtnote, auch wenn bestanden=true (Dateninkonsistenz)
         List<ModulBerechnung> benoteteModule = module.stream()
-                .filter(m -> m.isInGesamtnote() && m.getNote() != null && m.isBestanden())
+                .filter(m -> m.isInGesamtnote() && m.getNote() != null && m.isBestanden()
+                        && m.getNote().compareTo(new BigDecimal("4.0")) <= 0)
                 .collect(Collectors.toList());
 
         if (benoteteModule.isEmpty()) {
@@ -315,18 +317,20 @@ public class BerechnungsService {
     }
 
     /**
-     * Erkennt Thesis-Module anhand von Gewichtung (> 1) oder Modulname.
-     * Gewichtung ist das zuverlaessigste Merkmal: Thesis-Module haben in der PO
-     * typischerweise Gewichtung 2 oder hoeher (z.B. FSA: Masterarbeit = 2.0).
+     * Erkennt Thesis-Module anhand des Modulnamens oder der ModulNr.
+     * Wird nur fuer ARITHMETISCH_GEMISCHT (Master-Formel §9 FSA) verwendet.
+     * FSA PO: Modul 12 = "Master-Thesis mit Kolloquium" (Gew. 14 = 2×7 Modulmittel-Module)
      */
     private static boolean isThesisModul(ModulBerechnung m) {
-        // Primaeres Kriterium: Gewichtung >= 2 deutet auf Thesis hin
-        if (m.getGewichtung() != null && m.getGewichtung().compareTo(new BigDecimal("1.5")) > 0) {
+        // Modulname pruefen
+        String name = m.getModulName() != null ? m.getModulName().toLowerCase() : "";
+        if (name.contains("thesis") || name.contains("masterarbeit") || name.contains("bachelorarbeit")
+                || name.contains("bachelor-arbeit") || name.contains("master-thesis")) {
             return true;
         }
-        // Sekundaeres Kriterium: Modulname enthaelt Thesis/Masterarbeit/Bachelorarbeit
-        String name = m.getModulName() != null ? m.getModulName().toLowerCase() : "";
-        return name.contains("thesis") || name.contains("masterarbeit") || name.contains("bachelorarbeit");
+        // ModulNr pruefen (FSA: "12" = Thesis)
+        String nr = m.getModulNr() != null ? m.getModulNr().trim() : "";
+        return "12".equals(nr);
     }
 
     /**

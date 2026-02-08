@@ -4,7 +4,6 @@ import { RouterLink } from '@angular/router';
 import { HttpClient } from '@angular/common/http';
 import { Apollo, gql } from 'apollo-angular';
 import { firstValueFrom } from 'rxjs';
-import { AuthService } from '../../core/services/auth.service';
 import { SkeletonStateComponent } from '../../shared/components/skeleton-state/skeleton-state.component';
 
 const GET_STUDENTS = gql`query GetAllStudents { students { id vorname nachname matrikelnummer } }`;
@@ -30,8 +29,8 @@ interface NoteRow {
     <div class="pa-dashboard">
       <header class="pa-header">
         <div class="pa-header-content">
-          <h1 class="pa-title">Prüfungsamt – Überblick</h1>
-          <p class="pa-subtitle">Was ist offen? In 10 Sekunden sehen, was heute zu tun ist.</p>
+          <h1 class="pa-title">Prüfungsamt - Überblick</h1>
+          <p class="pa-subtitle">{{ todayLabel() }}</p>
         </div>
       </header>
 
@@ -40,60 +39,59 @@ interface NoteRow {
       }
 
       @if (!loading() && !error()) {
-        <!-- Aktionskacheln (Primary KPIs, klickbar) -->
-        <section class="pa-kpis">
-          <a routerLink="/grades/validation" [queryParams]="{ status: 'ERFASST' }" class="pa-kpi pa-kpi--warning">
-            <span class="pa-kpi-value">{{ ausstehend() }}</span>
-            <span class="pa-kpi-label">Ausstehend</span>
-            <span class="pa-kpi-hint">zum Prüfen</span>
-          </a>
-          <div class="pa-kpi pa-kpi--muted">
-            <span class="pa-kpi-value">{{ konflikte() }}</span>
-            <span class="pa-kpi-label">Konflikte</span>
-            <span class="pa-kpi-hint">fehlende Daten, Duplikate</span>
+        <!-- Hero-Bereich mit Datum + Status-Übersicht (wie Student-Dashboard) -->
+        <div class="pa-top">
+          <div class="pa-hero-card">
+            <div class="pa-hero-accent"></div>
+            <div class="pa-hero-main">
+              <div class="pa-hero-date">
+                <span class="pa-hero-day">{{ todayDay() }}</span>
+                <span class="pa-hero-month">{{ todayMonthYear() }}</span>
+              </div>
+              <div class="pa-hero-content">
+                <h2 class="pa-hero-title">Noten-Status heute</h2>
+                <p class="pa-hero-detail">Ausstehend, Validiert und Freigegeben auf einen Blick.</p>
+                <div class="pa-hero-mini">
+                  <span class="pa-hero-mini-item">Ausstehend: {{ ausstehend() }}</span>
+                  <span class="pa-hero-mini-item">Validiert: {{ validiertWartet() }}</span>
+                  <span class="pa-hero-mini-item">Freigegeben: {{ freigegebenCount() }}</span>
+                </div>
+              </div>
+            </div>
           </div>
-          <a routerLink="/grades/validation" [queryParams]="{ status: 'VALIDIERT' }" class="pa-kpi pa-kpi--info">
-            <span class="pa-kpi-value">{{ validiertWartet() }}</span>
-            <span class="pa-kpi-label">Validiert</span>
-            <span class="pa-kpi-hint">wartet auf Freigabe</span>
-          </a>
-          <a routerLink="/grades/release" class="pa-kpi pa-kpi--success">
-            <span class="pa-kpi-value">{{ freigegebenCount() }}</span>
-            <span class="pa-kpi-label">Freigegeben</span>
-            <span class="pa-kpi-hint">gesamt im Zeitraum</span>
-          </a>
-        </section>
+          <div class="pa-kpi-single">
+            <div class="pa-kpi-row pa-kpi-row--warning">
+              <span class="pa-kpi-label">Ausstehend</span>
+              <span class="pa-kpi-value">{{ ausstehend() }}</span>
+            </div>
+            <div class="pa-kpi-row">
+              <span class="pa-kpi-label">Validiert</span>
+              <span class="pa-kpi-value">{{ validiertWartet() }}</span>
+            </div>
+            <div class="pa-kpi-row">
+              <span class="pa-kpi-label">Freigegeben</span>
+              <span class="pa-kpi-value">{{ freigegebenCount() }}</span>
+            </div>
+          </div>
+        </div>
 
-        <!-- Als Nächstes (Top 10) -->
-        <section class="pa-next card">
-          <h2 class="pa-section-title">Als Nächstes</h2>
-          <p class="pa-section-subtitle">Älteste zuerst – direkt prüfen oder zur Validierungs-Inbox.</p>
-          @if (nextList().length === 0) {
-            <div class="pa-empty">
-              <p>Keine ausstehenden Validierungen.</p>
-              <a routerLink="/grades/validation" class="btn btn-ghost">Zeitraum ändern / Alle anzeigen</a>
-            </div>
-          } @else {
-            <ul class="pa-next-list">
-              @for (note of nextList(); track note.id) {
-                <li class="pa-next-item">
-                  <div class="pa-next-main">
-                    <span class="pa-next-student">{{ note.studentName || note.einschreibungId }}</span>
-                    <span class="pa-next-modul">{{ note.modulName || note.modulId }}</span>
-                    @if (note.noteWert != null) {
-                      <span class="pa-next-note" [class.bad]="(note.noteWert ?? 0) >= 5">{{ note.noteWert | number:'1.1-1' }}</span>
-                    }
-                  </div>
-                  <div class="pa-next-actions">
-                    <a [routerLink]="['/grades/validation']" [queryParams]="{ noteId: note.id }" class="btn btn-sm btn-primary">Prüfen</a>
-                  </div>
-                </li>
-              }
-            </ul>
-            <div class="pa-next-footer">
-              <a routerLink="/grades/validation" class="btn btn-primary">Zur Validierung (Inbox)</a>
-            </div>
-          }
+        <!-- Klickbare Kacheln: Zur Validierung / Freigabe -->
+        <section class="pa-actions">
+          <a routerLink="/grades/validation" [queryParams]="{ status: 'ERFASST' }" class="pa-action-card pa-action-card--warning">
+            <span class="pa-action-value">{{ ausstehend() }}</span>
+            <span class="pa-action-label">Ausstehend</span>
+            <span class="pa-action-hint">zum Prüfen</span>
+          </a>
+          <a routerLink="/grades/validation" [queryParams]="{ status: 'VALIDIERT' }" class="pa-action-card pa-action-card--info">
+            <span class="pa-action-value">{{ validiertWartet() }}</span>
+            <span class="pa-action-label">Validiert</span>
+            <span class="pa-action-hint">wartet auf Freigabe</span>
+          </a>
+          <a routerLink="/grades/validation" [queryParams]="{ status: 'FREIGEGEBEN' }" class="pa-action-card pa-action-card--success">
+            <span class="pa-action-value">{{ freigegebenCount() }}</span>
+            <span class="pa-action-label">Freigegeben</span>
+            <span class="pa-action-hint">gesamt</span>
+          </a>
         </section>
       }
 
@@ -106,76 +104,178 @@ interface NoteRow {
     </div>
   `,
   styles: [`
-    .pa-dashboard { padding: 0; max-width: 900px; margin: 0 auto; }
-    .pa-header { margin-bottom: var(--spacing-xl); }
-    .pa-title { font-size: 1.75rem; font-weight: 700; margin: 0 0 var(--spacing-xs) 0; color: var(--text-primary); letter-spacing: -0.02em; }
-    .pa-subtitle { font-size: 0.9375rem; color: var(--text-muted); margin: 0; }
-    .pa-kpis {
+    .pa-dashboard { padding: 0; max-width: 960px; margin: 0 auto; }
+    .pa-header { margin-bottom: 24px; }
+    .pa-title { font-size: 2rem; font-weight: 700; margin: 0 0 var(--spacing-xs) 0; color: var(--text-primary); letter-spacing: -0.02em; }
+    .pa-subtitle { font-size: var(--font-size-sm); color: var(--text-muted); margin: 0; }
+
+    .pa-top {
       display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(160px, 1fr));
-      gap: var(--spacing-md);
-      margin-bottom: var(--spacing-xl);
+      grid-template-columns: 1fr 200px;
+      gap: 24px;
+      align-items: stretch;
+      margin-bottom: 24px;
     }
-    .pa-kpi {
+    @media (max-width: 900px) {
+      .pa-top { grid-template-columns: 1fr; }
+      .pa-kpi-single { flex-direction: row; flex-wrap: wrap; }
+      .pa-kpi-row { flex: 1; min-width: 100px; }
+      .pa-kpi-row--warning { border-left: none; border-top: 3px solid rgba(245, 158, 11, 0.5); }
+    }
+
+    .pa-hero-card {
+      position: relative;
+      background: var(--bg-surface);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: none;
+    }
+    .pa-hero-accent {
+      position: absolute;
+      top: 0; left: 0; right: 0;
+      height: 3px;
+      background: linear-gradient(90deg, rgba(245, 158, 11, 0.2), rgba(99, 102, 241, 0.12));
+    }
+    .pa-hero-main {
+      display: flex;
+      align-items: center;
+      gap: 24px;
+      padding: 20px 24px;
+    }
+    .pa-hero-date {
       display: flex;
       flex-direction: column;
-      padding: var(--spacing-lg);
+      align-items: center;
+      justify-content: center;
+      width: 72px;
+      height: 72px;
+      flex-shrink: 0;
+      background: rgba(0, 0, 0, 0.2);
       border-radius: 12px;
-      border: 1px solid var(--border-color);
-      background: var(--bg-surface);
-      text-decoration: none;
-      color: inherit;
-      transition: background 0.2s, border-color 0.2s;
+      padding: 8px;
     }
-    .pa-kpi:hover { background: var(--bg-hover); border-color: rgba(255,255,255,0.12); }
-    .pa-kpi--warning { border-left: 4px solid rgba(245, 158, 11, 0.8); }
-    .pa-kpi--info { border-left: 4px solid rgba(99, 102, 241, 0.8); }
-    .pa-kpi--success { border-left: 4px solid rgba(16, 185, 129, 0.8); }
-    .pa-kpi--muted { border-left: 4px solid rgba(255,255,255,0.2); opacity: 0.9; cursor: default; }
-    .pa-kpi--muted:hover { background: var(--bg-surface); }
-    .pa-kpi-value { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
-    .pa-kpi-label { font-weight: 600; color: var(--text-primary); margin-top: 4px; }
-    .pa-kpi-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
-    .card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: 12px;
-      padding: var(--spacing-lg);
-      margin-bottom: var(--spacing-lg);
+    .pa-hero-day {
+      font-size: 1.75rem;
+      font-weight: 700;
+      line-height: 1;
+      font-variant-numeric: tabular-nums;
+      color: var(--text-primary);
     }
-    .pa-section-title { font-size: 1.125rem; font-weight: 600; margin: 0 0 var(--spacing-xs) 0; color: var(--text-primary); }
-    .pa-section-subtitle { font-size: 0.875rem; color: var(--text-muted); margin: 0 0 var(--spacing-md) 0; }
-    .pa-empty { text-align: center; padding: var(--spacing-xl); color: var(--text-muted); }
-    .pa-next-list { list-style: none; padding: 0; margin: 0; }
-    .pa-next-item {
+    .pa-hero-month {
+      font-size: 0.7rem;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+      margin-top: 2px;
+    }
+    .pa-hero-content { flex: 1; min-width: 0; }
+    .pa-hero-title { font-size: 1.2rem; font-weight: 600; margin: 0 0 4px 0; color: var(--text-primary); }
+    .pa-hero-detail { font-size: var(--font-size-sm); color: var(--text-muted); margin: 0 0 10px 0; }
+    .pa-hero-mini {
+      display: flex;
+      flex-wrap: wrap;
+      gap: var(--spacing-sm);
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+    }
+    .pa-hero-mini-item {
+      padding-right: var(--spacing-sm);
+      border-right: 1px solid rgba(255, 255, 255, 0.1);
+    }
+    .pa-hero-mini-item:last-child { border-right: none; padding-right: 0; }
+
+    .pa-kpi-single {
+      display: flex;
+      flex-direction: column;
+      width: 100%;
+      min-width: 160px;
+      background: var(--bg-surface);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: 14px;
+      overflow: hidden;
+      box-shadow: none;
+    }
+    .pa-kpi-row {
       display: flex;
       align-items: center;
       justify-content: space-between;
-      gap: var(--spacing-md);
-      padding: var(--spacing-sm) 0;
-      border-bottom: 1px solid var(--border-color);
+      gap: 16px;
+      flex: 1;
+      min-height: 52px;
+      padding: 12px 20px;
+      border-bottom: 1px solid rgba(255, 255, 255, 0.06);
+      box-sizing: border-box;
     }
-    .pa-next-item:last-child { border-bottom: none; }
-    .pa-next-main { display: flex; flex-wrap: wrap; align-items: center; gap: var(--spacing-sm); min-width: 0; }
-    .pa-next-student { font-weight: 500; color: var(--text-primary); }
-    .pa-next-modul { font-size: 0.875rem; color: var(--text-muted); }
-    .pa-next-note { font-variant-numeric: tabular-nums; font-weight: 600; }
-    .pa-next-note.bad { color: #ef4444; }
-    .pa-next-actions { flex-shrink: 0; }
-    .pa-next-footer { margin-top: var(--spacing-md); padding-top: var(--spacing-md); border-top: 1px solid var(--border-color); }
-    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-weight: 500; text-decoration: none; border: 1px solid transparent; cursor: pointer; font-size: 0.875rem; }
-    .btn-sm { padding: 6px 12px; font-size: 0.8125rem; }
-    .btn-primary { background: var(--text-primary); color: var(--bg-deep); border-color: var(--text-primary); }
-    .btn-ghost { background: transparent; color: var(--text-muted); border-color: var(--border-color); }
-    .btn-ghost:hover { background: var(--bg-hover); color: var(--text-primary); }
+    .pa-kpi-row:last-child { border-bottom: none; }
+    .pa-kpi-row--warning {
+      background: rgba(245, 158, 11, 0.06);
+      border-left: 3px solid rgba(245, 158, 11, 0.5);
+    }
+    .pa-kpi-single .pa-kpi-label {
+      font-size: 10px;
+      margin: 0;
+      white-space: nowrap;
+      text-transform: uppercase;
+      letter-spacing: 0.04em;
+      color: var(--text-muted);
+    }
+    .pa-kpi-row--warning .pa-kpi-label { color: var(--text-secondary); }
+    .pa-kpi-single .pa-kpi-value {
+      font-size: 1.3rem;
+      font-weight: 700;
+      font-variant-numeric: tabular-nums;
+      text-align: right;
+      min-width: 3ch;
+      flex-shrink: 0;
+      margin-left: auto;
+      color: var(--text-primary);
+    }
+
+    .pa-actions {
+      display: grid;
+      grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+      gap: var(--spacing-md);
+    }
+    .pa-action-card {
+      display: flex;
+      flex-direction: column;
+      padding: var(--spacing-lg);
+      border-radius: 14px;
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      background: var(--bg-surface);
+      text-decoration: none;
+      color: inherit;
+      transition: background 0.2s, border-color 0.2s, transform 0.15s;
+    }
+    .pa-action-card:hover {
+      background: rgba(255, 255, 255, 0.06);
+      border-color: rgba(255, 255, 255, 0.18);
+      transform: translateY(-2px);
+    }
+    .pa-action-card--warning { border-left: 4px solid rgba(245, 158, 11, 0.8); }
+    .pa-action-card--info { border-left: 4px solid rgba(99, 102, 241, 0.8); }
+    .pa-action-card--success { border-left: 4px solid rgba(16, 185, 129, 0.8); }
+    .pa-action-value { font-size: 1.75rem; font-weight: 700; color: var(--text-primary); line-height: 1.2; }
+    .pa-action-label { font-weight: 600; color: var(--text-primary); margin-top: 4px; }
+    .pa-action-hint { font-size: 0.75rem; color: var(--text-muted); margin-top: 2px; }
+
+    .card {
+      background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: 14px;
+      padding: var(--spacing-lg);
+      margin-bottom: var(--spacing-lg);
+    }
     .pa-error { text-align: center; padding: var(--spacing-xl); }
     .pa-error p { margin: 0 0 var(--spacing-md) 0; color: var(--text-muted); }
+    .btn { display: inline-flex; align-items: center; gap: 6px; padding: 8px 14px; border-radius: 8px; font-weight: 500; text-decoration: none; border: 1px solid transparent; cursor: pointer; font-size: 0.875rem; }
+    .btn-primary { background: var(--text-primary); color: var(--bg-deep); border-color: var(--text-primary); }
   `]
 })
 export class PaDashboardComponent implements OnInit {
   private readonly http = inject(HttpClient);
   private readonly apollo = inject(Apollo);
-  private readonly authService = inject(AuthService);
 
   loading = signal(true);
   error = signal<string | null>(null);
@@ -184,20 +284,18 @@ export class PaDashboardComponent implements OnInit {
   private readonly modulMap = new Map<string, string>();
 
   ausstehend = computed(() => this.noten().filter(n => n.status === 'ERFASST').length);
-  konflikte = computed(() => 0);
   validiertWartet = computed(() => this.noten().filter(n => n.status === 'VALIDIERT').length);
   freigegebenCount = computed(() => this.noten().filter(n => n.status === 'FREIGEGEBEN').length);
-  nextList = computed(() => {
-    const list = this.noten()
-      .filter(n => n.status === 'ERFASST')
-      .sort((a, b) => (a.erfasstAm || '').localeCompare(b.erfasstAm || ''))
-      .slice(0, 10)
-      .map(n => ({
-        ...n,
-        studentName: this.studentMap.get(n.einschreibungId),
-        modulName: this.modulMap.get(n.modulId)
-      }));
-    return list;
+
+  private readonly locale = 'de-DE';
+  todayLabel = computed(() => {
+    const d = new Date();
+    return d.toLocaleDateString(this.locale, { weekday: 'long', day: 'numeric', month: 'long', year: 'numeric' });
+  });
+  todayDay = computed(() => new Date().getDate().toString());
+  todayMonthYear = computed(() => {
+    const d = new Date();
+    return d.toLocaleDateString(this.locale, { month: 'short', year: 'numeric' });
   });
 
   ngOnInit(): void {
@@ -223,7 +321,7 @@ export class PaDashboardComponent implements OnInit {
         if (s) this.studentMap.set(String(e.id), `${s.vorname} ${s.nachname}`);
       });
       this.modulMap.clear();
-      (moduleRes.data?.module || []).forEach((m: any) => this.modulMap.set(String(m.id), `${m.modulNr} – ${m.name}`));
+      (moduleRes.data?.module || []).forEach((m: any) => this.modulMap.set(String(m.id), `${m.modulNr} - ${m.name}`));
     } catch (e) {
       this.error.set('Daten konnten nicht geladen werden.');
       console.error(e);

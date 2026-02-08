@@ -220,15 +220,12 @@ interface RoadmapSemester {
 
       <!-- Content -->
       @if (!loading() && !error() && dataLoaded()) {
-        <!-- A) Sticky Header: ein Satz + Plan ansehen + Filter -->
+        <!-- A) Sticky Header: ein Satz + Plan ansehen -->
         <header class="progress-sticky-header">
           <p class="progress-sticky-line">
             Noch <strong>{{ totalEcts() - ectsErreicht() }} ECTS</strong> bis Abschluss · {{ offenCount() }} Module offen · Ø <strong>{{ durchschnitt() !== null ? (durchschnitt() | number:'1.2-2') : '–' }}</strong>
           </p>
           <div class="progress-sticky-actions">
-            <button type="button" class="filter-chip" [class.filter-chip--active]="filterStatus() === 'all'" (click)="filterStatus.set('all')">Alle</button>
-            <button type="button" class="filter-chip" [class.filter-chip--active]="filterStatus() === 'offen'" (click)="filterStatus.set('offen')">Nur offen</button>
-            <button type="button" class="filter-chip" [class.filter-chip--active]="filterStatus() === 'bestanden'" (click)="filterStatus.set('bestanden')">Bestanden</button>
             <a routerLink="/study-plan" class="btn btn--primary btn--sm">Plan ansehen</a>
           </div>
         </header>
@@ -270,7 +267,6 @@ interface RoadmapSemester {
                   @if (expandedRoadmapSemester() === row.semester) {
                     <ul class="roadmap-module-list">
                       @for (m of row.module; track m.id) {
-                        @if (filterStatus() === 'all' || m.status === filterStatus()) {
                         <li class="roadmap-module-row" (click)="selectedModul.set(m)">
                           <span class="roadmap-module-name">{{ m.name }}</span>
                           <span class="roadmap-module-ects">{{ m.ects }} ECTS</span>
@@ -278,7 +274,6 @@ interface RoadmapSemester {
                           <span class="roadmap-module-note">{{ m.noteWert != null ? (m.noteWert | number:'1.1-1') : '-' }}</span>
                           <span class="roadmap-module-arrow">›</span>
                         </li>
-                        }
                       }
                     </ul>
                   }
@@ -508,29 +503,6 @@ interface RoadmapSemester {
       align-items: center;
       gap: 8px;
       flex-wrap: wrap;
-    }
-
-    .filter-chip {
-      padding: 6px 12px;
-      font-size: var(--font-size-xs);
-      font-weight: 500;
-      color: var(--text-muted);
-      background: transparent;
-      border: 1px solid var(--border-color);
-      border-radius: 8px;
-      cursor: pointer;
-      transition: background 0.15s, border-color 0.15s, color 0.15s;
-    }
-
-    .filter-chip:hover {
-      color: var(--text-secondary);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    .filter-chip--active {
-      background: rgba(255, 255, 255, 0.08);
-      border-color: rgba(255, 255, 255, 0.25);
-      color: var(--text-primary);
     }
 
     /* B) Dein Stand – Fortschritts-Puls */
@@ -931,6 +903,15 @@ export class ProgressComponent implements OnInit {
     return typeof v === 'number' ? v : Number(v) || 0;
   }
 
+  /** BVT: "6-7" (Praxisphase, Bachelor-Arbeit) → Anzeige als 7. Semester. */
+  private static normalizeSemesterForDisplay(sem: string | number | null | undefined): number {
+    if (sem == null) return 1;
+    const s = String(sem).trim();
+    if (s === '6-7') return 7;
+    const n = Number.parseInt(s, 10);
+    return Number.isNaN(n) ? 1 : n;
+  }
+
   /**
    * Nur freigegebene Noten zählen für den Studienfortschritt.
    * ERFASST/VALIDIERT sind Zwischenstände, die der Student nicht sieht.
@@ -1012,14 +993,9 @@ export class ProgressComponent implements OnInit {
     const result: SemesterProgress[] = [];
     
     for (let sem = 1; sem <= regelzeit; sem++) {
-      const semModule = moduleList.filter(m => {
-        const semStr = m.semester.toString();
-        if (semStr.includes('-')) {
-          const [start] = semStr.split('-').map(Number);
-          return start === sem;
-        }
-        return Number.parseInt(semStr, 10) === sem;
-      });
+      const semModule = moduleList.filter(m =>
+        ProgressComponent.normalizeSemesterForDisplay(m.semester) === sem
+      );
       
       const semNoten = semModule
         .map(m => notenMap.get(String(m.id ?? '')))
@@ -1082,7 +1058,7 @@ export class ProgressComponent implements OnInit {
         modulNr: m.modulNr ?? '',
         name: m.name ?? '',
         ects: ProgressComponent.ectsNum(m),
-        semester: typeof m.semester === 'string' ? Number.parseInt(m.semester, 10) || 1 : (m.semester ?? 1),
+        semester: ProgressComponent.normalizeSemesterForDisplay(m.semester),
         status,
         noteWert,
         noteId: n?.id
@@ -1148,10 +1124,6 @@ export class ProgressComponent implements OnInit {
 
   // UI State: Roadmap-Accordion (null = aktuelles Sem aufgeklappt, 0 = alle zu)
   roadmapExpandedSemester = signal<number | null>(null);
-
-  // Filter/Sort (für spätere Nutzung)
-  filterStatus = signal<'all' | 'offen' | 'bestanden'>('all');
-  filterSemester = signal<number | 'all'>('all');
 
   // Side-Panel: ausgewähltes Modul
   selectedModul = signal<ModulWithStatus | null>(null);

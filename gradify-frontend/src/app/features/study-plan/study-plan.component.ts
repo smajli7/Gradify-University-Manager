@@ -83,6 +83,30 @@ const EINSCHREIBUNG_QUERY = gql`
   }
 `;
 
+// Query für Wahlpflicht-Wahlen
+const WAHLPFLICHT_QUERY = gql`
+  query GetWahlpflichtWahlen($einschreibungId: ID!) {
+    wahlpflichtWahlen(einschreibungId: $einschreibungId) {
+      id
+      einschreibungId
+      wahlpflichtGruppe
+      modulId
+    }
+  }
+`;
+
+// Mutation für Wahlpflicht-Auswahl
+const SET_WAHLPFLICHT_MUTATION = gql`
+  mutation SetWahlpflichtWahl($einschreibungId: ID!, $wahlpflichtGruppe: String!, $modulId: ID!) {
+    setWahlpflichtWahl(einschreibungId: $einschreibungId, wahlpflichtGruppe: $wahlpflichtGruppe, modulId: $modulId) {
+      id
+      einschreibungId
+      wahlpflichtGruppe
+      modulId
+    }
+  }
+`;
+
 // Query für Noten (noten-service)
 const NOTEN_QUERY = gql`
   query GetNotenByStudent($einschreibungId: ID!) {
@@ -259,11 +283,10 @@ const NOTEN_QUERY = gql`
                       [class.module-card--wahlpflicht]="modul.modultyp === 'WAHLPFLICHT'"
                       [class.module-card--current]="isCurrentSemester(row.semester)"
                       [title]="getModuleTooltip(modul)"
-                      (click)="openModulDetail(modul)">
+                      (click)="onModulCardClick(modul)">
                       
                       <div class="module-header">
                         <span class="module-ects">{{ modul.ects }} CP</span>
-                        <span class="module-nr">{{ modul.modulNr }}</span>
                         @if (modul.status === 'bestanden') {
                           <span class="module-icon-check" aria-hidden="true">✓</span>
                         }
@@ -281,9 +304,28 @@ const NOTEN_QUERY = gql`
                         }
                       </div>
                       
-                      @if (modul.modultyp === 'WAHLPFLICHT' && !modul.note) {
-                        <div class="module-wahlpflicht">WP</div>
-                      }
+                      <div class="module-footer">
+                        <span class="module-nr">{{ modul.modulNr }}</span>
+                        @if (modul.modultyp === 'WAHLPFLICHT') {
+                          <span class="module-wahlpflicht">WP</span>
+                        }
+                      </div>
+                    </div>
+                  }
+
+                  <!-- Ungewählte Wahlpflicht-Platzhalter -->
+                  @for (wp of getUngewaehlteWpGruppenForSemester(row.semester); track wp.key) {
+                    <div class="module-card module-card--wp-choose" (click)="openWpAuswahl(wp.key)">
+                      <div class="module-header">
+                        <span class="module-ects">{{ wp.module[0].ects }} CP</span>
+                      </div>
+                      <div class="module-name">{{ wp.label }}</div>
+                      <div class="module-note-pill">
+                        <span class="module-note module-note--choose">Wählen</span>
+                      </div>
+                      <div class="module-footer">
+                        <span class="module-wahlpflicht">WP</span>
+                      </div>
                     </div>
                   }
                 </div>
@@ -315,6 +357,32 @@ const NOTEN_QUERY = gql`
           <div class="empty-icon" aria-hidden="true"></div>
           <h3>Kein Studienverlaufsplan geladen</h3>
           <p>Wählen Sie eine Einschreibung aus, um den Studienverlaufsplan anzuzeigen.</p>
+        </div>
+      }
+
+      <!-- Wahlpflicht-Auswahl-Modal -->
+      @if (wpAuswahlGruppe()) {
+        <div class="modal-overlay" (click)="closeWpAuswahl()">
+          <div class="modal-content wp-modal" (click)="$event.stopPropagation()">
+            <div class="modal-header">
+              <div class="modal-title">
+                <h2>Wahlpflichtmodul wählen</h2>
+              </div>
+              <button class="close-btn" (click)="closeWpAuswahl()">✕</button>
+            </div>
+            <div class="modal-body">
+              <p class="wp-modal-hint">Wähle dein Wahlpflichtmodul. Die Auswahl wird gespeichert und kann nicht mehr geändert werden.</p>
+              <div class="wp-option-list">
+                @for (m of getWpOptionsForGruppe(wpAuswahlGruppe()!); track m.id) {
+                  <button class="wp-option" (click)="confirmWpWahl(wpAuswahlGruppe()!, m)" [disabled]="savingWahlpflicht()">
+                    <span class="wp-option-nr">{{ m.modulNr }}</span>
+                    <span class="wp-option-name">{{ m.name }}</span>
+                    <span class="wp-option-ects">{{ m.ects }} CP</span>
+                  </button>
+                }
+              </div>
+            </div>
+          </div>
         </div>
       }
 
@@ -831,10 +899,18 @@ const NOTEN_QUERY = gql`
     }
 
     .module-note-pill {
-      margin-top: auto;
       padding-top: 6px;
       display: flex;
       justify-content: flex-end;
+    }
+
+    .module-footer {
+      margin-top: auto;
+      padding-top: 6px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      gap: 6px;
     }
 
     .module-note {
@@ -860,15 +936,83 @@ const NOTEN_QUERY = gql`
     }
 
     .module-wahlpflicht {
-      position: absolute;
-      bottom: var(--spacing-xs);
-      left: var(--spacing-xs);
       font-size: 10px;
       font-weight: 700;
       color: var(--text-secondary);
       background: rgba(148, 163, 184, 0.2);
       padding: 1px 4px;
       border-radius: 3px;
+    }
+
+    /* Wahlpflicht: Platzhalter-Kachel zum Wählen */
+    .module-card--wp-choose {
+      background: rgba(99, 102, 241, 0.06);
+      border: 2px dashed rgba(99, 102, 241, 0.4);
+      cursor: pointer;
+    }
+    .module-card--wp-choose:hover {
+      border-color: rgba(99, 102, 241, 0.7);
+      background: rgba(99, 102, 241, 0.12);
+    }
+    .module-note--choose {
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      color: #818cf8;
+      background: rgba(99, 102, 241, 0.15);
+      padding: 2px 10px;
+      border-radius: 6px;
+    }
+
+    /* Wahlpflicht-Auswahl-Modal */
+    .wp-modal { max-width: 480px; }
+    .wp-modal-hint {
+      font-size: var(--font-size-sm);
+      color: var(--text-muted);
+      margin-bottom: var(--spacing-md);
+    }
+    .wp-option-list {
+      display: flex;
+      flex-direction: column;
+      gap: var(--spacing-sm);
+    }
+    .wp-option {
+      display: flex;
+      align-items: center;
+      gap: var(--spacing-sm);
+      padding: var(--spacing-md);
+      background: var(--bg-hover);
+      border: 2px solid var(--border-color);
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      color: var(--text-primary);
+      transition: all 0.15s;
+      text-align: left;
+    }
+    .wp-option:hover:not(:disabled) {
+      border-color: rgba(99, 102, 241, 0.5);
+      background: rgba(99, 102, 241, 0.08);
+    }
+    .wp-option:disabled {
+      opacity: 0.5;
+      cursor: wait;
+    }
+    .wp-option-nr {
+      font-size: var(--font-size-xs);
+      font-weight: 700;
+      color: var(--text-muted);
+      font-family: 'JetBrains Mono', monospace;
+      min-width: 2em;
+    }
+    .wp-option-name {
+      flex: 1;
+      font-size: var(--font-size-sm);
+      font-weight: 500;
+    }
+    .wp-option-ects {
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      font-weight: 600;
+      white-space: nowrap;
     }
 
     /* Semester Summary */
@@ -1246,12 +1390,19 @@ export class StudyPlanComponent implements OnInit {
   noten = signal<Note[]>([]);
   einschreibung = signal<any>(null);
   
+  // Wahlpflicht-Wahlen: Map<wahlpflichtGruppe, modulId>
+  wahlpflichtWahlen = signal<Map<string, string>>(new Map());
+  savingWahlpflicht = signal(false);
+
   // Filter: Legende klickbar
   statusFilter = signal<'all' | 'bestanden' | 'offen' | 'in-bearbeitung' | 'nicht-bestanden'>('all');
 
   setStatusFilter(filter: 'all' | 'bestanden' | 'offen' | 'in-bearbeitung' | 'nicht-bestanden'): void {
     this.statusFilter.set(filter);
   }
+
+  // Wahlpflicht-Auswahl Modal
+  wpAuswahlGruppe = signal<string | null>(null);
 
   // Modal
   selectedModul = signal<ModulMitNote | null>(null);
@@ -1262,15 +1413,47 @@ export class StudyPlanComponent implements OnInit {
   // HTTP Client für REST API
   private readonly http = inject(HttpClient);
 
+  /** Wahlpflicht-Gruppen mit Optionen für das Auswahl-Dropdown */
+  wahlpflichtGruppen = computed(() => {
+    const moduleList = this.module();
+    const groups = new Map<string, ModulMitNote[]>();
+    for (const m of moduleList) {
+      if (m.modultyp === 'WAHLPFLICHT' && m.wahlpflichtGruppe) {
+        if (!groups.has(m.wahlpflichtGruppe)) groups.set(m.wahlpflichtGruppe, []);
+        groups.get(m.wahlpflichtGruppe)!.push(m);
+      }
+    }
+    return groups;
+  });
+
+  /** Gibt true zurück wenn für die Gruppe eine Wahl gespeichert ist */
+  hatWahlpflichtWahl(gruppe: string): boolean {
+    return this.wahlpflichtWahlen().has(gruppe);
+  }
+
+  /** Gibt das gewählte Modul-ID für die Gruppe zurück */
+  getWahlpflichtModulId(gruppe: string): string | undefined {
+    return this.wahlpflichtWahlen().get(gruppe);
+  }
+
   // Computed values
   semesterRows = computed(() => {
     const moduleList = this.module();
     if (moduleList.length === 0) return [];
 
+    // Wahlpflicht: Gewähltes Modul zeigen; ohne Wahl → Platzhalter-Kachel (nicht die einzelnen Optionen)
+    const wahlen = this.wahlpflichtWahlen();
+    const filteredModules = moduleList.filter(m => {
+      if (m.modultyp !== 'WAHLPFLICHT' || !m.wahlpflichtGruppe) return true;
+      const gewaehlteId = wahlen.get(m.wahlpflichtGruppe);
+      if (!gewaehlteId) return false; // Noch keine Wahl → Platzhalter wird separat gerendert
+      return String(m.id) === gewaehlteId;
+    });
+
     // Group by semester
     const grouped = new Map<string, ModulMitNote[]>();
     
-    for (const modul of moduleList) {
+    for (const modul of filteredModules) {
       const sem = this.normalizeSemester(modul.semester);
       if (!grouped.has(sem)) {
         grouped.set(sem, []);
@@ -1278,7 +1461,7 @@ export class StudyPlanComponent implements OnInit {
       grouped.get(sem)!.push(modul);
     }
 
-    // Create rows sorted descending (7 -> 1)
+    // Semester absteigend: 7. oben, 1. unten (Anordnung 6/7 bleibt korrekt)
     const rows: SemesterRow[] = [];
     const sortedSemesters = Array.from(grouped.keys())
       .sort((a, b) => this.parseSemester(b) - this.parseSemester(a));
@@ -1324,12 +1507,23 @@ export class StudyPlanComponent implements OnInit {
       .filter(row => row.module.length > 0);
   });
 
+  /** Nur relevante Module: Pflicht + gewählte WP (keine doppelten WP-Optionen) */
+  private activeModule = computed(() => {
+    const wahlen = this.wahlpflichtWahlen();
+    return this.module().filter(m => {
+      if (m.modultyp !== 'WAHLPFLICHT' || !m.wahlpflichtGruppe) return true;
+      const gewaehlteId = wahlen.get(m.wahlpflichtGruppe);
+      if (!gewaehlteId) return false;
+      return String(m.id) === gewaehlteId;
+    });
+  });
+
   totalEcts = computed(() => {
-    return this.module().reduce((sum, m) => sum + m.ects, 0);
+    return this.activeModule().reduce((sum, m) => sum + m.ects, 0);
   });
 
   bestandenEcts = computed(() => {
-    return this.module()
+    return this.activeModule()
       .filter(m => m.status === 'bestanden')
       .reduce((sum, m) => sum + m.ects, 0);
   });
@@ -1548,24 +1742,30 @@ export class StudyPlanComponent implements OnInit {
 
     console.log('Loading study plan for einschreibung:', this.selectedEinschreibung);
 
-    // Zwei parallele Anfragen an verschiedene Services
+    // Drei parallele Anfragen an verschiedene Services
     const einschreibungQuery = this.apollo.query<any>({
       query: EINSCHREIBUNG_QUERY,
       variables: { einschreibungId: this.selectedEinschreibung },
       fetchPolicy: 'network-only',
       errorPolicy: 'all'
-      // Default: geht an studiengang-service
     });
 
     const notenQuery = this.apollo.query<any>({
       query: NOTEN_QUERY,
       variables: { einschreibungId: this.selectedEinschreibung },
-      context: { clientName: 'noten' }, // Wichtig: an noten-service routen
+      context: { clientName: 'noten' },
       fetchPolicy: 'network-only',
       errorPolicy: 'all'
     });
 
-    // Beide Queries parallel ausführen mit verbesserter Fehlerbehandlung
+    const wahlpflichtQuery = this.apollo.query<any>({
+      query: WAHLPFLICHT_QUERY,
+      variables: { einschreibungId: this.selectedEinschreibung },
+      fetchPolicy: 'network-only',
+      errorPolicy: 'all'
+    });
+
+    // Alle Queries parallel ausführen
     Promise.all([
       firstValueFrom(einschreibungQuery).catch(err => {
         console.error('Einschreibung Query Error:', err);
@@ -1574,8 +1774,12 @@ export class StudyPlanComponent implements OnInit {
       firstValueFrom(notenQuery).catch(err => {
         console.error('Noten Query Error:', err);
         return { data: null, errors: [{ message: err.message || 'Unbekannter Fehler' }] };
+      }),
+      firstValueFrom(wahlpflichtQuery).catch(err => {
+        console.warn('Wahlpflicht Query Error (nicht kritisch):', err);
+        return { data: null, errors: [] };
       })
-    ]).then(([einschreibungResult, notenResult]) => {
+    ]).then(([einschreibungResult, notenResult, wahlpflichtResult]) => {
       console.log('Einschreibung Result:', einschreibungResult);
       console.log('Noten Result:', notenResult);
 
@@ -1602,6 +1806,14 @@ export class StudyPlanComponent implements OnInit {
 
       this.einschreibung.set(einschreibungData.einschreibung);
       this.currentSemester.set(einschreibungData.einschreibung.aktuellesSemester || 1);
+
+      // Wahlpflicht-Wahlen laden
+      const wahlen = wahlpflichtResult?.data?.wahlpflichtWahlen || [];
+      const wahlMap = new Map<string, string>();
+      for (const w of wahlen) {
+        wahlMap.set(w.wahlpflichtGruppe, String(w.modulId));
+      }
+      this.wahlpflichtWahlen.set(wahlMap);
 
       const noten: Note[] = notenData?.notenByStudent || [];
       this.noten.set(noten);
@@ -1654,11 +1866,100 @@ export class StudyPlanComponent implements OnInit {
     });
   }
 
-  normalizeSemester(sem: string): string {
-    // Handle "1-2", "6-7" etc. - use the first semester
-    if (sem.includes('-')) {
-      return sem.split('-')[0];
+  /** Klick auf eine Modul-Kachel: WP-Auswahl oder Detail-Modal */
+  onModulCardClick(modul: ModulMitNote): void {
+    // Wenn WP mit Gruppe und noch nicht gewählt → Auswahl-Modal
+    if (modul.modultyp === 'WAHLPFLICHT' && modul.wahlpflichtGruppe && !this.hatWahlpflichtWahl(modul.wahlpflichtGruppe)) {
+      this.openWpAuswahl(modul.wahlpflichtGruppe);
+    } else {
+      this.openModulDetail(modul);
     }
+  }
+
+  /** Öffnet das WP-Auswahl-Modal für eine Gruppe */
+  openWpAuswahl(gruppe: string): void {
+    this.wpAuswahlGruppe.set(gruppe);
+  }
+
+  closeWpAuswahl(): void {
+    this.wpAuswahlGruppe.set(null);
+  }
+
+  /** Gibt die Optionen für eine WP-Gruppe zurück */
+  getWpOptionsForGruppe(gruppe: string): ModulMitNote[] {
+    return this.module().filter(m => m.wahlpflichtGruppe === gruppe);
+  }
+
+  /** Bestätigt die WP-Wahl und speichert sie */
+  confirmWpWahl(gruppe: string, modul: ModulMitNote): void {
+    this.setWahlpflichtWahl(gruppe, String(modul.id));
+    this.closeWpAuswahl();
+  }
+
+  /** Gibt WP-Gruppen zurück, die in einem Semester liegen aber noch ungewählt sind */
+  getUngewaehlteWpGruppenForSemester(semester: string): { key: string; label: string; module: ModulMitNote[] }[] {
+    const labels: Record<string, string> = {
+      'FP': 'Forschungsprojekt',
+      'FF': 'Forschungsfelder'
+    };
+    const wahlen = this.wahlpflichtWahlen();
+    const result: { key: string; label: string; module: ModulMitNote[] }[] = [];
+    const seen = new Set<string>();
+
+    for (const m of this.module()) {
+      if (m.modultyp !== 'WAHLPFLICHT' || !m.wahlpflichtGruppe) continue;
+      const sem = this.normalizeSemester(m.semester);
+      if (sem !== semester) continue;
+      if (wahlen.has(m.wahlpflichtGruppe)) continue; // Schon gewählt
+      if (seen.has(m.wahlpflichtGruppe)) continue;
+      seen.add(m.wahlpflichtGruppe);
+
+      const optionen = this.module().filter(x => x.wahlpflichtGruppe === m.wahlpflichtGruppe);
+      result.push({
+        key: m.wahlpflichtGruppe,
+        label: labels[m.wahlpflichtGruppe] || `Wahlpflicht ${m.wahlpflichtGruppe}`,
+        module: optionen
+      });
+    }
+    return result;
+  }
+
+  /** Speichert die Wahlpflicht-Auswahl für eine Gruppe */
+  setWahlpflichtWahl(gruppe: string, modulId: string): void {
+    if (!this.selectedEinschreibung || this.savingWahlpflicht()) return;
+
+    this.savingWahlpflicht.set(true);
+    this.apollo.mutate<any>({
+      mutation: SET_WAHLPFLICHT_MUTATION,
+      variables: {
+        einschreibungId: this.selectedEinschreibung,
+        wahlpflichtGruppe: gruppe,
+        modulId
+      }
+    }).subscribe({
+      next: (result: any) => {
+        const wahl = result.data?.setWahlpflichtWahl;
+        if (wahl) {
+          const map = new Map(this.wahlpflichtWahlen());
+          map.set(wahl.wahlpflichtGruppe, String(wahl.modulId));
+          this.wahlpflichtWahlen.set(map);
+          this.toast.success('Wahlpflichtmodul gespeichert');
+        }
+        this.savingWahlpflicht.set(false);
+      },
+      error: (err: any) => {
+        console.error('Error saving wahlpflicht:', err);
+        this.toast.error('Fehler beim Speichern der Auswahl');
+        this.savingWahlpflicht.set(false);
+      }
+    });
+  }
+
+  normalizeSemester(sem: string): string {
+    // PO BVT: "6-7" = Praxisphase + Bachelor-Arbeit → Anzeige als 7. Semester (wie Original-Modultafel)
+    if (sem === '6-7') return '7';
+    // "1-2" etc. → erstes Semester für Gruppierung
+    if (sem.includes('-')) return sem.split('-')[0];
     return sem;
   }
 

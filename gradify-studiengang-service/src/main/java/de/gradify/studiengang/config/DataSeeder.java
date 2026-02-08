@@ -261,7 +261,7 @@ public class DataSeeder implements CommandLineRunner {
         createModul(po, "21", "Wahlpflichtmodul 1", null,
             5, "4", 1, Modul.Pruefungsform.KLAUSUR, "je nach Modul",
             Modul.Sprache.DEUTSCH, Modul.Modultyp.WAHLPFLICHT, Modul.Bewertungsart.NOTE,
-            BigDecimal.ONE, true, null, "WP1");
+            BigDecimal.ONE, true, null, null);
 
         createModul(po, "22", "Physical Chemistry and Chemical Reaction Engineering", null,
             5, "4", 1, Modul.Pruefungsform.KLAUSUR, "120 Min.",
@@ -292,7 +292,7 @@ public class DataSeeder implements CommandLineRunner {
         createModul(po, "27", "Wahlpflichtmodul 2", null,
             5, "5", 1, Modul.Pruefungsform.KLAUSUR, "je nach Modul",
             Modul.Sprache.DEUTSCH, Modul.Modultyp.WAHLPFLICHT, Modul.Bewertungsart.NOTE,
-            BigDecimal.ONE, true, null, "WP2");
+            BigDecimal.ONE, true, null, null);
 
         createModul(po, "28", "Bioprozesstechnik", null,
             5, "5", 1, Modul.Pruefungsform.KLAUSUR, "90 Min.",
