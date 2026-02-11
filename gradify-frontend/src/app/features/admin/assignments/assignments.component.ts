@@ -124,11 +124,12 @@ interface ApiResponse<T> {
       </header>
 
       <div class="info-banner">
-        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-          <circle cx="12" cy="12" r="10"/>
-          <line x1="12" y1="16" x2="12" y2="12"/>
-          <line x1="12" y1="8" x2="12.01" y2="8"/>
-        </svg>
+        <span class="info-banner-icon" aria-hidden="true">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+            <path d="M10 13a5 5 0 0 0 7.54.54l3-3a5 5 0 0 0-7.07-7.07l-1.72 1.71"/>
+            <path d="M14 11a5 5 0 0 0-7.54-.54l-3 3a5 5 0 0 0 7.07 7.07l1.71-1.71"/>
+          </svg>
+        </span>
         <span>Dozenten werden ihren Modulen zugewiesen</span>
       </div>
 
@@ -202,7 +203,7 @@ interface ApiResponse<T> {
                   <td class="col-center">
                     <button 
                       class="btn-icon btn-delete" 
-                      (click)="deleteAssignment(assignment)" 
+                      (click)="requestDelete(assignment)" 
                       title="Zuweisung löschen">
                       <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
                         <polyline points="3 6 5 6 21 6"/>
@@ -274,6 +275,20 @@ interface ApiResponse<T> {
                 [disabled]="!selectedDozentId || !selectedModulId">
                 Zuweisen
               </button>
+            </div>
+          </div>
+        </div>
+      }
+
+      <!-- Toast-Bestätigung zum Löschen -->
+      @if (pendingDelete()) {
+        <div class="confirm-toast" role="dialog" aria-label="Zuweisung löschen bestätigen">
+          <div class="confirm-toast-content">
+            <p class="confirm-toast-title">Zuweisung löschen?</p>
+            <p class="confirm-toast-detail">{{ pendingDelete()!.dozentName }} → {{ pendingDelete()!.modulName }}</p>
+            <div class="confirm-toast-actions">
+              <button class="btn btn-secondary btn-sm" (click)="cancelDelete()">Abbrechen</button>
+              <button class="btn btn-danger btn-sm" (click)="confirmDelete()">Löschen</button>
             </div>
           </div>
         </div>
@@ -354,7 +369,7 @@ interface ApiResponse<T> {
     .info-banner {
       display: flex;
       align-items: center;
-      gap: var(--spacing-sm);
+      gap: var(--spacing-md);
       padding: var(--spacing-md);
       background: rgba(255, 255, 255, 0.05);
       border: 1px solid rgba(255, 255, 255, 0.2);
@@ -363,10 +378,21 @@ interface ApiResponse<T> {
       margin-bottom: var(--spacing-lg);
     }
 
-    .info-banner svg {
-      width: 20px;
-      height: 20px;
+    .info-banner-icon {
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      width: 32px;
+      height: 32px;
       flex-shrink: 0;
+      background: rgba(255, 255, 255, 0.08);
+      border-radius: var(--radius-md);
+    }
+
+    .info-banner-icon svg {
+      width: 18px;
+      height: 18px;
+      opacity: 0.9;
     }
 
     .card {
@@ -642,6 +668,78 @@ interface ApiResponse<T> {
       font-size: 0.75rem;
       margin-top: var(--spacing-xs);
     }
+
+    /* Toast-Bestätigung (mittig mit dunklem Blur-Background) */
+    .confirm-toast {
+      position: fixed;
+      inset: 0;
+      z-index: 1100;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: rgba(0, 0, 0, 0.6);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      animation: toastFadeIn 0.25s ease;
+    }
+
+    @keyframes toastFadeIn {
+      from { opacity: 0; }
+      to { opacity: 1; }
+    }
+
+    .confirm-toast-content {
+      background: rgba(24, 24, 28, 0.95);
+      backdrop-filter: blur(12px);
+      -webkit-backdrop-filter: blur(12px);
+      border: 1px solid rgba(255, 255, 255, 0.1);
+      border-radius: var(--radius-lg);
+      padding: var(--spacing-md);
+      box-shadow: var(--shadow-lg);
+      min-width: 280px;
+      animation: toastContentPop 0.3s ease;
+    }
+
+    @keyframes toastContentPop {
+      from {
+        opacity: 0;
+        transform: scale(0.95);
+      }
+      to {
+        opacity: 1;
+        transform: scale(1);
+      }
+    }
+
+    .confirm-toast-title {
+      font-weight: 600;
+      color: var(--text-primary);
+      margin: 0 0 var(--spacing-xs) 0;
+      font-size: 0.9375rem;
+    }
+
+    .confirm-toast-detail {
+      color: var(--text-muted);
+      font-size: 0.8125rem;
+      margin: 0 0 var(--spacing-md) 0;
+      line-height: 1.4;
+    }
+
+    .confirm-toast-actions {
+      display: flex;
+      gap: var(--spacing-sm);
+      justify-content: flex-end;
+    }
+
+    .btn-danger {
+      background: rgba(239, 68, 68, 0.2);
+      border-color: var(--color-danger);
+      color: var(--color-danger);
+    }
+
+    .btn-danger:hover {
+      background: rgba(239, 68, 68, 0.3);
+    }
   `]
 })
 export class AssignmentsComponent implements OnInit {
@@ -652,6 +750,7 @@ export class AssignmentsComponent implements OnInit {
   // State
   loading = signal(false);
   showModal = signal(false);
+  pendingDelete = signal<Assignment | null>(null);
 
   // Data
   users = signal<User[]>([]);
@@ -869,40 +968,57 @@ export class AssignmentsComponent implements OnInit {
   async saveAssignment(): Promise<void> {
     if (!this.selectedDozentId || !this.selectedModulId) return;
 
+    const mandantId = this.modulIdToMandantId.get(this.selectedModulId);
+    const url = mandantId ? `/api/module-zuweisungen?mandantId=${mandantId}` : '/api/module-zuweisungen';
+
     try {
       await firstValueFrom(
-        this.http.post<ApiResponse<any>>('/api/module-zuweisungen', {
-          dozentId: this.selectedDozentId,
-          modulId: this.selectedModulId
+        this.http.post<ApiResponse<any>>(url, {
+          dozentId: Number(this.selectedDozentId),
+          modulId: Number(this.selectedModulId)
         })
       );
 
       this.closeModal();
       await this.loadAllAssignments();
+      this.toast.success('Zuweisung wurde erstellt.');
 
     } catch (error: any) {
       console.error('Error creating assignment:', error);
-      this.toast.error('Fehler beim Erstellen: ' + (error.error?.message || error.message));
+      const msg = error?.error?.message ?? error?.message ?? error?.statusText ?? 'Unbekannter Fehler';
+      this.toast.error('Fehler beim Erstellen: ' + msg);
     }
   }
 
-  async deleteAssignment(assignment: Assignment): Promise<void> {
-    if (!confirm(`Zuweisung wirklich löschen?\n${assignment.dozentName} → ${assignment.modulName}`)) {
-      return;
-    }
+  requestDelete(assignment: Assignment): void {
+    this.pendingDelete.set(assignment);
+  }
+
+  cancelDelete(): void {
+    this.pendingDelete.set(null);
+  }
+
+  async confirmDelete(): Promise<void> {
+    const assignment = this.pendingDelete();
+    if (!assignment) return;
+    this.pendingDelete.set(null);
+
+    const mandantId = this.modulIdToMandantId.get(assignment.modulId) ?? this.dozentIdToMandantId.get(assignment.dozentId);
+    let url = `/api/module-zuweisungen?dozentId=${assignment.dozentId}&modulId=${assignment.modulId}`;
+    if (mandantId) url += `&mandantId=${mandantId}`;
 
     try {
       await firstValueFrom(
-        this.http.delete<ApiResponse<any>>(
-          `/api/module-zuweisungen?dozentId=${assignment.dozentId}&modulId=${assignment.modulId}`
-        )
+        this.http.delete<ApiResponse<any>>(url)
       );
 
       await this.loadAllAssignments();
+      this.toast.success('Zuweisung wurde gelöscht.');
 
     } catch (error: any) {
       console.error('Error deleting assignment:', error);
-      this.toast.error('Fehler beim Löschen: ' + (error.error?.message || error.message));
+      const msg = error?.error?.message ?? error?.message ?? (error?.status === 404 ? 'Zuweisung nicht gefunden.' : 'Unbekannter Fehler');
+      this.toast.error('Fehler beim Löschen: ' + msg);
     }
   }
 

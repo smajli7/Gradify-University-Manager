@@ -284,9 +284,17 @@ public class StudentService {
             passwort = generatePassword();
         }
 
-        // Rolle "STUDENT" holen
-        Rolle studentRolle = rolleRepository.findByName("STUDENT")
-                .orElseThrow(() -> new IllegalStateException("Rolle STUDENT nicht gefunden"));
+        // Rolle STUDENT holen (data.sql / Rolle.ROLE_STUDENT = "ROLE_STUDENT", Fallback: "STUDENT")
+        Rolle studentRolle = rolleRepository.findByName(Rolle.ROLE_STUDENT)
+                .or(() -> rolleRepository.findByName("STUDENT"))
+                .or(() -> rolleRepository.findAll().stream()
+                        .filter(r -> r.getName() != null && r.getName().toUpperCase().contains("STUDENT"))
+                        .findFirst())
+                .orElseThrow(() -> new IllegalStateException(
+                        "Rolle STUDENT nicht gefunden. Vorhandene Rollen: " +
+                        rolleRepository.findAll().stream()
+                                .map(Rolle::getName)
+                                .collect(java.util.stream.Collectors.joining(", "))));
 
         Benutzer benutzer = Benutzer.builder()
                 .benutzername(benutzername)

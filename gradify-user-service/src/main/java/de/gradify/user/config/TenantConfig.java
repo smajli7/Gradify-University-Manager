@@ -6,7 +6,6 @@ import lombok.extern.slf4j.Slf4j;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.beans.factory.annotation.Value;
 import org.springframework.context.annotation.Bean;
-import org.springframework.context.annotation.Lazy;
 import org.springframework.context.annotation.Configuration;
 
 import java.util.*;
@@ -19,7 +18,7 @@ public class TenantConfig {
     private String tenantsConfig;
 
     @Bean
-    public TenantSuffixResolver tenantSuffixResolver(@Lazy @Autowired(required = false) TenantRegistryClient registryClient) {
+    public TenantSuffixResolver tenantSuffixResolver(@Autowired(required = false) TenantRegistryClient registryClient) {
         TenantSuffixResolver staticResolver = staticTenantSuffixResolver();
         if (registryClient != null) {
             log.info("TenantSuffixResolver nutzt zentrale Tenant-Registry (dynamisch, Fallback: gradify.tenants)");

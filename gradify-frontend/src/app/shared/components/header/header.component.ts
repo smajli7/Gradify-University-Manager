@@ -51,18 +51,30 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
           </div>
         </a>
 
-        <!-- Spacer -->
-        <div class="spacer"></div>
-
-        <!-- Debug Toggle -->
+        <!-- Debug Toggle (unauffällig rechts vom Logo) -->
         <button
           class="debug-btn"
           [class.active]="isDebugActive()"
           (click)="toggleDebug()"
           [title]="isDebugActive() ? 'Debug aus' : 'Debug an'">
           <span class="material-icons-outlined">bug_report</span>
-          <span class="debug-label hide-mobile">Debug</span>
         </button>
+
+        <!-- Spacer -->
+        <div class="spacer"></div>
+
+        <!-- Hochschule (wenn mandantName gesetzt) -->
+        @if (mandantName) {
+          <div class="mandant-badge" [title]="mandantName">
+            <span class="mandant-icon" aria-hidden="true">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8">
+                <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
+                <polyline points="9 22 9 12 15 12 15 22"/>
+              </svg>
+            </span>
+            <span class="mandant-text">{{ mandantName }}</span>
+          </div>
+        }
 
         <!-- User Menu -->
         <div class="user-menu">
@@ -212,6 +224,37 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
 
     .spacer {
       flex: 1;
+    }
+
+    /* Hochschule-Badge */
+    .mandant-badge {
+      display: flex;
+      align-items: center;
+      gap: 6px;
+      padding: 6px 12px;
+      background: rgba(255, 255, 255, 0.06);
+      border: 1px solid rgba(255, 255, 255, 0.12);
+      border-radius: var(--radius-md);
+      color: var(--text-muted);
+      font-size: 12px;
+      font-weight: 500;
+    }
+
+    .mandant-icon {
+      display: flex;
+      flex-shrink: 0;
+    }
+
+    .mandant-icon svg {
+      width: 16px;
+      height: 16px;
+      opacity: 0.85;
+    }
+
+    @media (max-width: 768px) {
+      .mandant-badge {
+        display: none;
+      }
     }
 
     /* User Menu */
@@ -365,39 +408,35 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
       margin: var(--spacing-xs) 0;
     }
 
-    /* Debug Toggle */
+    /* Debug Toggle (unauffällig) */
     .debug-btn {
       display: flex;
       align-items: center;
-      gap: 6px;
-      padding: 6px 12px;
-      background: rgba(255,255,255,0.08);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
+      justify-content: center;
+      width: 28px;
+      height: 28px;
+      padding: 0;
+      background: transparent;
+      border: none;
+      border-radius: var(--radius-sm);
       color: var(--text-muted);
-      font-size: 12px;
+      opacity: 0.5;
       cursor: pointer;
       transition: all 0.2s;
     }
 
     .debug-btn:hover {
-      background: rgba(255,255,255,0.12);
-      color: var(--text-primary);
-      border-color: var(--text-secondary);
+      opacity: 0.8;
+      color: var(--text-muted);
     }
 
     .debug-btn.active {
-      background: rgba(255, 255, 255, 0.12);
-      color: var(--text-primary);
-      border-color: var(--text-primary);
+      opacity: 0.9;
+      color: var(--text-secondary);
     }
 
     .debug-btn .material-icons-outlined {
-      font-size: 18px;
-    }
-
-    .debug-label {
-      font-weight: 500;
+      font-size: 16px;
     }
 
     /* Responsive */
@@ -424,6 +463,7 @@ export class HeaderComponent implements AfterViewInit {
 
   @Input() userName: string = 'Benutzer';
   @Input() userRole: string = 'STUDENT';
+  @Input() mandantName: string | null = null;
   @Input() userAvatar: string | null = null;
   @Input() logoSrc: string | null = null;
   @Input() showUserMenu: boolean = false;

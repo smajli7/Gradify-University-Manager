@@ -1,9 +1,11 @@
 import { Routes } from '@angular/router';
 import { adminGuard } from './core/guards/admin.guard';
 import { adminOrHochschulGuard } from './core/guards/admin-or-hochschul-guard';
+import { assignmentsGuard } from './core/guards/assignments.guard';
 import { authGuard, authGuardChild, authGuardMatch } from './core/guards/auth.guard';
 import { guestGuard } from './core/guards/guest.guard';
 import { roleRedirectGuard } from './core/guards/role-redirect.guard';
+import { studyPlanGuard } from './core/guards/study-plan.guard';
 
 export const routes: Routes = [
   // Public Routes (ohne Shell)
@@ -70,6 +72,7 @@ export const routes: Routes = [
       },
       {
         path: 'study-plan',
+        canActivate: [studyPlanGuard],
         loadComponent: () => import('./features/study-plan/study-plan.component')
           .then(m => m.StudyPlanComponent)
       },
@@ -93,7 +96,7 @@ export const routes: Routes = [
       },
       {
         path: 'admin/assignments',
-        canActivate: [adminGuard],
+        canActivate: [assignmentsGuard],
         loadComponent: () => import('./features/admin/assignments/assignments.component')
           .then(m => m.AssignmentsComponent)
       },

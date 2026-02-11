@@ -22,13 +22,13 @@ public class Rolle {
     @Column(length = 200)
     private String beschreibung;
 
-    // Vordefinierte Rollen-Namen
-    public static final String ROLE_STUDENT = "STUDENT";
-    public static final String ROLE_LEHRENDER = "LEHRENDER";
-    public static final String ROLE_PRUEFUNGSAMT = "PRUEFUNGSAMT";
-    public static final String ROLE_STUDIENGANGLEITUNG = "STUDIENGANGLEITUNG";
-    public static final String ROLE_HOCHSCHUL_VERWALTER = "HOCHSCHUL_VERWALTER";
-    public static final String ROLE_ADMIN = "ADMIN";
+    // Vordefinierte Rollen-Namen (müssen mit data.sql übereinstimmen!)
+    public static final String ROLE_STUDENT = "ROLE_STUDENT";
+    public static final String ROLE_LEHRENDER = "ROLE_LEHRENDER";
+    public static final String ROLE_PRUEFUNGSAMT = "ROLE_PRUEFUNGSAMT";
+    public static final String ROLE_STUDIENGANGLEITUNG = "ROLE_STUDIENGANGLEITUNG";
+    public static final String ROLE_HOCHSCHUL_VERWALTER = "ROLE_HOCHSCHUL_VERWALTER";
+    public static final String ROLE_ADMIN = "ROLE_ADMIN";
 }
 
 

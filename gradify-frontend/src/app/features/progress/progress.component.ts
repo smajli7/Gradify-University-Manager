@@ -1091,7 +1091,7 @@ export class ProgressComponent implements OnInit {
     return result;
   });
 
-  /** Top 3 „Next Actions“: Offen + In Bearbeitung, nach ECTS absteigend */
+  /** Top 3 „Next Actions“: Offen, nach ECTS absteigend */
   nextActions = computed((): ModulWithStatus[] => {
     return [...this.modulesWithStatus()]
       .filter(m => m.status === 'offen')

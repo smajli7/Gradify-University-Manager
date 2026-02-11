@@ -29,7 +29,7 @@ export class ToastService {
     const config: MatSnackBarConfig = {
       duration,
       horizontalPosition: 'end',
-      verticalPosition: 'top',
+      verticalPosition: 'bottom',
       panelClass: ['gradify-toast', `gradify-toast--${type}`],
     };
     this.snackBar.open(message, undefined, config);

@@ -1,8 +1,11 @@
 package de.gradify.studiengang.controller;
 
 import de.gradify.shared.dto.ApiResponse;
+import de.gradify.studiengang.config.SecurityUtils;
 import de.gradify.studiengang.dto.ModulZuweisungRequest;
 import de.gradify.studiengang.entity.ModulZuweisung;
+import de.gradify.studiengang.entity.ModulZuweisungHistorie;
+import de.gradify.studiengang.repository.ModulZuweisungHistorieRepository;
 import de.gradify.studiengang.repository.ModulZuweisungRepository;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -10,6 +13,10 @@ import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
+import java.time.LocalDate;
+import java.time.LocalDateTime;
+import java.time.LocalTime;
+import java.util.List;
 import java.util.Optional;
 
 @RestController
@@ -19,6 +26,7 @@ import java.util.Optional;
 public class ModulZuweisungController {
 
     private final ModulZuweisungRepository modulZuweisungRepository;
+    private final ModulZuweisungHistorieRepository modulZuweisungHistorieRepository;
 
     @PostMapping
     public ResponseEntity<ApiResponse<ModulZuweisung>> create(@RequestBody ModulZuweisungRequest request) {
@@ -39,13 +47,14 @@ public class ModulZuweisungController {
                 .modulId(modulId)
                 .build();
         zuweisung = modulZuweisungRepository.save(zuweisung);
+        saveHistorie(dozentId, modulId, ModulZuweisungHistorie.AenderungsTyp.ZUWEISUNG_ERSTELLT, "Zuweisung erstellt");
         return ResponseEntity.status(HttpStatus.CREATED).body(ApiResponse.success(zuweisung, "Zuweisung erstellt"));
     }
 
     @DeleteMapping
     public ResponseEntity<ApiResponse<Void>> delete(
-            @RequestParam Long dozentId,
-            @RequestParam Long modulId) {
+            @RequestParam("dozentId") Long dozentId,
+            @RequestParam("modulId") Long modulId) {
         log.info("Delete ModulZuweisung: dozentId={}, modulId={}", dozentId, modulId);
         Optional<ModulZuweisung> existing = modulZuweisungRepository.findByDozentId(dozentId).stream()
                 .filter(z -> z.getModulId().equals(modulId))
@@ -54,6 +63,44 @@ public class ModulZuweisungController {
             return ResponseEntity.notFound().build();
         }
         modulZuweisungRepository.delete(existing.get());
+        saveHistorie(dozentId, modulId, ModulZuweisungHistorie.AenderungsTyp.ZUWEISUNG_GELOESCHT, "Zuweisung gelöscht");
         return ResponseEntity.ok(ApiResponse.success(null, "Zuweisung gelöscht"));
+    }
+
+    @GetMapping("/audit")
+    public ResponseEntity<ApiResponse<List<ModulZuweisungHistorie>>> getAudit(
+            @RequestParam(value = "vonDatum", required = false) String vonDatumStr,
+            @RequestParam(value = "bisDatum", required = false) String bisDatumStr,
+            @RequestParam(value = "aenderungsTyp", required = false) String aenderungsTypStr) {
+        LocalDateTime vonDatum = vonDatumStr != null && !vonDatumStr.isBlank()
+                ? LocalDate.parse(vonDatumStr).atStartOfDay() : null;
+        LocalDateTime bisDatum = bisDatumStr != null && !bisDatumStr.isBlank()
+                ? LocalDate.parse(bisDatumStr).atTime(LocalTime.MAX) : null;
+        ModulZuweisungHistorie.AenderungsTyp typ = null;
+        if (aenderungsTypStr != null && !aenderungsTypStr.isBlank()) {
+            try {
+                typ = ModulZuweisungHistorie.AenderungsTyp.valueOf(aenderungsTypStr.toUpperCase().trim());
+            } catch (IllegalArgumentException ignored) {}
+        }
+        List<ModulZuweisungHistorie> entries = modulZuweisungHistorieRepository.findFiltered(vonDatum, bisDatum, typ);
+        return ResponseEntity.ok(ApiResponse.success(entries));
+    }
+
+    private void saveHistorie(Long dozentId, Long modulId, ModulZuweisungHistorie.AenderungsTyp typ, String kommentar) {
+        var ap = SecurityUtils.getAuthPrincipal();
+        if (ap == null || ap.getUserId() == null) return;
+        try {
+            Long userId = Long.parseLong(ap.getUserId());
+            var h = ModulZuweisungHistorie.builder()
+                    .dozentId(dozentId)
+                    .modulId(modulId)
+                    .geaendertVon(userId)
+                    .aenderungsTyp(typ)
+                    .kommentar(kommentar != null && kommentar.length() > 500 ? kommentar.substring(0, 500) : kommentar)
+                    .build();
+            modulZuweisungHistorieRepository.save(h);
+        } catch (NumberFormatException ignored) {
+            log.warn("Could not parse userId for historie: {}", ap.getUserId());
+        }
     }
 }

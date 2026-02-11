@@ -79,18 +79,18 @@ public class DataSeeder implements CommandLineRunner {
             Set.of(dozentenRolle, studiengangleitungRolle)
         );
 
-        // Studenten (mit festen IDs fuer Studiengang-/Noten-Service)
+        // Studenten (mit festen IDs fuer Studiengang-/Noten-Service); Matrikel = Kürzel+Jahr+Nummer
         createStudentWithId(STUDENT_1_ID, "max.mustermann", "max.mustermann@student.gradify.local",
             "web00100113!", "Max", "Mustermann",
-            "1234567", LocalDate.of(1998, 5, 15), studentRolle);
+            "THM2024001", LocalDate.of(1998, 5, 15), studentRolle);
 
         createStudentWithId(STUDENT_2_ID, "anna.schmidt", "anna.schmidt@student.gradify.local",
             "web00100113!", "Anna", "Schmidt",
-            "1234568", LocalDate.of(1999, 8, 22), studentRolle);
+            "THM2024002", LocalDate.of(1999, 8, 22), studentRolle);
 
         createStudentWithId(STUDENT_3_ID, "leon.weber", "leon.weber@student.gradify.local",
             "web00100113!", "Leon", "Weber",
-            "1234569", LocalDate.of(2000, 3, 10), studentRolle);
+            "THM2024003", LocalDate.of(2000, 3, 10), studentRolle);
 
         log.info("Seed-Daten erfolgreich erstellt!");
         log.info("=== Test-Zugangsdaten ===");

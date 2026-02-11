@@ -19,7 +19,7 @@ import java.util.regex.Pattern;
 public final class GradifyTokenParser {
 
     private static final Pattern SUB_PATTERN = Pattern.compile("\"sub\":\"([^\"]+)\"");
-    private static final Pattern ROLES_PATTERN = Pattern.compile("\"roles\":\\[([^\\]]*)\\]");
+    private static final Pattern ROLES_PATTERN = Pattern.compile("\"roles\"\\s*:\\s*\\[([^\\]]*)\\]");
     private static final Pattern EXP_PATTERN = Pattern.compile("\"exp\":(\\d+)");
     private static final Pattern MANDANT_ID_PATTERN = Pattern.compile("\"mandantId\":(\\d+)");
 

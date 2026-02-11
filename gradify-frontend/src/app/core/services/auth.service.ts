@@ -156,6 +156,17 @@ export class AuthService {
   }
 
   /**
+   * Liefert die Mandanten-ID für HOCHSCHUL_VERWALTER (ihre Hochschule).
+   * Wird für Scoping bei Studenten-Anzeige und -Anlage genutzt.
+   */
+  getMandantId(): number | null {
+    const user = this.currentUser();
+    if (!user?.mandantId) return null;
+    const mid = user.mandantId;
+    return typeof mid === 'number' ? mid : Number(mid);
+  }
+
+  /**
    * Liefert die Student-ID für Student-spezifische Abfragen.
    * Bevorzugt studentId; Fallback auf user.id für Abwärtskompatibilität (z. B. gespeicherte Sessions).
    */

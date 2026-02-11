@@ -104,14 +104,19 @@ public class EinschreibungService {
             throw new IllegalArgumentException("Student nicht gefunden: " + request.getStudentId());
         }
 
+        // 3. Ein Student darf nur einen Studiengang haben
+        if (einschreibungRepository.existsByStudentId(request.getStudentId())) {
+            throw new IllegalArgumentException("Student ist bereits einem Studiengang zugeordnet");
+        }
+
         // 4. Lade Prüfungsordnung
         Pruefungsordnung pruefungsordnung = pruefungsordnungRepository.findById(request.getPruefungsordnungId())
                 .orElseThrow(() -> new IllegalArgumentException("Prüfungsordnung nicht gefunden: " + request.getPruefungsordnungId()));
 
-        // 5. Prüfe ob Student bereits eingeschrieben
-        if (einschreibungRepository.existsByStudentIdAndStudiengangIdAndStatus(
-                request.getStudentId(), request.getStudiengangId(), Einschreibung.EinschreibungStatus.AKTIV)) {
-            throw new IllegalArgumentException("Student ist bereits in diesem Studiengang eingeschrieben");
+        // 5. Sicherheitscheck: PO muss zum gewählten Studiengang gehören
+        if (pruefungsordnung.getStudiengang() == null
+                || !pruefungsordnung.getStudiengang().getId().equals(studiengang.getId())) {
+            throw new IllegalArgumentException("Prüfungsordnung gehört nicht zum gewählten Studiengang");
         }
 
         // 6. Studienvariante bestimmen

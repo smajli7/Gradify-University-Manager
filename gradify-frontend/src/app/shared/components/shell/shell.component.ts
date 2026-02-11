@@ -1,11 +1,22 @@
-import { Component, HostListener, inject, computed } from '@angular/core';
+import { Component, HostListener, inject, computed, OnInit, signal } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterOutlet, Router } from '@angular/router';
+import { Apollo, gql } from 'apollo-angular';
 import { HeaderComponent } from '../header/header.component';
 import { DockComponent, DockItem } from '../dock/dock.component';
 import { MobileMenuComponent } from '../mobile-menu/mobile-menu.component';
 import { AuthService } from '../../../core/services/auth.service';
 import { OverlayService } from '../../../core/services/overlay.service';
+
+const GET_MANDANT = gql`
+  query GetMandant($id: ID!) {
+    mandant(id: $id) {
+      id
+      name
+      kuerzel
+    }
+  }
+`;
 
 @Component({
   selector: 'app-shell',
@@ -23,6 +34,7 @@ import { OverlayService } from '../../../core/services/overlay.service';
       <app-header
         [userName]="userName()"
         [userRole]="userRole()"
+        [mandantName]="mandantName()"
         [showUserMenu]="showUserMenu"
         (menuToggle)="toggleMobileMenu()"
         (userMenuToggle)="toggleUserMenu()"
@@ -109,14 +121,36 @@ import { OverlayService } from '../../../core/services/overlay.service';
     }
   `]
 })
-export class ShellComponent {
+export class ShellComponent implements OnInit {
   private readonly router = inject(Router);
   private readonly authService = inject(AuthService);
+  private readonly apollo = inject(Apollo);
   readonly overlayService = inject(OverlayService);
 
   // User State from AuthService
   userName = computed(() => this.authService.userFullName());
   userRole = computed(() => this.authService.userRole());
+  mandantName = computed(() => this._mandantName());
+
+  private _mandantName = signal<string | null>(null);
+
+  ngOnInit(): void {
+    const mandantId = this.authService.getMandantId();
+    if (mandantId != null) {
+      this.apollo.query<{ mandant: { id: string; name: string; kuerzel: string } | null }>({
+        query: GET_MANDANT,
+        variables: { id: String(mandantId) },
+        context: { clientName: 'studiengang' },
+        fetchPolicy: 'network-only'
+      }).subscribe({
+        next: (res) => {
+          const m = res.data?.mandant;
+          if (m?.name) this._mandantName.set(m.name);
+        },
+        error: () => { /* Mandant nicht verfügbar */ }
+      });
+    }
+  }
 
   // UI State
   showUserMenu = false;
@@ -204,7 +238,7 @@ export class ShellComponent {
       label: 'Zuweisungen',
       route: '/admin/assignments',
       icon: 'assets/icons/grades.svg',
-      roles: ['ADMIN'],
+      roles: ['ADMIN', 'HOCHSCHUL_VERWALTER', 'PRUEFUNGSAMT'],
       section: 'Verwaltung'
     },
     {
@@ -236,7 +270,7 @@ export class ShellComponent {
       label: 'Studienplan',
       route: '/study-plan',
       icon: 'assets/icons/calculation.svg',
-      roles: ['ADMIN', 'STUDENT', 'HOCHSCHUL_VERWALTER'],
+      roles: ['ADMIN', 'STUDENT'],
       section: 'Studium'
     },
     

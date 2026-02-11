@@ -11,7 +11,7 @@ import { SkeletonStateComponent } from '../../shared/components/skeleton-state/s
 
 interface ModulMitNote extends Modul {
   note?: Note;
-  status: 'offen' | 'bestanden' | 'nicht-bestanden' | 'in-bearbeitung';
+  status: 'offen' | 'bestanden' | 'nicht-bestanden';
 }
 
 interface SemesterRow {
@@ -154,9 +154,9 @@ const NOTEN_QUERY = gql`
         }
       </div>
 
-      <!-- Auswahl (nur für Nicht-Studenten) -->
+      <!-- Auswahl (nur für Nicht-Studenten) – Design wie Dashboard -->
       @if (canSelectStudent()) {
-        <div class="selection-controls">
+        <div class="selection-controls animate-slide-up">
           <div class="control-group">
             <label>Student:</label>
             <select 
@@ -201,9 +201,9 @@ const NOTEN_QUERY = gql`
         </div>
       }
 
-      <!-- Einschreibungs-Auswahl für Studenten -->
+      <!-- Einschreibungs-Auswahl für Studenten (Design wie Dashboard) -->
       @if (isStudent() && einschreibungen().length > 1) {
-        <div class="selection-controls">
+        <div class="selection-controls animate-slide-up">
           <div class="control-group">
             <label>Einschreibung:</label>
             <select 
@@ -249,12 +249,6 @@ const NOTEN_QUERY = gql`
               <span class="legend-dot legend-dot--offen"></span>
               <span>{{ isStudent() ? 'Nicht angetreten' : 'Offen' }}</span>
             </button>
-            @if (canSelectStudent()) {
-              <button type="button" class="legend-item" [class.legend-item--active]="statusFilter() === 'in-bearbeitung'" (click)="setStatusFilter('in-bearbeitung')">
-                <span class="legend-dot legend-dot--in-bearbeitung"></span>
-                <span>In Bearbeitung</span>
-              </button>
-            }
             <button type="button" class="legend-item" [class.legend-item--active]="statusFilter() === 'nicht-bestanden'" (click)="setStatusFilter('nicht-bestanden')">
               <span class="legend-dot legend-dot--nicht-bestanden"></span>
               <span>Nicht bestanden</span>
@@ -410,7 +404,6 @@ const NOTEN_QUERY = gql`
                   @switch (selectedModul()!.status) {
                     @case ('bestanden') { Bestanden }
                     @case ('nicht-bestanden') { Nicht bestanden }
-                    @case ('in-bearbeitung') { In Bearbeitung }
                     @default { {{ isStudent() ? 'Nicht angetreten' : 'Offen' }} }
                   }
                 </span>
@@ -566,7 +559,7 @@ const NOTEN_QUERY = gql`
       text-align: right;
     }
 
-    /* Demo Controls */
+    /* Studenten-/Einschreibungs-Auswahl (wie Dashboard) */
     .selection-controls {
       display: flex;
       flex-wrap: wrap;
@@ -575,7 +568,7 @@ const NOTEN_QUERY = gql`
       margin-bottom: var(--spacing-lg);
       padding: var(--spacing-md);
       background: var(--bg-surface);
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius-lg);
     }
 
@@ -595,10 +588,15 @@ const NOTEN_QUERY = gql`
       width: 100%;
       padding: 10px 14px;
       background: var(--bg-deep);
-      border: 1px solid rgba(255, 255, 255, 0.14);
+      border: 1px solid var(--border-color);
       border-radius: var(--radius-md);
       color: var(--text-primary);
       font-size: 0.95rem;
+    }
+
+    .select-input:focus {
+      outline: none;
+      border-color: var(--text-secondary);
     }
 
     .select-input:disabled {
@@ -742,8 +740,6 @@ const NOTEN_QUERY = gql`
     .legend-dot--bestanden { background: #22C55E; box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.5); }
     .legend-dot--offen { background: #F97316; border: 1px solid rgba(249, 115, 22, 0.6); }
     .legend-dot--nicht-bestanden { background: #EF4444; box-shadow: 0 0 0 1px rgba(239, 68, 68, 0.5); }
-    .legend-dot--in-bearbeitung { background: #EAB308; box-shadow: 0 0 0 1px rgba(234, 179, 8, 0.5); }
-
     /* Semester Grid – klare Row-Struktur, kompaktere Abstände */
     .semester-grid {
       display: flex;
@@ -839,11 +835,6 @@ const NOTEN_QUERY = gql`
     .module-card--nicht-angetreten {
       background: rgba(128, 128, 128, 0.15);
       border-color: rgba(128, 128, 128, 0.5);
-    }
-
-    .module-card--in-bearbeitung {
-      background: rgba(234, 179, 8, 0.12);
-      border-color: rgba(234, 179, 8, 0.6);
     }
 
     .module-card--offen {
@@ -1177,11 +1168,6 @@ const NOTEN_QUERY = gql`
       border: 1px solid rgba(128, 128, 128, 0.5);
     }
 
-    .status-display--in-bearbeitung {
-      background: rgba(245, 158, 11, 0.12);
-      border: 1px solid rgba(245, 158, 11, 0.55);
-    }
-
     .status-display--offen {
       background: var(--bg-elevated);
       border: 1px solid rgba(255, 255, 255, 0.14);
@@ -1395,9 +1381,9 @@ export class StudyPlanComponent implements OnInit {
   savingWahlpflicht = signal(false);
 
   // Filter: Legende klickbar
-  statusFilter = signal<'all' | 'bestanden' | 'offen' | 'in-bearbeitung' | 'nicht-bestanden'>('all');
+  statusFilter = signal<'all' | 'bestanden' | 'offen' | 'nicht-bestanden'>('all');
 
-  setStatusFilter(filter: 'all' | 'bestanden' | 'offen' | 'in-bearbeitung' | 'nicht-bestanden'): void {
+  setStatusFilter(filter: 'all' | 'bestanden' | 'offen' | 'nicht-bestanden'): void {
     this.statusFilter.set(filter);
   }
 
@@ -1837,17 +1823,13 @@ export class StudyPlanComponent implements OnInit {
         }
       }
 
-      // Status: Student nur bestanden / nicht bestanden / offen; Prüfungsamt auch "In Bearbeitung"
-      const nurDreiStatus = this.isStudent();
-
+      // Status: bestanden / nicht bestanden / offen („In Bearbeitung“ nicht mehr anzeigen)
       const moduleMitNoten: ModulMitNote[] = moduleList.map((m: Modul) => {
         const note = notenMap.get(String(m.id ?? ''));
         let status: ModulMitNote['status'] = 'offen';
 
         if (note) {
-          if (!nurDreiStatus && (note.status === 'ERFASST' || note.status === 'VALIDIERT')) {
-            status = 'in-bearbeitung';
-          } else if (note.bestanden === true) {
+          if (note.bestanden === true) {
             status = 'bestanden';
           } else if (note.bestanden === false) {
             status = 'nicht-bestanden';
@@ -1986,7 +1968,6 @@ export class StudyPlanComponent implements OnInit {
     const labels: Record<string, string> = {
       'bestanden': 'Bestanden',
       'offen': 'Offen',
-      'in-bearbeitung': 'In Bearbeitung',
       'nicht-bestanden': 'Nicht bestanden'
     };
     return labels[status] ?? status;

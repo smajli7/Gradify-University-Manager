@@ -27,8 +27,8 @@ public class EinschreibungController {
      */
     @GetMapping
     public ResponseEntity<ApiResponse<List<EinschreibungDto>>> getAllEinschreibungen(
-            @RequestParam(required = false) Long studentId,
-            @RequestParam(required = false) Long studiengangId) {
+            @RequestParam(name = "studentId", required = false) Long studentId,
+            @RequestParam(name = "studiengangId", required = false) Long studiengangId) {
         log.info("Getting Einschreibungen - studentId: {}, studiengangId: {}", studentId, studiengangId);
         
         List<EinschreibungDto> einschreibungen;

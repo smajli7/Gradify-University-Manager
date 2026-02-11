@@ -38,7 +38,8 @@ public class SecurityConfig {
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 // Rollen-basierte Zugriffskontrolle
-                .requestMatchers("/api/students/**").hasAnyRole("ADMIN", "LEHRENDER", "PRUEFUNGSAMT", "HOCHSCHUL_VERWALTER")
+                // Studierende anlegen/lesen: nur Hochschulverwalter, Prüfungsamt, Admin (nicht LEHRENDER)
+                .requestMatchers("/api/students/**").hasAnyRole("ADMIN", "PRUEFUNGSAMT", "HOCHSCHUL_VERWALTER")
                 .requestMatchers("/api/users/**").hasRole("ADMIN")
                 .requestMatchers("/api/**").authenticated()
                 .requestMatchers("/graphql/**").authenticated()

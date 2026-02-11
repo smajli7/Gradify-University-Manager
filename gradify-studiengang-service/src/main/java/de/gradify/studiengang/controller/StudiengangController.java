@@ -7,9 +7,11 @@ import de.gradify.studiengang.config.AuthPrincipal;
 import de.gradify.studiengang.config.SecurityUtils;
 import de.gradify.studiengang.dto.CreateStudiengangRequest;
 import de.gradify.studiengang.dto.ModulDto;
+import de.gradify.studiengang.dto.PruefungsordnungDto;
 import de.gradify.studiengang.dto.StudiengangDto;
 import de.gradify.studiengang.entity.Mandant;
 import de.gradify.studiengang.entity.Modul;
+import de.gradify.studiengang.entity.Pruefungsordnung;
 import de.gradify.studiengang.entity.Studiengang;
 import de.gradify.studiengang.repository.MandantRepository;
 import de.gradify.studiengang.service.StudiengangService;
@@ -136,6 +138,25 @@ public class StudiengangController {
         return ResponseEntity.ok(ApiResponse.success(dtos));
     }
 
+    /**
+     * Prüfungsordnungen eines Studiengangs (z. B. für Einschreibung anlegen).
+     */
+    @GetMapping("/{id}/pruefungsordnungen")
+    public ResponseEntity<ApiResponse<List<PruefungsordnungDto>>> getPruefungsordnungenByStudiengang(
+            @PathVariable(value = "id") Long id) {
+        log.info("Getting Pruefungsordnungen for Studiengang: {}", id);
+
+        if (studiengangService.findById(id).isEmpty()) {
+            return ResponseEntity.notFound().build();
+        }
+        List<Pruefungsordnung> pos = studiengangService.findPruefungsordnungenByStudiengangId(id);
+        List<PruefungsordnungDto> dtos = pos.stream()
+            .map(this::toPoDto)
+            .collect(Collectors.toList());
+
+        return ResponseEntity.ok(ApiResponse.success(dtos));
+    }
+
     @GetMapping("/module/{modulId}")
     public ResponseEntity<ApiResponse<ModulDto>> getModulById(
             @PathVariable(value = "modulId") Long modulId) {
@@ -191,6 +212,15 @@ public class StudiengangController {
             .inGesamtnote(modul.isInGesamtnote())
             .wahlpflichtGruppe(modul.getWahlpflichtGruppe())
             .pruefungsordnungId(modul.getPruefungsordnung() != null ? modul.getPruefungsordnung().getId() : null)
+            .build();
+    }
+
+    private PruefungsordnungDto toPoDto(Pruefungsordnung po) {
+        return PruefungsordnungDto.builder()
+            .id(po.getId())
+            .version(po.getVersion())
+            .gueltigAb(po.getGueltigAb())
+            .gueltigBis(po.getGueltigBis())
             .build();
     }
 }

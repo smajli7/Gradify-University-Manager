@@ -29,6 +29,22 @@ export interface AuditEintrag {
   modulName?: string;
   /** Student (z. B. "Max Mustermann") zur Einschreibung */
   studentName?: string;
+  /** Dozent-Name (für Zuweisungs-Einträge) */
+  dozentName?: string;
+  /** Dozent-ID (für Zuweisungs-Einträge) */
+  dozentId?: number;
+  /** Quelle: 'noten' oder 'zuweisung' */
+  quelle?: string;
+}
+
+interface ZuweisungAuditEintrag {
+  id: number;
+  dozentId: number;
+  modulId: number;
+  geaendertVon: number;
+  aenderungsTyp: string;
+  kommentar: string | null;
+  geaendertAm: string;
 }
 
 interface ModulInfo {
@@ -43,7 +59,9 @@ const AENDERUNGSTYPEN = [
   { value: 'NOTE_GEAENDERT', label: 'Geändert' },
   { value: 'VALIDIERT', label: 'Validiert' },
   { value: 'FREIGEGEBEN', label: 'Freigegeben' },
-  { value: 'STORNIERT', label: 'Storniert' }
+  { value: 'STORNIERT', label: 'Storniert' },
+  { value: 'ZUWEISUNG_ERSTELLT', label: 'Zuweisung erstellt' },
+  { value: 'ZUWEISUNG_GELOESCHT', label: 'Zuweisung gelöscht' }
 ];
 
 const GET_DOZENTEN_MODULE = gql`
@@ -105,7 +123,7 @@ const GET_EINSCHREIBUNGEN_FOR_AUDIT = gql`
         <div class="header-content">
           <h1 class="page-title">Protokoll (Audit Log)</h1>
           <p class="page-subtitle">
-            Änderungen an Noten: Wer hat wann was geändert.
+            Änderungen an Noten und Dozenten-Zuweisungen: Wer hat wann was geändert.
             @if (isDozent()) {
               <span class="hint"> – Anzeige beschränkt auf deine zugewiesenen Module.</span>
             }
@@ -178,23 +196,23 @@ const GET_EINSCHREIBUNGEN_FOR_AUDIT = gql`
                 <tr>
                   <th>Zeit</th>
                   <th>Aktion</th>
-                  <th>Note</th>
+                  <th>Bezug</th>
                   <th>Modul</th>
                   <th>Wer</th>
-                  <th>Student</th>
+                  <th>Detail</th>
                   <th>Vorher</th>
                   <th>Nachher</th>
                 </tr>
               </thead>
               <tbody>
-                @for (e of entries(); track e.id) {
+                @for (e of entries(); track e.id + '_' + e.quelle) {
                   <tr class="audit-row-clickable" (click)="openDetail(e)" role="button" tabindex="0" (keydown.enter)="openDetail(e)" (keydown.space)="openDetail(e)">
                     <td class="cell-time">{{ formatDate(e.geaendertAm) }}</td>
                     <td><span [class]="'badge badge-' + e.aenderungsTyp">{{ labelForTyp(e.aenderungsTyp) }}</span></td>
-                    <td>#{{ e.noteId }}</td>
+                    <td>{{ e.quelle === 'zuweisung' ? 'Dozent ' + (e.dozentName ?? e.dozentId) : '#' + e.noteId }}</td>
                     <td>{{ e.modulName ?? ('Modul ' + e.modulId) }}</td>
                     <td class="cell-wer">{{ e.geaendertVonName ?? ('User ' + e.geaendertVon) }}</td>
-                    <td class="cell-student">{{ e.studentName ?? (e.einschreibungId ? 'Einschr. ' + e.einschreibungId : '–') }}</td>
+                    <td class="cell-student">{{ e.quelle === 'zuweisung' ? (e.kommentar ?? '–') : (e.studentName ?? (e.einschreibungId ? 'Einschr. ' + e.einschreibungId : '–')) }}</td>
                     <td class="cell-note">{{ e.alterWert != null ? e.alterWert : '–' }}</td>
                     <td class="cell-note">{{ e.neuerWert != null ? e.neuerWert : '–' }}</td>
                   </tr>
@@ -216,12 +234,19 @@ const GET_EINSCHREIBUNGEN_FOR_AUDIT = gql`
             <dl class="detail-list">
               <dt>Zeit</dt><dd>{{ formatDate(e.geaendertAm) }}</dd>
               <dt>Aktion</dt><dd><span [class]="'badge badge-' + e.aenderungsTyp">{{ labelForTyp(e.aenderungsTyp) }}</span></dd>
-              <dt>Note</dt><dd>#{{ e.noteId }}</dd>
+              <dt>Typ</dt><dd>{{ e.quelle === 'zuweisung' ? 'Dozenten-Zuweisung' : 'Notenänderung' }}</dd>
+              @if (e.quelle === 'zuweisung') {
+                <dt>Dozent</dt><dd>{{ e.dozentName ?? ('Dozent ' + e.dozentId) }}</dd>
+              } @else {
+                <dt>Note</dt><dd>#{{ e.noteId }}</dd>
+              }
               <dt>Modul</dt><dd>{{ e.modulName ?? ('Modul ' + e.modulId) }}</dd>
               <dt>Geändert von</dt><dd>{{ e.geaendertVonName ?? ('User ' + e.geaendertVon) }}</dd>
-              <dt>Student</dt><dd>{{ e.studentName ?? (e.einschreibungId ? 'Einschr. ' + e.einschreibungId : '–') }}</dd>
-              <dt>Vorher</dt><dd>{{ e.alterWert != null ? e.alterWert : '–' }}</dd>
-              <dt>Nachher</dt><dd>{{ e.neuerWert != null ? e.neuerWert : '–' }}</dd>
+              @if (e.quelle !== 'zuweisung') {
+                <dt>Student</dt><dd>{{ e.studentName ?? (e.einschreibungId ? 'Einschr. ' + e.einschreibungId : '–') }}</dd>
+                <dt>Vorher</dt><dd>{{ e.alterWert != null ? e.alterWert : '–' }}</dd>
+                <dt>Nachher</dt><dd>{{ e.neuerWert != null ? e.neuerWert : '–' }}</dd>
+              }
               <dt>Kommentar</dt><dd class="detail-kommentar">{{ e.kommentar || '–' }}</dd>
             </dl>
           </div>
@@ -318,6 +343,9 @@ const GET_EINSCHREIBUNGEN_FOR_AUDIT = gql`
     .badge-VALIDIERT { background: #fef3c7; color: #92400e; }
     .badge-FREIGEGEBEN { background: #d1fae5; color: #065f46; }
     .badge-STORNIERT { background: #fee2e2; color: #991b1b; }
+    .badge-ZUWEISUNG_ERSTELLT { background: #e0e7ff; color: #3730a3; }
+    .badge-ZUWEISUNG_GELOESCHT { background: #fce7f3; color: #9d174d; }
+    .badge-FREIGABE_ZURUECKGENOMMEN { background: #fef3c7; color: #92400e; }
     .loading-state { display: flex; flex-direction: column; align-items: center; padding: var(--spacing-xl) 0; gap: var(--spacing-md); }
     .loading-text { color: var(--text-muted); font-size: 0.875rem; margin: 0; }
     .spinner {
@@ -430,44 +458,72 @@ export class AuditComponent implements OnInit {
   load(): void {
     this.error.set(null);
     this.loading.set(true);
-    let params = new HttpParams().set('limit', '500');
 
-    if (this.vonDatum) params = params.set('vonDatum', this.vonDatum);
-    if (this.bisDatum) params = params.set('bisDatum', this.bisDatum);
-    if (this.aenderungsTyp) params = params.set('aenderungsTyp', this.aenderungsTyp);
+    const isZuweisungFilter = this.aenderungsTyp.startsWith('ZUWEISUNG_');
+    const isNotenFilter = this.aenderungsTyp !== '' && !isZuweisungFilter;
 
+    // --- Noten-Audit ---
+    let notenParams = new HttpParams().set('limit', '500');
+    if (this.vonDatum) notenParams = notenParams.set('vonDatum', this.vonDatum);
+    if (this.bisDatum) notenParams = notenParams.set('bisDatum', this.bisDatum);
+    if (isNotenFilter) notenParams = notenParams.set('aenderungsTyp', this.aenderungsTyp);
     if (this.isDozent()) {
-      // Dozent: modulIds seiner zugewiesenen Module senden
-      const idsToSend = this.selectedModulId
-        ? [this.selectedModulId]
-        : this.dozentModulIds;
-      if (idsToSend.length === 0) {
-        this.entries.set([]);
-        this.loading.set(false);
-        return;
-      }
-      params = params.set('modulIds', idsToSend.join(','));
+      const idsToSend = this.selectedModulId ? [this.selectedModulId] : this.dozentModulIds;
+      if (idsToSend.length > 0) notenParams = notenParams.set('modulIds', idsToSend.join(','));
     } else if (this.selectedModulId) {
-      // PA/ADMIN/HV: einzelne modulId als Filter (optional)
-      params = params.set('modulId', this.selectedModulId);
+      notenParams = notenParams.set('modulId', this.selectedModulId);
     }
 
-    this.http.get<ApiResponse<AuditEintrag[]>>('/api/noten/audit', { params }).subscribe({
-      next: (res) => {
-        void this.applyAuditData(res?.data ?? []);
-      },
-      error: (err) => {
-        const msg = err?.error?.message ?? err?.message ?? 'Fehler beim Laden des Protokolls';
-        this.error.set(msg);
-        this.entries.set([]);
-        this.loading.set(false);
-      }
+    // --- Zuweisungs-Audit ---
+    let zuweisungParams = new HttpParams();
+    if (this.vonDatum) zuweisungParams = zuweisungParams.set('vonDatum', this.vonDatum);
+    if (this.bisDatum) zuweisungParams = zuweisungParams.set('bisDatum', this.bisDatum);
+    if (isZuweisungFilter) zuweisungParams = zuweisungParams.set('aenderungsTyp', this.aenderungsTyp);
+
+    const notenPromise = isZuweisungFilter
+      ? Promise.resolve([] as AuditEintrag[])
+      : firstValueFrom(this.http.get<ApiResponse<AuditEintrag[]>>('/api/noten/audit', { params: notenParams }))
+          .then(res => (res?.data ?? []).map(e => ({ ...e, quelle: 'noten' as const })))
+          .catch(() => [] as AuditEintrag[]);
+
+    const zuweisungPromise = isNotenFilter
+      ? Promise.resolve([] as AuditEintrag[])
+      : firstValueFrom(this.http.get<ApiResponse<ZuweisungAuditEintrag[]>>('/api/module-zuweisungen/audit', { params: zuweisungParams }))
+          .then(res => (res?.data ?? []).map(z => this.mapZuweisungToAudit(z)))
+          .catch(() => [] as AuditEintrag[]);
+
+    Promise.all([notenPromise, zuweisungPromise]).then(([noten, zuweisungen]) => {
+      void this.applyAuditData([...noten, ...zuweisungen]);
+    }).catch(err => {
+      const msg = err?.error?.message ?? err?.message ?? 'Fehler beim Laden des Protokolls';
+      this.error.set(msg);
+      this.entries.set([]);
+      this.loading.set(false);
     });
+  }
+
+  private mapZuweisungToAudit(z: ZuweisungAuditEintrag): AuditEintrag {
+    return {
+      id: z.id,
+      noteId: 0,
+      einschreibungId: null,
+      modulId: z.modulId,
+      geaendertVon: z.geaendertVon,
+      aenderungsTyp: z.aenderungsTyp,
+      alterWert: null,
+      neuerWert: null,
+      kommentar: z.kommentar,
+      geaendertAm: z.geaendertAm,
+      dozentId: z.dozentId,
+      quelle: 'zuweisung'
+    };
   }
 
   private async applyAuditData(raw: AuditEintrag[]): Promise<void> {
     await this.loadUserAndStudentLookups();
     const enriched = raw.map(e => this.enrichEntry(e));
+    // Sortieren nach Zeit, neueste zuerst
+    enriched.sort((a, b) => new Date(b.geaendertAm).getTime() - new Date(a.geaendertAm).getTime());
     this.entries.set(enriched);
     this.loading.set(false);
   }
@@ -516,7 +572,8 @@ export class AuditComponent implements OnInit {
     }
     const geaendertVonName = e.geaendertVonName ?? this.userMap.get(String(e.geaendertVon));
     const studentName = e.einschreibungId == null ? undefined : this.studentNameByEinschreibung.get(String(e.einschreibungId));
-    return { ...e, modulName, geaendertVonName, studentName };
+    const dozentName = e.dozentId ? (this.userMap.get(String(e.dozentId)) ?? undefined) : undefined;
+    return { ...e, modulName, geaendertVonName, studentName, dozentName };
   }
 
   openDetail(e: AuditEintrag): void {
@@ -530,16 +587,17 @@ export class AuditComponent implements OnInit {
   exportCsv(): void {
     const rows = this.entries();
     if (rows.length === 0) return;
-    const headers = ['Zeit', 'Aktion', 'Note-ID', 'Modul', 'Geändert von', 'Student', 'Vorher', 'Nachher', 'Kommentar'];
+    const headers = ['Zeit', 'Aktion', 'Typ', 'Bezug', 'Modul', 'Geändert von', 'Detail', 'Vorher', 'Nachher', 'Kommentar'];
     const lines = [headers.join(';')];
     for (const e of rows) {
       const row = [
         this.formatDate(e.geaendertAm),
         this.labelForTyp(e.aenderungsTyp),
-        e.noteId,
+        e.quelle === 'zuweisung' ? 'Zuweisung' : 'Note',
+        e.quelle === 'zuweisung' ? ('Dozent ' + (e.dozentName ?? e.dozentId)) : ('#' + e.noteId),
         e.modulName ?? e.modulId ?? '',
         e.geaendertVonName ?? e.geaendertVon,
-        e.studentName ?? (e.einschreibungId ?? ''),
+        e.quelle === 'zuweisung' ? '' : (e.studentName ?? (e.einschreibungId ?? '')),
         e.alterWert ?? '',
         e.neuerWert ?? '',
         (e.kommentar ?? '').replaceAll(';', ',')
@@ -561,7 +619,10 @@ export class AuditComponent implements OnInit {
       'NOTE_GEAENDERT': 'Geändert',
       'VALIDIERT': 'Validiert',
       'FREIGEGEBEN': 'Freigegeben',
-      'STORNIERT': 'Storniert'
+      'FREIGABE_ZURUECKGENOMMEN': 'Zurückgenommen',
+      'STORNIERT': 'Storniert',
+      'ZUWEISUNG_ERSTELLT': 'Zuweisung erstellt',
+      'ZUWEISUNG_GELOESCHT': 'Zuweisung gelöscht'
     };
     return map[typ] ?? typ;
   }

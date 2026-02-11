@@ -31,6 +31,8 @@ public interface EinschreibungRepository extends JpaRepository<Einschreibung, Lo
     @Query("SELECT COUNT(e) FROM Einschreibung e WHERE e.studiengang.id = :studiengangId AND e.status = 'AKTIV'")
     Long countAktiveByStudiengangId(@Param("studiengangId") Long studiengangId);
 
+    boolean existsByStudentId(Long studentId);
+
     boolean existsByStudentIdAndStudiengangIdAndStatus(Long studentId, Long studiengangId, Einschreibung.EinschreibungStatus status);
 
     @Query("SELECT e FROM Einschreibung e JOIN FETCH e.studiengang JOIN FETCH e.pruefungsordnung WHERE e.id = :id")
