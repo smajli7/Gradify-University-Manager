@@ -1,0 +1,157 @@
+# Docker Compose fuer E2E-Tests
+# Startet alle Gradify-Services mit eigenen Test-Datenbanken.
+# Verwendet die gleichen Service-Images wie docker-compose.yml.
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: gradify-test-postgres
+    environment:
+      POSTGRES_USER: gradify
+      POSTGRES_PASSWORD: gradify123
+      POSTGRES_DB: gradify_auth
+    volumes:
+      - ../../../../docker/init-databases.sql:/docker-entrypoint-initdb.d/init-databases.sql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U gradify"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  rabbitmq:
+    image: rabbitmq:3-management-alpine
+    container_name: gradify-test-rabbitmq
+    environment:
+      RABBITMQ_DEFAULT_USER: gradify
+      RABBITMQ_DEFAULT_PASS: gradify123
+    healthcheck:
+      test: ["CMD", "rabbitmq-diagnostics", "-q", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 10
+
+  user-service:
+    build:
+      context: ../../../../gradify-user-service
+      dockerfile: Dockerfile
+    container_name: gradify-test-user
+    ports:
+      - "18082:8082"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gradify_user
+      SPRING_DATASOURCE_USERNAME: gradify
+      SPRING_DATASOURCE_PASSWORD: gradify123
+    depends_on:
+      postgres:
+        condition: service_healthy
+
+  auth-service:
+    build:
+      context: ../../../../gradify-auth-service
+      dockerfile: Dockerfile
+    container_name: gradify-test-auth
+    ports:
+      - "18081:8081"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gradify_auth
+      SPRING_DATASOURCE_USERNAME: gradify
+      SPRING_DATASOURCE_PASSWORD: gradify123
+      GRPC_CLIENT_USER_SERVICE_ADDRESS: static://user-service:9082
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+
+  studiengang-service:
+    build:
+      context: ../../../../gradify-studiengang-service
+      dockerfile: Dockerfile
+    container_name: gradify-test-studiengang
+    ports:
+      - "18083:8083"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gradify_studiengang
+      SPRING_DATASOURCE_USERNAME: gradify
+      SPRING_DATASOURCE_PASSWORD: gradify123
+      GRADIFY_TENANT_REGISTRY_URL: jdbc:postgresql://postgres:5432/gradify_auth
+      GRPC_CLIENT_USER_SERVICE_ADDRESS: static://user-service:9082
+    depends_on:
+      postgres:
+        condition: service_healthy
+      user-service:
+        condition: service_started
+
+  noten-service:
+    build:
+      context: ../../../../gradify-noten-service
+      dockerfile: Dockerfile
+    container_name: gradify-test-noten
+    ports:
+      - "18084:8084"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gradify_noten
+      SPRING_DATASOURCE_USERNAME: gradify
+      SPRING_DATASOURCE_PASSWORD: gradify123
+      GRADIFY_TENANT_REGISTRY_URL: jdbc:postgresql://postgres:5432/gradify_auth
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: gradify
+      SPRING_RABBITMQ_PASSWORD: gradify123
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+
+  berechnungs-service:
+    build:
+      context: ../../../../gradify-berechnungs-service
+      dockerfile: Dockerfile
+    container_name: gradify-test-berechnungs
+    ports:
+      - "18085:8085"
+    environment:
+      SPRING_PROFILES_ACTIVE: dev
+      SPRING_DATASOURCE_URL: jdbc:postgresql://postgres:5432/gradify_berechnung
+      SPRING_DATASOURCE_USERNAME: gradify
+      SPRING_DATASOURCE_PASSWORD: gradify123
+      GRADIFY_TENANT_REGISTRY_URL: jdbc:postgresql://postgres:5432/gradify_auth
+      SPRING_RABBITMQ_HOST: rabbitmq
+      SPRING_RABBITMQ_USERNAME: gradify
+      SPRING_RABBITMQ_PASSWORD: gradify123
+      GRPC_CLIENT_NOTEN_SERVICE_ADDRESS: static://noten-service:9084
+      GRPC_CLIENT_STUDIENGANG_SERVICE_ADDRESS: static://studiengang-service:9083
+    depends_on:
+      postgres:
+        condition: service_healthy
+      rabbitmq:
+        condition: service_healthy
+      noten-service:
+        condition: service_started
+      studiengang-service:
+        condition: service_started
+
+  api-gateway:
+    build:
+      context: ../../../../gradify-api-gateway
+      dockerfile: Dockerfile
+    container_name: gradify-test-gateway
+    ports:
+      - "18080:8080"
+    environment:
+      SPRING_PROFILES_ACTIVE: docker
+    depends_on:
+      auth-service:
+        condition: service_started
+      user-service:
+        condition: service_started
+      studiengang-service:
+        condition: service_started
+      noten-service:
+        condition: service_started
+      berechnungs-service:
+        condition: service_started

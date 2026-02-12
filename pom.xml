@@ -20,6 +20,7 @@
         <module>gradify-studiengang-service</module>
         <module>gradify-noten-service</module>
         <module>gradify-berechnungs-service</module>
+        <module>gradify-e2e-tests</module>
     </modules>
 
     <properties>
@@ -53,6 +54,9 @@
         <!-- Utilities -->
         <lombok.version>1.18.30</lombok.version>
         <mapstruct.version>1.5.5.Final</mapstruct.version>
+
+        <!-- Testcontainers -->
+        <testcontainers.version>1.19.3</testcontainers.version>
     </properties>
 
     <dependencyManagement>
@@ -158,6 +162,15 @@
                 <artifactId>gradify-shared</artifactId>
                 <version>${project.version}</version>
             </dependency>
+
+            <!-- Testcontainers BOM -->
+            <dependency>
+                <groupId>org.testcontainers</groupId>
+                <artifactId>testcontainers-bom</artifactId>
+                <version>${testcontainers.version}</version>
+                <type>pom</type>
+                <scope>import</scope>
+            </dependency>
         </dependencies>
     </dependencyManagement>
 
@@ -168,6 +181,13 @@
                     <groupId>org.springframework.boot</groupId>
                     <artifactId>spring-boot-maven-plugin</artifactId>
                     <version>${spring-boot.version}</version>
+                    <executions>
+                        <execution>
+                            <goals>
+                                <goal>repackage</goal>
+                            </goals>
+                        </execution>
+                    </executions>
                     <configuration>
                         <excludes>
                             <exclude>

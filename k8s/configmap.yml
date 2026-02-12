@@ -1,0 +1,38 @@
+# Gemeinsame Konfiguration fuer alle Services
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: gradify-config
+  namespace: gradify
+data:
+  # PostgreSQL
+  POSTGRES_HOST: postgres
+  POSTGRES_PORT: "5432"
+
+  # JDBC URLs
+  SPRING_DATASOURCE_URL_AUTH: jdbc:postgresql://postgres:5432/gradify_auth
+  SPRING_DATASOURCE_URL_USER: jdbc:postgresql://postgres:5432/gradify_user
+  SPRING_DATASOURCE_URL_STUDIENGANG: jdbc:postgresql://postgres:5432/gradify_studiengang
+  SPRING_DATASOURCE_URL_NOTEN: jdbc:postgresql://postgres:5432/gradify_noten
+  SPRING_DATASOURCE_URL_BERECHNUNG: jdbc:postgresql://postgres:5432/gradify_berechnung
+
+  # Tenant-Registry (zentral in Auth-DB)
+  GRADIFY_TENANT_REGISTRY_URL: jdbc:postgresql://postgres:5432/gradify_auth
+
+  # RabbitMQ
+  SPRING_RABBITMQ_HOST: rabbitmq
+  SPRING_RABBITMQ_PORT: "5672"
+
+  # gRPC Service-Adressen (ClusterIP DNS)
+  GRPC_CLIENT_USER_SERVICE_ADDRESS: static://user-service-grpc:9082
+  GRPC_CLIENT_STUDIENGANG_SERVICE_ADDRESS: static://studiengang-service-grpc:9083
+  GRPC_CLIENT_NOTEN_SERVICE_ADDRESS: static://noten-service-grpc:9084
+  GRPC_CLIENT_BERECHNUNGS_SERVICE_ADDRESS: static://berechnungs-service-grpc:9085
+
+  # Spring Profiles
+  SPRING_PROFILES_ACTIVE: dev
+
+  # Tenant-Settings (Studiengang/Noten/Berechnung)
+  GRADIFY_TENANT_ROUTING_ENABLED: "true"
+  GRADIFY_TENANT_REGISTRY_ENABLED: "true"
+  GRADIFY_TENANTS: "1:thm,2:gu"

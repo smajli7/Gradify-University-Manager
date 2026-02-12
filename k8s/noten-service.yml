@@ -1,0 +1,150 @@
+# Noten-Service: Notenerfassung, Validierung, Freigabe, Audit
+# gRPC Server auf 9084 (fuer Berechnungs-Service: Noten abrufen)
+# gRPC Client -> Berechnungs-Service (Neuberechnung triggern)
+# RabbitMQ Consumer/Producer
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: noten-service
+  namespace: gradify
+  labels:
+    app: gradify
+    component: noten-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gradify
+      component: noten-service
+  template:
+    metadata:
+      labels:
+        app: gradify
+        component: noten-service
+    spec:
+      containers:
+      - name: noten-service
+        image: gradify/noten-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8084
+          name: http
+        - containerPort: 9084
+          name: grpc
+        env:
+        - name: SERVER_PORT
+          value: "8084"
+        - name: SPRING_PROFILES_ACTIVE
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: SPRING_PROFILES_ACTIVE
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: SPRING_DATASOURCE_URL_NOTEN
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_USER
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_PASSWORD
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: jwt-secret
+              key: JWT_SECRET
+        - name: SPRING_RABBITMQ_HOST
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: SPRING_RABBITMQ_HOST
+        - name: SPRING_RABBITMQ_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq-credentials
+              key: RABBITMQ_DEFAULT_USER
+        - name: SPRING_RABBITMQ_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: rabbitmq-credentials
+              key: RABBITMQ_DEFAULT_PASS
+        - name: GRADIFY_TENANT_REGISTRY_URL
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: GRADIFY_TENANT_REGISTRY_URL
+        - name: GRPC_CLIENT_BERECHNUNGS_SERVICE_ADDRESS
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: GRPC_CLIENT_BERECHNUNGS_SERVICE_ADDRESS
+        - name: GRADIFY_TENANT_ROUTING_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: GRADIFY_TENANT_ROUTING_ENABLED
+        - name: GRADIFY_TENANT_REGISTRY_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: GRADIFY_TENANT_REGISTRY_ENABLED
+        - name: GRADIFY_TENANTS
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: GRADIFY_TENANTS
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8084
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8084
+          initialDelaySeconds: 60
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: noten-service
+  namespace: gradify
+spec:
+  type: ClusterIP
+  selector:
+    app: gradify
+    component: noten-service
+  ports:
+  - port: 8084
+    targetPort: 8084
+    name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: noten-service-grpc
+  namespace: gradify
+spec:
+  type: ClusterIP
+  selector:
+    app: gradify
+    component: noten-service
+  ports:
+  - port: 9084
+    targetPort: 9084
+    name: grpc

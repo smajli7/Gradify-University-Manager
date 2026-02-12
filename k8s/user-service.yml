@@ -1,0 +1,121 @@
+# User-Service: Benutzer-/Studenten-CRUD, Rollen, GraphQL, gRPC Server
+# gRPC Server auf Port 9082 (fuer Auth + Studiengang)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: user-service
+  namespace: gradify
+  labels:
+    app: gradify
+    component: user-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gradify
+      component: user-service
+  template:
+    metadata:
+      labels:
+        app: gradify
+        component: user-service
+    spec:
+      containers:
+      - name: user-service
+        image: gradify/user-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8082
+          name: http
+        - containerPort: 9082
+          name: grpc
+        env:
+        - name: SERVER_PORT
+          value: "8082"
+        - name: SPRING_PROFILES_ACTIVE
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: SPRING_PROFILES_ACTIVE
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: SPRING_DATASOURCE_URL_USER
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_USER
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_PASSWORD
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: jwt-secret
+              key: JWT_SECRET
+        - name: GRADIFY_TENANTS
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: GRADIFY_TENANTS
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8082
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8082
+          initialDelaySeconds: 60
+          periodSeconds: 10
+---
+# HTTP Service (REST + GraphQL)
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service
+  namespace: gradify
+  labels:
+    app: gradify
+    component: user-service
+spec:
+  type: ClusterIP
+  selector:
+    app: gradify
+    component: user-service
+  ports:
+  - port: 8082
+    targetPort: 8082
+    name: http
+---
+# gRPC Service (separater Service fuer gRPC-Clients)
+apiVersion: v1
+kind: Service
+metadata:
+  name: user-service-grpc
+  namespace: gradify
+  labels:
+    app: gradify
+    component: user-service
+spec:
+  type: ClusterIP
+  selector:
+    app: gradify
+    component: user-service
+  ports:
+  - port: 9082
+    targetPort: 9082
+    name: grpc

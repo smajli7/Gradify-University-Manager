@@ -1,0 +1,7 @@
+apiVersion: v1
+kind: Namespace
+metadata:
+  name: gradify
+  labels:
+    app.kubernetes.io/name: gradify
+    app.kubernetes.io/part-of: gradify

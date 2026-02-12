@@ -1,0 +1,66 @@
+# Frontend: Angular PWA mit nginx
+# Statische Dateien, Proxy-Konfig leitet /api auf API-Gateway
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: frontend
+  namespace: gradify
+  labels:
+    app: gradify
+    component: frontend
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gradify
+      component: frontend
+  template:
+    metadata:
+      labels:
+        app: gradify
+        component: frontend
+    spec:
+      containers:
+      - name: frontend
+        image: gradify/frontend:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 80
+          name: http
+        resources:
+          requests:
+            memory: "64Mi"
+            cpu: "50m"
+          limits:
+            memory: "128Mi"
+            cpu: "200m"
+        readinessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 5
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /
+            port: 80
+          initialDelaySeconds: 10
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: frontend
+  namespace: gradify
+  labels:
+    app: gradify
+    component: frontend
+spec:
+  type: ClusterIP
+  selector:
+    app: gradify
+    component: frontend
+  ports:
+  - port: 80
+    targetPort: 80
+    name: http

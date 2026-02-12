@@ -1,0 +1,134 @@
+# Studiengang-Service: Mandanten, Studiengaenge, Module, POs, Einschreibungen
+# gRPC Server auf 9083 (fuer Berechnungs-Service: Regelwerk + Gewichtungen)
+# gRPC Client -> User-Service (Student-Validierung)
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: studiengang-service
+  namespace: gradify
+  labels:
+    app: gradify
+    component: studiengang-service
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: gradify
+      component: studiengang-service
+  template:
+    metadata:
+      labels:
+        app: gradify
+        component: studiengang-service
+    spec:
+      containers:
+      - name: studiengang-service
+        image: gradify/studiengang-service:latest
+        imagePullPolicy: Never
+        ports:
+        - containerPort: 8083
+          name: http
+        - containerPort: 9083
+          name: grpc
+        env:
+        - name: SERVER_PORT
+          value: "8083"
+        - name: SPRING_PROFILES_ACTIVE
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: SPRING_PROFILES_ACTIVE
+        - name: SPRING_DATASOURCE_URL
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: SPRING_DATASOURCE_URL_STUDIENGANG
+        - name: SPRING_DATASOURCE_USERNAME
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_USER
+        - name: SPRING_DATASOURCE_PASSWORD
+          valueFrom:
+            secretKeyRef:
+              name: postgres-credentials
+              key: POSTGRES_PASSWORD
+        - name: JWT_SECRET
+          valueFrom:
+            secretKeyRef:
+              name: jwt-secret
+              key: JWT_SECRET
+        - name: GRADIFY_TENANT_REGISTRY_URL
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: GRADIFY_TENANT_REGISTRY_URL
+        - name: GRPC_CLIENT_USER_SERVICE_ADDRESS
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: GRPC_CLIENT_USER_SERVICE_ADDRESS
+        - name: GRADIFY_TENANT_ROUTING_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: GRADIFY_TENANT_ROUTING_ENABLED
+        - name: GRADIFY_TENANT_REGISTRY_ENABLED
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: GRADIFY_TENANT_REGISTRY_ENABLED
+        - name: GRADIFY_TENANTS
+          valueFrom:
+            configMapKeyRef:
+              name: gradify-config
+              key: GRADIFY_TENANTS
+        resources:
+          requests:
+            memory: "256Mi"
+            cpu: "100m"
+          limits:
+            memory: "512Mi"
+            cpu: "500m"
+        readinessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8083
+          initialDelaySeconds: 30
+          periodSeconds: 5
+        livenessProbe:
+          httpGet:
+            path: /actuator/health
+            port: 8083
+          initialDelaySeconds: 60
+          periodSeconds: 10
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: studiengang-service
+  namespace: gradify
+spec:
+  type: ClusterIP
+  selector:
+    app: gradify
+    component: studiengang-service
+  ports:
+  - port: 8083
+    targetPort: 8083
+    name: http
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: studiengang-service-grpc
+  namespace: gradify
+spec:
+  type: ClusterIP
+  selector:
+    app: gradify
+    component: studiengang-service
+  ports:
+  - port: 9083
+    targetPort: 9083
+    name: grpc

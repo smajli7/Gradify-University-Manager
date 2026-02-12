@@ -1,0 +1,55 @@
+# Ingress: externer Zugang zum Cluster
+# /api/* und /graphql/* -> API-Gateway (Backend)
+# /*                    -> Frontend (Angular PWA)
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: gradify-ingress
+  namespace: gradify
+  labels:
+    app: gradify
+  annotations:
+    nginx.ingress.kubernetes.io/proxy-body-size: "10m"
+    nginx.ingress.kubernetes.io/proxy-read-timeout: "60"
+    nginx.ingress.kubernetes.io/proxy-send-timeout: "60"
+    # WebSocket-Support fuer GraphQL Subscriptions (falls spaeter noetig)
+    nginx.ingress.kubernetes.io/proxy-http-version: "1.1"
+    nginx.ingress.kubernetes.io/use-regex: "true"
+spec:
+  ingressClassName: nginx
+  rules:
+  - host: gradify.local
+    http:
+      paths:
+      # API-Requests -> Gateway
+      - path: /api
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8080
+      # GraphQL-Requests -> Gateway
+      - path: /graphql
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8080
+      # Actuator (optional, fuer Monitoring)
+      - path: /actuator
+        pathType: Prefix
+        backend:
+          service:
+            name: api-gateway
+            port:
+              number: 8080
+      # Alles andere -> Frontend
+      - path: /
+        pathType: Prefix
+        backend:
+          service:
+            name: frontend
+            port:
+              number: 80
