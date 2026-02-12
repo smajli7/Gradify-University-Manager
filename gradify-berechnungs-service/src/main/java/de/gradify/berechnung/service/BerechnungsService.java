@@ -280,11 +280,13 @@ public class BerechnungsService {
     }
 
     /**
-     * Berechnet Master-Note: (2 × Thesis + Modulmittel) / 3
-     * Modulmittel = arithmetisches Mittel der übrigen benoteten Module (Gewicht 1 je Modul).
+     * Berechnet Master-Note nach PO §9 FSA:
+     * Gesamtnote = (2 × Thesis + 1 × Modulmittel) / 3
+     * Modulmittel = arithmetisches Mittel der Module 1, 2, 3, 4, 5 (5.1/5.2), 7, 8 (8.1/8.2/8.3)
+     * Module 6, 9, 10, 11 sind bestanden/nicht bestanden und fliessen NICHT ein.
      */
     private BigDecimal berechneMasterNote(List<ModulBerechnung> module) {
-        // Thesis erkennen: modulNr enthält "TH"/"12" oder Modulname enthält "Thesis"/"Masterarbeit"
+        // Thesis erkennen
         Optional<ModulBerechnung> thesis = module.stream()
                 .filter(m -> isThesisModul(m))
                 .findFirst();
@@ -293,22 +295,24 @@ public class BerechnungsService {
             return berechneGewichteterDurchschnitt(module);
         }
 
-        List<ModulBerechnung> ohneThesis = module.stream()
-                .filter(m -> !isThesisModul(m))
+        // Nur Module fuer Modulmittel: 1, 2, 3, 4, 5 (5.1, 5.2), 7, 8 (8.1, 8.2, 8.3)
+        // Module 6, 9, 10, 11 und Thesis (12) werden ausgeschlossen
+        List<ModulBerechnung> modulmittelModule = module.stream()
+                .filter(m -> !isThesisModul(m) && isModulmittelModul(m))
                 .collect(Collectors.toList());
 
         BigDecimal thesisNote = thesis.get().getNote();
 
-        if (ohneThesis.isEmpty()) {
+        if (modulmittelModule.isEmpty()) {
             return thesisNote;
         }
 
         // Modulmittel = arithmetisches Mittel (alle Module gleiches Gewicht 1)
-        BigDecimal modulSumme = ohneThesis.stream()
+        BigDecimal modulSumme = modulmittelModule.stream()
                 .map(ModulBerechnung::getNote)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         BigDecimal modulDurchschnitt = modulSumme.divide(
-                BigDecimal.valueOf(ohneThesis.size()), 5, RoundingMode.HALF_UP);
+                BigDecimal.valueOf(modulmittelModule.size()), 5, RoundingMode.HALF_UP);
 
         // (2 × Thesis + 1 × Modulmittel) / 3
         return thesisNote.multiply(new BigDecimal("2"))
@@ -317,9 +321,23 @@ public class BerechnungsService {
     }
 
     /**
+     * Prueft ob ein Modul zum Modulmittel gehoert (PO §9 FSA).
+     * Nur Module 1, 2, 3, 4, 5 (inkl. 5.1, 5.2), 7, 8 (inkl. 8.1, 8.2, 8.3).
+     * Module 6, 9, 10, 11 sind bestanden/nicht bestanden und gehoeren NICHT dazu.
+     */
+    private static final Set<String> MODULMITTEL_MODULE = Set.of(
+            "1", "2", "3", "4", "5", "5.1", "5.2", "7", "8", "8.1", "8.2", "8.3"
+    );
+
+    private static boolean isModulmittelModul(ModulBerechnung m) {
+        String nr = m.getModulNr() != null ? m.getModulNr().trim() : "";
+        return MODULMITTEL_MODULE.contains(nr);
+    }
+
+    /**
      * Erkennt Thesis-Module anhand des Modulnamens oder der ModulNr.
      * Wird nur fuer ARITHMETISCH_GEMISCHT (Master-Formel §9 FSA) verwendet.
-     * FSA PO: Modul 12 = "Master-Thesis mit Kolloquium" (Gew. 14 = 2×7 Modulmittel-Module)
+     * FSA PO: Modul 12 = "Master-Thesis mit Kolloquium" (Gew. 2.0)
      */
     private static boolean isThesisModul(ModulBerechnung m) {
         // Modulname pruefen

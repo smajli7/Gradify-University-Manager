@@ -206,7 +206,14 @@ interface UserInfo {
                       (click)="showDetails(note)">
                       <td class="col-flag">
                         @if (hasConflict(note)) {
-                          <span class="flag-warning material-icons-outlined" title="Konflikt/Unklarheit">warning</span>
+                          <div class="conflict-indicator" [title]="getConflictReason(note)">
+                            <span class="flag-warning material-icons-outlined">warning</span>
+                            <span class="conflict-hint">Prüfen</span>
+                          </div>
+                        } @else if (hasComment(note)) {
+                          <div class="comment-indicator" [title]="note.kommentar">
+                            <span class="flag-comment material-icons-outlined">comment</span>
+                          </div>
                         }
                       </td>
                       <td class="col-checkbox" (click)="$event.stopPropagation()">
@@ -834,6 +841,37 @@ interface UserInfo {
     .flag-warning {
       color: var(--color-warning);
       font-size: 18px;
+    }
+
+    .conflict-indicator {
+      display: flex;
+      align-items: center;
+      gap: 4px;
+      cursor: help;
+    }
+
+    .conflict-hint {
+      font-size: 0.7rem;
+      color: var(--color-warning);
+      opacity: 0.9;
+      white-space: nowrap;
+    }
+
+    .comment-indicator {
+      display: flex;
+      align-items: center;
+      cursor: help;
+    }
+
+    .flag-comment {
+      color: var(--text-muted);
+      font-size: 16px;
+      opacity: 0.7;
+    }
+
+    .flag-comment:hover {
+      opacity: 1;
+      color: var(--accent-primary);
     }
 
     .cell-student {
@@ -1472,7 +1510,19 @@ export class ValidationComponent implements OnInit {
   }
 
   hasConflict(note: Note): boolean {
-    return (note.noteWert == null && !note.bestanden) || !!(note.kommentar?.trim());
+    // Nur echte Probleme sind Konflikte - Kommentar ist keine Fehler
+    return note.noteWert == null && !note.bestanden;
+  }
+
+  hasComment(note: Note): boolean {
+    return !!(note.kommentar?.trim());
+  }
+
+  getConflictReason(note: Note): string {
+    if (note.noteWert == null && !note.bestanden) {
+      return 'Keine Note eingetragen und nicht als bestanden markiert';
+    }
+    return '';
   }
 
   getModulDisplayName(note: Note): string {

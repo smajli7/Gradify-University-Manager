@@ -255,24 +255,69 @@ interface RoadmapSemester {
             <h2 class="section-title">Roadmap</h2>
             <div class="roadmap-accordion">
               @for (row of roadmapBySemester(); track row.semester) {
-                <div class="roadmap-semester" [class.roadmap-semester--current]="row.semester === currentSemester()">
+                <div class="roadmap-semester"
+                     [class.roadmap-semester--current]="row.semester === currentSemester()"
+                     [class.roadmap-semester--complete]="row.ects > 0 && row.ects === row.ectsGesamt"
+                     [class.roadmap-semester--open]="expandedRoadmapSemester() === row.semester">
                   <button type="button" class="roadmap-semester-head" (click)="toggleRoadmapSemester(row.semester)">
-                    <span class="roadmap-semester-title">{{ row.semester }}. Semester {{ row.semester === currentSemester() ? '(aktuell)' : '' }}</span>
-                    <span class="roadmap-semester-ects">{{ row.ects }}/{{ row.ectsGesamt }} ECTS</span>
-                    @if (row.durchschnitt !== null) {
-                      <span class="roadmap-semester-avg">Ø {{ row.durchschnitt | number:'1.1-1' }}</span>
-                    }
-                    <span class="roadmap-semester-chevron">{{ expandedRoadmapSemester() === row.semester ? '▼' : '▶' }}</span>
+                    <div class="roadmap-semester-left">
+                      <span class="roadmap-semester-num">{{ row.semester }}</span>
+                      <div class="roadmap-semester-info">
+                        <span class="roadmap-semester-title">{{ row.semester }}. Semester
+                          @if (row.semester === currentSemester()) {
+                            <span class="roadmap-semester-badge">aktuell</span>
+                          }
+                          @if (row.ects > 0 && row.ects === row.ectsGesamt) {
+                            <span class="roadmap-semester-badge roadmap-semester-badge--done">abgeschlossen</span>
+                          }
+                        </span>
+                        <div class="roadmap-semester-bar-wrap">
+                          <div class="roadmap-semester-bar"
+                               [style.width.%]="row.ectsGesamt > 0 ? (row.ects / row.ectsGesamt * 100) : 0">
+                          </div>
+                        </div>
+                      </div>
+                    </div>
+                    <div class="roadmap-semester-right">
+                      <span class="roadmap-semester-ects">{{ row.ects }}/{{ row.ectsGesamt }} ECTS</span>
+                      @if (row.durchschnitt !== null) {
+                        <span class="roadmap-semester-avg"
+                              [class.avg--good]="row.durchschnitt <= 2.0"
+                              [class.avg--ok]="row.durchschnitt > 2.0 && row.durchschnitt <= 3.0"
+                              [class.avg--warn]="row.durchschnitt > 3.0">
+                          Ø {{ row.durchschnitt | number:'1.1-1' }}
+                        </span>
+                      }
+                      <span class="roadmap-semester-chevron">
+                        <svg width="12" height="12" viewBox="0 0 12 12" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round">
+                          <polyline points="4,2 8,6 4,10"/>
+                        </svg>
+                      </span>
+                    </div>
                   </button>
                   @if (expandedRoadmapSemester() === row.semester) {
                     <ul class="roadmap-module-list">
                       @for (m of row.module; track m.id) {
                         <li class="roadmap-module-row" (click)="selectedModul.set(m)">
+                          <span class="roadmap-module-dot roadmap-module-dot--{{ m.status }}"></span>
                           <span class="roadmap-module-name">{{ m.name }}</span>
                           <span class="roadmap-module-ects">{{ m.ects }} ECTS</span>
-                          <span class="roadmap-module-status roadmap-module-status--{{ m.status }}">{{ m.status === 'bestanden' ? '✓' : m.status === 'offen' ? '○' : '✕' }}</span>
-                          <span class="roadmap-module-note">{{ m.noteWert != null ? (m.noteWert | number:'1.1-1') : '-' }}</span>
-                          <span class="roadmap-module-arrow">›</span>
+                          @if (m.noteWert != null) {
+                            <span class="roadmap-module-note"
+                                  [class.note--good]="m.noteWert <= 2.0"
+                                  [class.note--ok]="m.noteWert > 2.0 && m.noteWert <= 3.0"
+                                  [class.note--warn]="m.noteWert > 3.0 && m.noteWert <= 4.0"
+                                  [class.note--fail]="m.noteWert > 4.0">
+                              {{ m.noteWert | number:'1.1-1' }}
+                            </span>
+                          } @else {
+                            <span class="roadmap-module-note roadmap-module-note--empty">–</span>
+                          }
+                          <span class="roadmap-module-arrow">
+                            <svg width="14" height="14" viewBox="0 0 14 14" fill="none" stroke="currentColor" stroke-width="1.5" stroke-linecap="round">
+                              <polyline points="5,3 10,7 5,11"/>
+                            </svg>
+                          </span>
                         </li>
                       }
                     </ul>
@@ -590,26 +635,37 @@ interface RoadmapSemester {
     .roadmap-accordion {
       display: flex;
       flex-direction: column;
-      gap: 4px;
+      gap: 6px;
     }
 
     .roadmap-semester {
       background: var(--bg-surface);
       border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
+      border-radius: var(--radius-lg);
       overflow: hidden;
+      transition: border-color 0.2s, box-shadow 0.2s;
     }
 
     .roadmap-semester--current {
-      border-color: rgba(34, 197, 94, 0.35);
+      border-color: rgba(34, 197, 94, 0.4);
+      box-shadow: 0 0 0 1px rgba(34, 197, 94, 0.08), inset 0 1px 0 rgba(34, 197, 94, 0.06);
+    }
+
+    .roadmap-semester--complete {
+      border-color: rgba(34, 197, 94, 0.2);
+    }
+
+    .roadmap-semester--open {
+      box-shadow: 0 4px 16px rgba(0, 0, 0, 0.15);
     }
 
     .roadmap-semester-head {
       display: flex;
       align-items: center;
-      gap: 12px;
+      justify-content: space-between;
+      gap: 16px;
       width: 100%;
-      padding: 12px 16px;
+      padding: 14px 18px;
       background: transparent;
       border: none;
       color: var(--text-primary);
@@ -621,41 +677,141 @@ interface RoadmapSemester {
     }
 
     .roadmap-semester-head:hover {
-      background: rgba(255, 255, 255, 0.04);
+      background: rgba(255, 255, 255, 0.03);
+    }
+
+    .roadmap-semester-left {
+      display: flex;
+      align-items: center;
+      gap: 14px;
+      flex: 1;
+      min-width: 0;
+    }
+
+    .roadmap-semester-num {
+      width: 28px;
+      height: 28px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      border-radius: 8px;
+      font-size: 12px;
+      font-weight: 700;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
+      flex-shrink: 0;
+    }
+
+    .roadmap-semester--current .roadmap-semester-num {
+      background: rgba(34, 197, 94, 0.15);
+      color: #4ade80;
+    }
+
+    .roadmap-semester--complete .roadmap-semester-num {
+      background: rgba(34, 197, 94, 0.12);
+      color: rgba(34, 197, 94, 0.7);
+    }
+
+    .roadmap-semester-info {
+      flex: 1;
+      min-width: 0;
+      display: flex;
+      flex-direction: column;
+      gap: 6px;
     }
 
     .roadmap-semester-title {
-      flex: 1;
+      display: flex;
+      align-items: center;
+      gap: 8px;
+      font-weight: 500;
+      color: var(--text-primary);
+    }
+
+    .roadmap-semester-badge {
+      font-size: 10px;
+      font-weight: 600;
+      padding: 2px 7px;
+      border-radius: 999px;
+      background: rgba(34, 197, 94, 0.12);
+      color: #4ade80;
+      letter-spacing: 0.02em;
+    }
+
+    .roadmap-semester-badge--done {
+      background: rgba(34, 197, 94, 0.08);
+      color: rgba(34, 197, 94, 0.6);
+    }
+
+    .roadmap-semester-bar-wrap {
+      height: 3px;
+      background: rgba(255, 255, 255, 0.06);
+      border-radius: 999px;
+      overflow: hidden;
+    }
+
+    .roadmap-semester-bar {
+      height: 100%;
+      background: linear-gradient(90deg, rgba(34, 197, 94, 0.5), rgba(34, 197, 94, 0.8));
+      border-radius: 999px;
+      transition: width 0.4s ease;
+    }
+
+    .roadmap-semester--complete .roadmap-semester-bar {
+      background: linear-gradient(90deg, rgba(34, 197, 94, 0.3), rgba(34, 197, 94, 0.5));
+    }
+
+    .roadmap-semester-right {
+      display: flex;
+      align-items: center;
+      gap: 12px;
+      flex-shrink: 0;
     }
 
     .roadmap-semester-ects {
       font-variant-numeric: tabular-nums;
+      font-weight: 500;
       color: var(--text-secondary);
+      font-size: 13px;
     }
 
     .roadmap-semester-avg {
-      font-size: var(--font-size-xs);
-      color: var(--text-muted);
+      font-size: 11px;
+      font-weight: 600;
       font-variant-numeric: tabular-nums;
+      padding: 2px 8px;
+      border-radius: 999px;
+      background: rgba(255, 255, 255, 0.06);
+      color: var(--text-muted);
     }
 
+    .avg--good { background: rgba(34, 197, 94, 0.1); color: #4ade80; }
+    .avg--ok { background: rgba(251, 191, 36, 0.1); color: #fcd34d; }
+    .avg--warn { background: rgba(239, 68, 68, 0.1); color: #f87171; }
+
     .roadmap-semester-chevron {
-      font-size: 10px;
       color: var(--text-muted);
+      display: flex;
+      align-items: center;
+      transition: transform 0.2s ease;
+    }
+
+    .roadmap-semester--open .roadmap-semester-chevron {
+      transform: rotate(90deg);
     }
 
     .roadmap-module-list {
       list-style: none;
       margin: 0;
-      padding: 0 0 8px 0;
-      border-top: 1px solid rgba(255, 255, 255, 0.06);
+      padding: 4px 0 10px 0;
+      border-top: 1px solid rgba(255, 255, 255, 0.05);
     }
 
     .roadmap-module-row {
       display: flex;
       align-items: center;
       gap: 12px;
-      padding: 8px 16px;
+      padding: 10px 18px 10px 60px;
       font-size: var(--font-size-sm);
       cursor: pointer;
       transition: background 0.15s;
@@ -663,6 +819,28 @@ interface RoadmapSemester {
 
     .roadmap-module-row:hover {
       background: rgba(255, 255, 255, 0.04);
+    }
+
+    .roadmap-module-dot {
+      width: 8px;
+      height: 8px;
+      border-radius: 50%;
+      flex-shrink: 0;
+    }
+
+    .roadmap-module-dot--bestanden {
+      background: #4ade80;
+      box-shadow: 0 0 6px rgba(34, 197, 94, 0.4);
+    }
+
+    .roadmap-module-dot--offen {
+      background: transparent;
+      border: 2px solid rgba(255, 255, 255, 0.2);
+    }
+
+    .roadmap-module-dot--nicht-bestanden {
+      background: #f87171;
+      box-shadow: 0 0 6px rgba(239, 68, 68, 0.4);
     }
 
     .roadmap-module-name {
@@ -677,23 +855,42 @@ interface RoadmapSemester {
     .roadmap-module-ects {
       font-variant-numeric: tabular-nums;
       color: var(--text-muted);
-    }
-
-    .roadmap-module-status {
-      width: 20px;
-      text-align: center;
+      font-size: 12px;
+      flex-shrink: 0;
     }
 
     .roadmap-module-note {
-      min-width: 2.5em;
+      min-width: 2.2em;
       font-variant-numeric: tabular-nums;
       text-align: right;
-      color: var(--text-secondary);
+      font-weight: 600;
+      font-size: 12px;
+      padding: 2px 6px;
+      border-radius: 4px;
+      flex-shrink: 0;
     }
+
+    .roadmap-module-note--empty {
+      color: var(--text-muted);
+      font-weight: 400;
+      background: none;
+    }
+
+    .note--good { color: #4ade80; background: rgba(34, 197, 94, 0.08); }
+    .note--ok { color: #fcd34d; background: rgba(251, 191, 36, 0.08); }
+    .note--warn { color: #fb923c; background: rgba(251, 146, 60, 0.08); }
+    .note--fail { color: #f87171; background: rgba(239, 68, 68, 0.08); }
 
     .roadmap-module-arrow {
       color: var(--text-muted);
-      font-size: 14px;
+      display: flex;
+      align-items: center;
+      opacity: 0;
+      transition: opacity 0.15s;
+    }
+
+    .roadmap-module-row:hover .roadmap-module-arrow {
+      opacity: 1;
     }
 
     /* Insights (rechte Spalte) */
@@ -863,6 +1060,21 @@ interface RoadmapSemester {
       }
       .selection-controls { flex-direction: column; }
       .control-group { width: 100%; }
+      .roadmap-module-row {
+        padding-left: 42px;
+      }
+      .roadmap-semester-head {
+        padding: 12px 14px;
+        gap: 10px;
+      }
+      .roadmap-semester-num {
+        width: 24px;
+        height: 24px;
+        font-size: 11px;
+      }
+      .roadmap-semester-avg {
+        display: none;
+      }
     }
   `]
 })

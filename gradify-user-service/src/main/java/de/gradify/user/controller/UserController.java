@@ -5,14 +5,17 @@ import de.gradify.user.config.SecurityUtils;
 import de.gradify.user.dto.BenutzerDto;
 import de.gradify.user.dto.CreateBenutzerRequest;
 import de.gradify.user.dto.UpdateBenutzerRequest;
+import de.gradify.user.entity.BenutzerHistorie;
 import de.gradify.user.entity.Rolle;
 import de.gradify.user.service.BenutzerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
 
 import jakarta.validation.Valid;
+import java.time.LocalDateTime;
 import java.util.List;
 import java.util.stream.Collectors;
 
@@ -71,7 +74,8 @@ public class UserController {
         log.info("Creating user: {}", request.getBenutzername());
         
         try {
-            BenutzerDto created = benutzerService.create(request);
+            Long currentUserId = SecurityUtils.getCurrentUserId();
+            BenutzerDto created = benutzerService.create(request, currentUserId);
             return ResponseEntity.ok(ApiResponse.success(created, "Benutzer erstellt"));
         } catch (IllegalArgumentException e) {
             return ResponseEntity.badRequest()
@@ -95,7 +99,8 @@ public class UserController {
             @PathVariable(value = "id") Long id) {
         log.info("Deleting user: {}", id);
         
-        if (benutzerService.delete(id)) {
+        Long currentUserId = SecurityUtils.getCurrentUserId();
+        if (benutzerService.delete(id, currentUserId)) {
             return ResponseEntity.ok(ApiResponse.success(null, "Benutzer geloescht"));
         }
         return ResponseEntity.notFound().build();
@@ -138,5 +143,46 @@ public class UserController {
             .collect(Collectors.toList());
         
         return ResponseEntity.ok(ApiResponse.success(roles));
+    }
+
+    @GetMapping("/audit")
+    public ResponseEntity<ApiResponse<List<Object>>> getAuditLog(
+            @RequestParam(value = "benutzerId", required = false) Long benutzerId,
+            @RequestParam(value = "aenderungsTyp", required = false) String aenderungsTypStr,
+            @RequestParam(value = "vonDatum", required = false) 
+                @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime vonDatum,
+            @RequestParam(value = "bisDatum", required = false) 
+                @DateTimeFormat(iso = DateTimeFormat.ISO.DATE_TIME) LocalDateTime bisDatum,
+            @RequestParam(value = "limit", required = false, defaultValue = "500") int limit) {
+        log.info("Getting user audit log, benutzerId={}, typ={}, limit={}", benutzerId, aenderungsTypStr, limit);
+
+        BenutzerHistorie.AenderungsTyp aenderungsTyp = parseAenderungsTyp(aenderungsTypStr);
+        
+        List<BenutzerHistorie> historien = benutzerService.getAuditLog(benutzerId, aenderungsTyp, vonDatum, bisDatum);
+        
+        // Limit anwenden
+        List<Object> result = historien.stream()
+            .limit(limit)
+            .map(h -> new Object() {
+                public final Long id = h.getId();
+                public final Long benutzerId = h.getBenutzerId();
+                public final String benutzername = h.getBenutzername();
+                public final String aenderungsTyp = h.getAenderungsTyp().name();
+                public final Long geaendertVon = h.getGeaendertVon();
+                public final LocalDateTime geaendertAm = h.getGeaendertAm();
+                public final String details = h.getDetails();
+            })
+            .collect(Collectors.toList());
+        
+        return ResponseEntity.ok(ApiResponse.success(result));
+    }
+
+    private static BenutzerHistorie.AenderungsTyp parseAenderungsTyp(String str) {
+        if (str == null || str.isBlank()) return null;
+        try {
+            return BenutzerHistorie.AenderungsTyp.valueOf(str.toUpperCase().trim());
+        } catch (IllegalArgumentException e) {
+            return null;
+        }
     }
 }

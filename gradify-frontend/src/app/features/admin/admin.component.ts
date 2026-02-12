@@ -1,4 +1,4 @@
-import { Component, OnInit, inject, signal } from '@angular/core';
+import { Component, OnInit, inject, signal, computed } from '@angular/core';
 import { CommonModule } from '@angular/common';
 import { RouterModule } from '@angular/router';
 import { FormsModule } from '@angular/forms';
@@ -97,539 +97,202 @@ interface ApiResponse<T> {
   standalone: true,
   imports: [CommonModule, FormsModule, RouterModule],
   template: `
-    <div class="admin-page">
+    <div class="page">
       <header class="page-header">
-        <div class="header-content">
-          <h1>System-Übersicht</h1>
-          <p class="subtitle">Kennzahlen und Schnellzugriff</p>
-        </div>
+        <h1>System-Übersicht</h1>
+        <p class="page-subtitle">{{ totalUsers() }} Benutzer an {{ totalMandanten() }} Hochschulen</p>
       </header>
 
-      <!-- KPI Cards -->
-      <div class="kpi-grid">
-        <div class="kpi-card card">
-          <div class="kpi-icon users-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-            </svg>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-value">{{ totalUsers() }}</span>
-            <span class="kpi-label">Benutzer</span>
-          </div>
-        </div>
-
-        <div class="kpi-card card">
-          <div class="kpi-icon mandanten-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-value">{{ totalMandanten() }}</span>
-            <span class="kpi-label">Hochschulen</span>
-          </div>
-        </div>
-
-        <div class="kpi-card card">
-          <div class="kpi-icon studiengaenge-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M22 10v6M2 10l10-5 10 5-10 5z"/>
-              <path d="M6 12v5c3 3 9 3 12 0v-5"/>
-            </svg>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-value">{{ totalStudiengaenge() }}</span>
-            <span class="kpi-label">Studiengänge</span>
-          </div>
-        </div>
-
-        <div class="kpi-card card">
-          <div class="kpi-icon grades-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-value">{{ totalGrades() }}</span>
-            <span class="kpi-label">Erfasste Noten</span>
-          </div>
-        </div>
-
-        <div class="kpi-card card">
-          <div class="kpi-icon modules-icon">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/>
-              <path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
-            </svg>
-          </div>
-          <div class="kpi-content">
-            <span class="kpi-value">{{ totalModules() }}</span>
-            <span class="kpi-label">Module</span>
-          </div>
+      <!-- KPI strip -->
+      <div class="kpi-strip">
+        <div class="kpi" *ngFor="let k of kpis()">
+          <span class="kpi-val">{{ k.value }}</span>
+          <span class="kpi-lbl">{{ k.label }}</span>
         </div>
       </div>
 
-      <!-- Quick Actions -->
-      <div class="actions-section card">
-        <h2>Verwaltung</h2>
-        <div class="quick-links">
-          <a routerLink="/admin/mandanten" class="quick-link-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/>
-              <polyline points="9 22 9 12 15 12 15 22"/>
-            </svg>
-            <span>Hochschulen</span>
-            <small>Hochschulen und Studiengänge</small>
-          </a>
-          <a routerLink="/admin/users" class="quick-link-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-            </svg>
-            <span>Benutzerverwaltung</span>
-            <small>Benutzer anlegen und verwalten</small>
-          </a>
-          <a routerLink="/admin/assignments" class="quick-link-btn">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/>
-              <polyline points="14 2 14 8 20 8"/>
-            </svg>
-            <span>Dozenten-Zuweisungen</span>
-            <small>Module zu Dozenten zuordnen</small>
-          </a>
-        </div>
-      </div>
+      <!-- Two-column grid: Verwaltung + Auswertung -->
+      <div class="cols">
+        <!-- Verwaltung -->
+        <section class="section-card">
+          <h2 class="section-title">Verwaltung</h2>
+          <nav class="nav-list">
+            <a routerLink="/admin/mandanten" class="nav-item">
+              <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M3 9l9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg>
+              </div>
+              <div class="nav-text">
+                <span class="nav-label">Hochschulen</span>
+                <span class="nav-desc">Mandanten, Studiengaenge, Import</span>
+              </div>
+              <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+            <a routerLink="/admin/users" class="nav-item">
+              <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/></svg>
+              </div>
+              <div class="nav-text">
+                <span class="nav-label">Benutzer</span>
+                <span class="nav-desc">Konten, Rollen, Import/Export</span>
+              </div>
+              <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+            <a routerLink="/admin/assignments" class="nav-item">
+              <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><rect x="3" y="3" width="7" height="7" rx="1"/><rect x="14" y="3" width="7" height="7" rx="1"/><rect x="3" y="14" width="7" height="7" rx="1"/><path d="M17.5 14v7m-3.5-3.5h7"/></svg>
+              </div>
+              <div class="nav-text">
+                <span class="nav-label">Zuweisungen</span>
+                <span class="nav-desc">Dozenten-Modul-Zuordnung</span>
+              </div>
+              <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+          </nav>
+        </section>
 
-      <!-- Noten-Funktionen (Nebenfunktionen) -->
-      <div class="secondary-section card">
-        <h2>Noten-Funktionen</h2>
-        <div class="secondary-links">
-          <a routerLink="/grades/validation" class="secondary-link">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <polyline points="9 11 12 14 22 4"/>
-              <path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/>
-            </svg>
-            <span>Notenvalidierung</span>
-          </a>
-          <a routerLink="/students" class="secondary-link">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/>
-              <circle cx="9" cy="7" r="4"/>
-              <path d="M23 21v-2a4 4 0 0 0-3-3.87"/>
-              <path d="M16 3.13a4 4 0 0 1 0 7.75"/>
-            </svg>
-            <span>Studierende</span>
-          </a>
-          <a routerLink="/stats" class="secondary-link">
-            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-              <line x1="18" y1="20" x2="18" y2="10"/>
-              <line x1="12" y1="20" x2="12" y2="4"/>
-              <line x1="6" y1="20" x2="6" y2="14"/>
-            </svg>
-            <span>Statistik</span>
-          </a>
-        </div>
+        <!-- Auswertung -->
+        <section class="section-card">
+          <h2 class="section-title">Auswertung</h2>
+          <nav class="nav-list">
+            <a routerLink="/students" class="nav-item">
+              <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M17 21v-2a4 4 0 0 0-4-4H5a4 4 0 0 0-4 4v2"/><circle cx="9" cy="7" r="4"/><path d="M23 21v-2a4 4 0 0 0-3-3.87"/><path d="M16 3.13a4 4 0 0 1 0 7.75"/></svg>
+              </div>
+              <div class="nav-text">
+                <span class="nav-label">Studenten</span>
+                <span class="nav-desc">Einschreibungen und Daten</span>
+              </div>
+              <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+            <a routerLink="/grades/validation" class="nav-item">
+              <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg>
+              </div>
+              <div class="nav-text">
+                <span class="nav-label">Validierung</span>
+                <span class="nav-desc">Noten pruefen und freigeben</span>
+              </div>
+              <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+            <a routerLink="/stats" class="nav-item">
+              <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><line x1="18" y1="20" x2="18" y2="10"/><line x1="12" y1="20" x2="12" y2="4"/><line x1="6" y1="20" x2="6" y2="14"/></svg>
+              </div>
+              <div class="nav-text">
+                <span class="nav-label">Statistik</span>
+                <span class="nav-desc">Notenverteilung und Trends</span>
+              </div>
+              <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+            <a routerLink="/grades/audit" class="nav-item">
+              <div class="nav-icon">
+                <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.5"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/></svg>
+              </div>
+              <div class="nav-text">
+                <span class="nav-label">Protokoll</span>
+                <span class="nav-desc">Aenderungshistorie einsehen</span>
+              </div>
+              <svg class="nav-arrow" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M9 18l6-6-6-6"/></svg>
+            </a>
+          </nav>
+        </section>
       </div>
     </div>
   `,
   styles: [`
-    .admin-page {
-      padding: var(--spacing-lg);
-      max-width: 1400px;
-      margin: 0 auto;
+    /* Page */
+    .page { padding: 0; }
+    .page-header { margin-bottom: var(--spacing-xl); }
+    .page-header h1 {
+      font-size: 1.625rem; font-weight: 700; margin: 0;
+      color: var(--text-primary); letter-spacing: -0.02em;
+    }
+    .page-subtitle {
+      font-size: 0.875rem; color: var(--text-muted); margin: 6px 0 0;
     }
 
-    .page-header {
-      margin-bottom: var(--spacing-xl);
+    /* KPI strip — single horizontal row, no cards */
+    .kpi-strip {
+      display: flex; gap: 1px; margin-bottom: var(--spacing-xl);
+      background: var(--border-color); border-radius: var(--radius-lg);
+      overflow: hidden;
+    }
+    .kpi {
+      flex: 1; display: flex; flex-direction: column; align-items: center;
+      padding: 20px 12px; background: var(--bg-surface);
+      min-width: 0;
+    }
+    .kpi-val {
+      font-size: 1.5rem; font-weight: 700; color: var(--text-primary);
+      line-height: 1; font-variant-numeric: tabular-nums;
+    }
+    .kpi-lbl {
+      font-size: 0.6875rem; color: var(--text-muted);
+      text-transform: uppercase; letter-spacing: 0.06em;
+      margin-top: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
+      max-width: 100%;
     }
 
-    .header-content h1 {
-      font-size: 1.75rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin: 0;
+    /* Two-column grid */
+    .cols {
+      display: grid; grid-template-columns: 1fr 1fr;
+      gap: var(--spacing-lg); align-items: start;
     }
 
-    .subtitle {
-      color: var(--text-muted);
-      margin: var(--spacing-xs) 0 0 0;
+    /* Section card */
+    .section-card {
+      background: var(--bg-surface); border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg); overflow: hidden;
+    }
+    .section-title {
+      font-size: 0.6875rem; font-weight: 600; text-transform: uppercase;
+      letter-spacing: 0.08em; color: var(--text-muted);
+      padding: 16px 20px 8px; margin: 0;
     }
 
-    /* Tabs */
-    .tabs {
-      display: flex;
-      gap: var(--spacing-sm);
-      margin-bottom: var(--spacing-xl);
-      border-bottom: 1px solid var(--border-color);
+    /* Navigation list items */
+    .nav-list { display: flex; flex-direction: column; }
+    .nav-item {
+      display: flex; align-items: center; gap: 14px;
+      padding: 14px 20px; color: var(--text-primary);
+      text-decoration: none; transition: background 0.15s;
+      border-top: 1px solid var(--border-color);
+    }
+    .nav-item:first-child { border-top: none; }
+    .nav-item:hover { background: var(--bg-hover); }
+
+    .nav-icon {
+      width: 36px; height: 36px; border-radius: var(--radius-md);
+      background: var(--bg-elevated); display: flex;
+      align-items: center; justify-content: center; flex-shrink: 0;
+    }
+    .nav-icon svg { width: 18px; height: 18px; color: var(--text-secondary); }
+    .nav-item:hover .nav-icon { background: var(--bg-hover); }
+    .nav-item:hover .nav-icon svg { color: var(--text-primary); }
+
+    .nav-text { flex: 1; min-width: 0; }
+    .nav-label {
+      display: block; font-size: 0.875rem; font-weight: 500;
+      color: var(--text-primary); line-height: 1.3;
+    }
+    .nav-desc {
+      display: block; font-size: 0.75rem; color: var(--text-muted);
+      margin-top: 1px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis;
     }
 
-    .tab {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-md) var(--spacing-lg);
-      background: transparent;
-      border: none;
-      border-bottom: 2px solid transparent;
-      color: var(--text-muted);
-      cursor: pointer;
-      font-weight: 500;
-      transition: all 0.2s;
-      position: relative;
-      bottom: -1px;
+    .nav-arrow {
+      width: 16px; height: 16px; color: var(--text-disabled);
+      flex-shrink: 0; transition: color 0.15s, transform 0.15s;
+    }
+    .nav-item:hover .nav-arrow {
+      color: var(--text-muted); transform: translateX(2px);
     }
 
-    .tab svg {
-      width: 20px;
-      height: 20px;
-    }
-
-    .tab:hover {
-      color: var(--text-primary);
-      background: var(--bg-hover);
-    }
-
-    .tab.active {
-      color: var(--text-primary);
-      border-bottom-color: var(--text-primary);
-    }
-
-    /* Tab Content */
-    .tab-content {
-      animation: fadeIn 0.3s ease;
-    }
-
-    @keyframes fadeIn {
-      from { opacity: 0; transform: translateY(10px); }
-      to { opacity: 1; transform: translateY(0); }
-    }
-
-    /* Cards */
-    .card {
-      background: var(--bg-surface);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-lg);
-      padding: var(--spacing-lg);
-      margin-bottom: var(--spacing-lg);
-    }
-
-    /* KPI Grid */
-    .kpi-grid {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(220px, 1fr));
-      gap: var(--spacing-md);
-      margin-bottom: var(--spacing-xl);
-    }
-
-    .kpi-card {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-md);
-      padding: var(--spacing-lg);
-    }
-
-    .kpi-icon {
-      width: 48px;
-      height: 48px;
-      border-radius: var(--radius-md);
-      display: flex;
-      align-items: center;
-      justify-content: center;
-      flex-shrink: 0;
-    }
-
-    .kpi-icon svg {
-      width: 24px;
-      height: 24px;
-    }
-
-    .users-icon {
-      background: rgba(148, 163, 184, 0.1);
-      color: #94A3B8;
-    }
-
-    .mandanten-icon {
-      background: rgba(148, 163, 184, 0.1);
-      color: #94A3B8;
-    }
-
-    .studiengaenge-icon {
-      background: rgba(16, 185, 129, 0.1);
-      color: #10b981;
-    }
-
-    .grades-icon {
-      background: rgba(245, 158, 11, 0.1);
-      color: #f59e0b;
-    }
-
-    .modules-icon {
-      background: rgba(148, 163, 184, 0.1);
-      color: #94A3B8;
-    }
-
-    .kpi-content {
-      display: flex;
-      flex-direction: column;
-    }
-
-    .kpi-value {
-      font-size: 1.75rem;
-      font-weight: 700;
-      color: var(--text-primary);
-      line-height: 1.2;
-    }
-
-    .kpi-label {
-      font-size: 0.875rem;
-      color: var(--text-muted);
-      margin-top: var(--spacing-xs);
-    }
-
-    /* Section Header */
-    .section-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      margin-bottom: var(--spacing-lg);
-    }
-
-    .section-header h2 {
-      font-size: 1.25rem;
-      font-weight: 600;
-      color: var(--text-primary);
-      margin: 0;
-    }
-
-    /* Quick Links */
-    .info-section h2 {
-      font-size: 1.125rem;
-      margin: 0 0 var(--spacing-md) 0;
-    }
-
-    .quick-links {
-      display: grid;
-      grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
-      gap: var(--spacing-md);
-    }
-
-    .quick-link-btn {
-      display: flex;
-      flex-direction: column;
-      align-items: center;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-lg);
-      background: var(--bg-hover);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      color: var(--text-primary);
-      cursor: pointer;
-      transition: all 0.2s;
-    }
-
-    .quick-link-btn:hover {
-      background: var(--bg-elevated);
-      border-color: var(--text-secondary);
-      color: var(--text-primary);
-    }
-
-    .quick-link-btn svg {
-      width: 32px;
-      height: 32px;
-    }
-
-    /* Tables */
-    .table-container {
-      overflow-x: auto;
-    }
-
-    .data-table {
-      width: 100%;
-      border-collapse: collapse;
-    }
-
-    .data-table th,
-    .data-table td {
-      padding: var(--spacing-sm) var(--spacing-md);
-      text-align: left;
-      border-bottom: 1px solid var(--border-color);
-    }
-
-    .data-table th {
-      font-weight: 600;
-      color: var(--text-muted);
-      font-size: 0.75rem;
-      text-transform: uppercase;
-      letter-spacing: 0.05em;
-      background: var(--bg-hover);
-    }
-
-    .data-table tbody tr:hover {
-      background: var(--bg-hover);
-    }
-
-    .col-center {
-      text-align: center;
-    }
-
-    /* Badges */
-    .role-badge {
-      display: inline-block;
-      padding: 4px 8px;
-      background: rgba(255, 255, 255, 0.1);
-      border: 1px solid rgba(255, 255, 255, 0.2);
-      color: var(--text-primary);
-      border-radius: var(--radius-sm);
-      font-size: 0.75rem;
-      font-weight: 600;
-    }
-
-    .status-badge {
-      display: inline-block;
-      padding: 4px 10px;
-      border-radius: var(--radius-full);
-      font-size: 0.75rem;
-      font-weight: 500;
-    }
-
-    .status-badge.active {
-      background: rgba(16, 185, 129, 0.15);
-      color: var(--color-success);
-    }
-
-    .status-badge.inactive {
-      background: rgba(239, 68, 68, 0.15);
-      color: var(--color-danger);
-    }
-
-    /* Buttons */
-    .btn {
-      display: inline-flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-sm) var(--spacing-md);
-      border-radius: var(--radius-md);
-      font-weight: 500;
-      cursor: pointer;
-      border: none;
-      transition: all 0.2s;
-    }
-
-    .btn svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    .btn-icon {
-      padding: var(--spacing-xs);
-      background: transparent;
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-sm);
-      color: var(--text-muted);
-      cursor: pointer;
-      transition: all 0.2s;
-      display: flex;
-      align-items: center;
-      justify-content: center;
-    }
-
-    .btn-icon:hover {
-      border-color: var(--text-secondary);
-      color: var(--text-primary);
-    }
-
-    .btn-icon svg {
-      width: 16px;
-      height: 16px;
-    }
-
-    /* Loading/Info */
-    .loading-card, .info-box {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-md);
-      padding: var(--spacing-xl);
-    }
-
-    .loading-card {
-      justify-content: center;
-    }
-
-    .info-box {
-      background: rgba(255, 255, 255, 0.05);
-      border-color: rgba(255, 255, 255, 0.2);
-    }
-
-    .info-box svg {
-      width: 24px;
-      height: 24px;
-      color: var(--text-secondary);
-      flex-shrink: 0;
-    }
-
-    .spinner-large {
-      width: 48px;
-      height: 48px;
-      border: 4px solid var(--border-color);
-      border-top-color: var(--text-secondary);
-      border-radius: 50%;
-      animation: spin 0.8s linear infinite;
-    }
-
-    @keyframes spin {
-      to { transform: rotate(360deg); }
-    }
-
-    .actions-section h2, .secondary-section h2 {
-      font-size: 1.125rem;
-      font-weight: 600;
-      margin: 0 0 var(--spacing-lg) 0;
-    }
-
-    .quick-link-btn small {
-      font-size: 0.75rem;
-      color: var(--text-muted);
-      margin-top: var(--spacing-xs);
-    }
-
-    /* Secondary Links (Noten-Funktionen) */
-    .secondary-section {
-      margin-top: var(--spacing-xl);
-    }
-
-    .secondary-links {
-      display: flex;
-      gap: var(--spacing-md);
-      flex-wrap: wrap;
-    }
-
-    .secondary-link {
-      display: flex;
-      align-items: center;
-      gap: var(--spacing-sm);
-      padding: var(--spacing-sm) var(--spacing-md);
-      background: var(--bg-hover);
-      border: 1px solid var(--border-color);
-      border-radius: var(--radius-md);
-      color: var(--text-muted);
-      text-decoration: none;
-      font-size: 0.875rem;
-      transition: all 0.2s;
-    }
-
-    .secondary-link:hover {
-      background: var(--bg-elevated);
-      border-color: var(--text-secondary);
-      color: var(--text-primary);
-    }
-
-    .secondary-link svg {
-      width: 18px;
-      height: 18px;
+    /* Responsive */
+    @media (max-width: 768px) {
+      .kpi-strip { flex-wrap: wrap; }
+      .kpi { flex: 1 1 calc(50% - 1px); }
+      .cols { grid-template-columns: 1fr; }
     }
   `]
 })
@@ -650,6 +313,14 @@ export class AdminComponent implements OnInit {
   totalStudiengaenge = signal(0);
   totalGrades = signal(0);
   totalModules = signal(0);
+
+  kpis = computed(() => [
+    { value: this.totalUsers(), label: 'Benutzer' },
+    { value: this.totalMandanten(), label: 'Hochschulen' },
+    { value: this.totalStudiengaenge(), label: 'Studiengaenge' },
+    { value: this.totalGrades(), label: 'Noten' },
+    { value: this.totalModules(), label: 'Module' }
+  ]);
 
   ngOnInit(): void {
     this.loadOverviewData();

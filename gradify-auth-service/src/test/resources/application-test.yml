@@ -1,0 +1,26 @@
+# Test-Konfiguration fuer Auth-Service
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+
+# JWT Konfiguration fuer Tests
+jwt:
+  secret: test-secret-key-for-unit-tests-only-1234567890
+  access-token-expiration: 900000
+  refresh-token-expiration: 604800000
+
+# gRPC deaktiviert fuer Unit Tests
+grpc:
+  server:
+    port: -1
+  client:
+    GLOBAL:
+      negotiation-type: plaintext

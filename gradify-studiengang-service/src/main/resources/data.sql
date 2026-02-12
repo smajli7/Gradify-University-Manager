@@ -90,9 +90,10 @@ ON CONFLICT (id) DO NOTHING;
 -- 100% nach PO (§9 Gesamtnote, §6 Abs. 4 bestanden-Module)
 -- Gesamtnote §9: (2 × Thesis + 1 × Modulmittel) / 3
 --   Modulmittel = arithm. Mittel der Module 1,2,3,4,5,7,8
---   Gewichtung: Modulmittel-Module je 1, Thesis 14 (=2×7)
---   → SUM(note×gew)/SUM(gew) = (sum_7 + 14×thesis) / 21 = PO-Formel ✓
+--   Gewichtung: Modulmittel-Module je 1, Thesis 2
+--   Berechnung: (2 × Thesis + Modulmittel) / 3 (PO §9)
 -- Module 6,9,10,11: bestanden/nicht bestanden, nicht in Gesamtnote (§6 Abs. 4)
+-- Thesis-Gewichtung = 2.0 (PO §9: Gesamtnote = (2×Thesis + Modulmittel) / 3)
 -- =====================================================
 INSERT INTO module (id, po_id, modul_nr, name, ects, semester, dauer_semester, pruefungsform, sprache, modultyp, bewertungsart, gewichtung, in_gesamtnote) VALUES
     -- ===== SEMESTER 1 =====
@@ -114,7 +115,7 @@ INSERT INTO module (id, po_id, modul_nr, name, ects, semester, dauer_semester, p
     (113, 2, '10',  'Projektorientiertes wissenschaftliches Arbeiten',                  5, '3',   1, 'PRAESENTATION', 'DEUTSCH', 'PFLICHT',     'BESTANDEN_NICHT_BESTANDEN', 0.0, false),
     -- ===== SEMESTER 4 =====
     (114, 2, '11',  'Forschung beantragen, planen und verwalten',                       5, '4',   1, 'PROJEKT',       'DEUTSCH', 'PFLICHT',     'BESTANDEN_NICHT_BESTANDEN', 0.0, false),
-    (115, 2, '12',  'Master-Thesis mit Kolloquium',                                    25, '4',   1, 'HAUSARBEIT',    'DEUTSCH', 'PFLICHT',     'NOTE', 14.0, true)
+    (115, 2, '12',  'Master-Thesis mit Kolloquium',                                    25, '4',   1, 'HAUSARBEIT',    'DEUTSCH', 'PFLICHT',     'NOTE', 2.0, true)
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================
@@ -174,7 +175,7 @@ ON CONFLICT (id) DO NOTHING;
 -- =====================================================
 INSERT INTO po_regelwerke (id, po_id, regel_name, beschreibung, formel, parameter_json) VALUES
     (1, 1, 'GEWICHTET', 'Gesamtnote §11: SUM(note*gewichtung)/SUM(gewichtung). Modul 1 bestanden, geht nicht ein.', 'ECTS_GEWICHTET', '{"minEcts": 210, "maxVersuche": 3}'),
-    (2, 2, 'GEWICHTET', 'Standard-Regelwerk FSA Master mit ECTS-Gewichtung', 'ECTS_GEWICHTET', '{"minEcts": 120, "maxVersuche": 3}')
+    (2, 2, 'ARITHMETISCH_GEMISCHT', 'Gesamtnote §9: (2 × Thesis + Modulmittel) / 3. Modulmittel = Mittel der Module 1,2,3,4,5,7,8.', 'MASTER_MIXED', '{"minEcts": 120, "maxVersuche": 3}')
 ON CONFLICT (id) DO NOTHING;
 
 -- =====================================================

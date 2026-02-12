@@ -1,10 +1,41 @@
 # Konsolen-Nutzung – System ohne Grafische Oberfläche
 
-Das Gradify-System kann vollständig über die Konsole (PowerShell, curl, grpcurl, GraphiQL) genutzt werden. Angular ist optional.
+Das Gradify-System kann vollständig über die Konsole genutzt werden – **ohne Angular oder eine andere grafische Oberfläche**. Dafür stehen zwei Wege zur Verfügung:
+
+## Interaktives CLI (empfohlen)
+
+Das **Gradify CLI** (`gradify-cli.ps1`) ist ein interaktives PowerShell-Konsolenprogramm mit Menüführung, das alle Systemfunktionen abdeckt:
+
+```powershell
+# Im Projektverzeichnis:
+.\gradify-cli.ps1
+```
+
+### Funktionsumfang des CLI
+
+| Bereich | Funktionen |
+|---------|-----------|
+| **Authentifizierung** | Login, Logout, Token-Verwaltung |
+| **Mandanten & Studiengänge** | Anzeigen, Module, Prüfungsordnungen |
+| **Benutzerverwaltung** | CRUD, Rollen zuweisen/entfernen |
+| **Studentenverwaltung** | CRUD, Exmatrikulation |
+| **Einschreibungen** | Erstellen, Abschließen, Abbrechen, Semester erhöhen |
+| **Notenverwaltung** | Erfassen, Bearbeiten, Validieren, Freigeben, Ablehnen, Löschen |
+| **Berechnungen** | Gesamtnote, Details, Fortschritt, Statistiken |
+| **Import/Export** | CSV-Export/Import für Benutzer, Studiengänge, Noten |
+| **Audit** | Noten-Änderungshistorie, Modul-Zuweisungen |
+| **GraphQL** | Vordefinierte und eigene GraphQL-Abfragen |
+| **System** | Health-Check, gRPC-Status, Token-Validierung |
+
+### Verwendete Protokolle im CLI
+
+Das CLI nutzt **REST** und **GraphQL** als Kommunikationsprotokolle. Zusätzlich wird der **gRPC-Status** der Service-zu-Service-Kommunikation angezeigt.
 
 ---
 
-## Übersicht: Was ist eingebaut?
+## Direkte API-Nutzung (erweitert)
+
+Alternativ können alle Funktionen auch direkt über curl, PowerShell-Cmdlets und grpcurl angesprochen werden:
 
 | Schnittstelle | Protokoll | Nutzung | Authentifizierung |
 |---------------|-----------|---------|-------------------|
@@ -221,4 +252,4 @@ Invoke-RestMethod -Uri "http://localhost:8080/api/import/studiengaenge" -Method 
 | Stammdaten massenweise | CSV Import/Export |
 | Systemstatus | Actuator /health |
 
-**Angular wird nicht benötigt** – alle Funktionen sind über REST, GraphQL und gRPC verfügbar.
+**Angular wird nicht benötigt** – alle Funktionen sind über das interaktive CLI (`.\gradify-cli.ps1`) oder direkt über REST, GraphQL und gRPC verfügbar.

@@ -33,8 +33,12 @@ export interface AuditEintrag {
   dozentName?: string;
   /** Dozent-ID (für Zuweisungs-Einträge) */
   dozentId?: number;
-  /** Quelle: 'noten' oder 'zuweisung' */
+  /** Quelle: 'noten', 'zuweisung' oder 'benutzer' */
   quelle?: string;
+  /** Benutzer-ID (für Benutzer-Einträge) */
+  benutzerId?: number;
+  /** Benutzername (für Benutzer-Einträge) */
+  benutzername?: string;
 }
 
 interface ZuweisungAuditEintrag {
@@ -47,10 +51,26 @@ interface ZuweisungAuditEintrag {
   geaendertAm: string;
 }
 
+interface BenutzerAuditEintrag {
+  id: number;
+  benutzerId: number;
+  benutzername: string;
+  aenderungsTyp: string;
+  geaendertVon: number;
+  geaendertAm: string;
+  details: string | null;
+}
+
 interface ModulInfo {
   id: string;
   name: string;
   modulNr?: string;
+}
+
+interface MandantOption {
+  id: string;
+  name: string;
+  kuerzel: string;
 }
 
 const AENDERUNGSTYPEN = [
@@ -61,7 +81,9 @@ const AENDERUNGSTYPEN = [
   { value: 'FREIGEGEBEN', label: 'Freigegeben' },
   { value: 'STORNIERT', label: 'Storniert' },
   { value: 'ZUWEISUNG_ERSTELLT', label: 'Zuweisung erstellt' },
-  { value: 'ZUWEISUNG_GELOESCHT', label: 'Zuweisung gelöscht' }
+  { value: 'ZUWEISUNG_GELOESCHT', label: 'Zuweisung gelöscht' },
+  { value: 'BENUTZER_ERSTELLT', label: 'Benutzer erstellt' },
+  { value: 'BENUTZER_GELOESCHT', label: 'Benutzer gelöscht' }
 ];
 
 const GET_DOZENTEN_MODULE = gql`
@@ -113,6 +135,16 @@ const GET_EINSCHREIBUNGEN_FOR_AUDIT = gql`
   }
 `;
 
+const GET_MANDANTEN = gql`
+  query GetMandantenForAudit {
+    mandanten {
+      id
+      name
+      kuerzel
+    }
+  }
+`;
+
 @Component({
   selector: 'app-audit',
   standalone: true,
@@ -123,7 +155,7 @@ const GET_EINSCHREIBUNGEN_FOR_AUDIT = gql`
         <div class="header-content">
           <h1 class="page-title">Protokoll (Audit Log)</h1>
           <p class="page-subtitle">
-            Änderungen an Noten und Dozenten-Zuweisungen: Wer hat wann was geändert.
+            Änderungen an Noten, Dozenten-Zuweisungen und Benutzern: Wer hat wann was geändert.
             @if (isDozent()) {
               <span class="hint"> – Anzeige beschränkt auf deine zugewiesenen Module.</span>
             }
@@ -134,6 +166,17 @@ const GET_EINSCHREIBUNGEN_FOR_AUDIT = gql`
       <div class="card filter-card">
         <h2 class="filter-title">Filter</h2>
         <div class="filter-grid">
+          @if (showMandantFilter()) {
+            <div class="filter-row">
+              <label>Hochschule</label>
+              <select [(ngModel)]="filterMandantId">
+                <option value="">Alle (Standard)</option>
+                @for (m of mandantenForAudit(); track m.id) {
+                  <option [value]="m.id">{{ m.kuerzel }} – {{ m.name }}</option>
+                }
+              </select>
+            </div>
+          }
           <div class="filter-row">
             <label>Von Datum</label>
             <input type="date" [(ngModel)]="vonDatum" />
@@ -209,10 +252,10 @@ const GET_EINSCHREIBUNGEN_FOR_AUDIT = gql`
                   <tr class="audit-row-clickable" (click)="openDetail(e)" role="button" tabindex="0" (keydown.enter)="openDetail(e)" (keydown.space)="openDetail(e)">
                     <td class="cell-time">{{ formatDate(e.geaendertAm) }}</td>
                     <td><span [class]="'badge badge-' + e.aenderungsTyp">{{ labelForTyp(e.aenderungsTyp) }}</span></td>
-                    <td>{{ e.quelle === 'zuweisung' ? 'Dozent ' + (e.dozentName ?? e.dozentId) : '#' + e.noteId }}</td>
-                    <td>{{ e.modulName ?? ('Modul ' + e.modulId) }}</td>
+                    <td>{{ getBezug(e) }}</td>
+                    <td>{{ e.quelle === 'benutzer' ? '–' : (e.modulName ?? ('Modul ' + e.modulId)) }}</td>
                     <td class="cell-wer">{{ e.geaendertVonName ?? ('User ' + e.geaendertVon) }}</td>
-                    <td class="cell-student">{{ e.quelle === 'zuweisung' ? (e.kommentar ?? '–') : (e.studentName ?? (e.einschreibungId ? 'Einschr. ' + e.einschreibungId : '–')) }}</td>
+                    <td class="cell-student">{{ getDetail(e) }}</td>
                     <td class="cell-note">{{ e.alterWert != null ? e.alterWert : '–' }}</td>
                     <td class="cell-note">{{ e.neuerWert != null ? e.neuerWert : '–' }}</td>
                   </tr>
@@ -234,20 +277,24 @@ const GET_EINSCHREIBUNGEN_FOR_AUDIT = gql`
             <dl class="detail-list">
               <dt>Zeit</dt><dd>{{ formatDate(e.geaendertAm) }}</dd>
               <dt>Aktion</dt><dd><span [class]="'badge badge-' + e.aenderungsTyp">{{ labelForTyp(e.aenderungsTyp) }}</span></dd>
-              <dt>Typ</dt><dd>{{ e.quelle === 'zuweisung' ? 'Dozenten-Zuweisung' : 'Notenänderung' }}</dd>
-              @if (e.quelle === 'zuweisung') {
+              <dt>Typ</dt><dd>{{ e.quelle === 'benutzer' ? 'Benutzerverwaltung' : (e.quelle === 'zuweisung' ? 'Dozenten-Zuweisung' : 'Notenänderung') }}</dd>
+              @if (e.quelle === 'benutzer') {
+                <dt>Benutzer</dt><dd>{{ e.benutzername ?? ('Benutzer ' + e.benutzerId) }}</dd>
+              } @else if (e.quelle === 'zuweisung') {
                 <dt>Dozent</dt><dd>{{ e.dozentName ?? ('Dozent ' + e.dozentId) }}</dd>
               } @else {
                 <dt>Note</dt><dd>#{{ e.noteId }}</dd>
               }
-              <dt>Modul</dt><dd>{{ e.modulName ?? ('Modul ' + e.modulId) }}</dd>
+              @if (e.quelle !== 'benutzer') {
+                <dt>Modul</dt><dd>{{ e.modulName ?? ('Modul ' + e.modulId) }}</dd>
+              }
               <dt>Geändert von</dt><dd>{{ e.geaendertVonName ?? ('User ' + e.geaendertVon) }}</dd>
-              @if (e.quelle !== 'zuweisung') {
+              @if (e.quelle === 'noten') {
                 <dt>Student</dt><dd>{{ e.studentName ?? (e.einschreibungId ? 'Einschr. ' + e.einschreibungId : '–') }}</dd>
                 <dt>Vorher</dt><dd>{{ e.alterWert != null ? e.alterWert : '–' }}</dd>
                 <dt>Nachher</dt><dd>{{ e.neuerWert != null ? e.neuerWert : '–' }}</dd>
               }
-              <dt>Kommentar</dt><dd class="detail-kommentar">{{ e.kommentar || '–' }}</dd>
+              <dt>Details</dt><dd class="detail-kommentar">{{ e.kommentar || '–' }}</dd>
             </dl>
           </div>
         </div>
@@ -346,6 +393,8 @@ const GET_EINSCHREIBUNGEN_FOR_AUDIT = gql`
     .badge-ZUWEISUNG_ERSTELLT { background: #e0e7ff; color: #3730a3; }
     .badge-ZUWEISUNG_GELOESCHT { background: #fce7f3; color: #9d174d; }
     .badge-FREIGABE_ZURUECKGENOMMEN { background: #fef3c7; color: #92400e; }
+    .badge-BENUTZER_ERSTELLT { background: #cffafe; color: #0e7490; }
+    .badge-BENUTZER_GELOESCHT { background: #fecaca; color: #991b1b; }
     .loading-state { display: flex; flex-direction: column; align-items: center; padding: var(--spacing-xl) 0; gap: var(--spacing-md); }
     .loading-text { color: var(--text-muted); font-size: 0.875rem; margin: 0; }
     .spinner {
@@ -391,6 +440,9 @@ export class AuditComponent implements OnInit {
   selectedModulId = '';
   aenderungsTyp = '';
   aenderungsTypOptions = AENDERUNGSTYPEN;
+  filterMandantId = '';
+  mandantenForAudit = signal<MandantOption[]>([]);
+  showMandantFilter = signal(false);
 
   entries = signal<AuditEintrag[]>([]);
   loading = signal(false);
@@ -422,8 +474,23 @@ export class AuditComponent implements OnInit {
     const hasFullAccess = roles.some(r => ['PRUEFUNGSAMT', 'ADMIN', 'HOCHSCHUL_VERWALTER'].includes(r));
     const isLehrender = roles.includes('LEHRENDER');
     this.isDozent.set(isLehrender && !hasFullAccess);
+    this.showMandantFilter.set(this.auth.isAdmin());
 
+    this.loadMandantenIfAdmin();
     this.loadModulesAndData(user?.id ?? null);
+  }
+
+  private async loadMandantenIfAdmin(): Promise<void> {
+    if (!this.auth.isAdmin()) return;
+    try {
+      const res = await firstValueFrom(this.apollo.query<{ mandanten: MandantOption[] }>({
+        query: GET_MANDANTEN,
+        fetchPolicy: 'network-only'
+      }));
+      this.mandantenForAudit.set(res.data?.mandanten ?? []);
+    } catch {
+      this.mandantenForAudit.set([]);
+    }
   }
 
   private async loadModulesAndData(userId: string | null): Promise<void> {
@@ -460,13 +527,17 @@ export class AuditComponent implements OnInit {
     this.loading.set(true);
 
     const isZuweisungFilter = this.aenderungsTyp.startsWith('ZUWEISUNG_');
-    const isNotenFilter = this.aenderungsTyp !== '' && !isZuweisungFilter;
+    const isBenutzerFilter = this.aenderungsTyp.startsWith('BENUTZER_');
+    const isNotenFilter = this.aenderungsTyp !== '' && !isZuweisungFilter && !isBenutzerFilter;
+
+    const mandantId = this.auth.getMandantId() ?? (this.filterMandantId?.trim() ? Number(this.filterMandantId) : null);
 
     // --- Noten-Audit ---
     let notenParams = new HttpParams().set('limit', '500');
     if (this.vonDatum) notenParams = notenParams.set('vonDatum', this.vonDatum);
     if (this.bisDatum) notenParams = notenParams.set('bisDatum', this.bisDatum);
     if (isNotenFilter) notenParams = notenParams.set('aenderungsTyp', this.aenderungsTyp);
+    if (mandantId != null) notenParams = notenParams.set('mandantId', String(mandantId));
     if (this.isDozent()) {
       const idsToSend = this.selectedModulId ? [this.selectedModulId] : this.dozentModulIds;
       if (idsToSend.length > 0) notenParams = notenParams.set('modulIds', idsToSend.join(','));
@@ -474,26 +545,62 @@ export class AuditComponent implements OnInit {
       notenParams = notenParams.set('modulId', this.selectedModulId);
     }
 
-    // --- Zuweisungs-Audit ---
+    // --- Zuweisungs-Audit (mandantId für Tenant-Routing) ---
     let zuweisungParams = new HttpParams();
+    if (mandantId != null) zuweisungParams = zuweisungParams.set('mandantId', String(mandantId));
     if (this.vonDatum) zuweisungParams = zuweisungParams.set('vonDatum', this.vonDatum);
     if (this.bisDatum) zuweisungParams = zuweisungParams.set('bisDatum', this.bisDatum);
     if (isZuweisungFilter) zuweisungParams = zuweisungParams.set('aenderungsTyp', this.aenderungsTyp);
 
-    const notenPromise = isZuweisungFilter
+    // --- Benutzer-Audit (nur für Admins) ---
+    let benutzerParams = new HttpParams().set('limit', '500');
+    if (this.vonDatum) benutzerParams = benutzerParams.set('vonDatum', this.vonDatum + 'T00:00:00');
+    if (this.bisDatum) benutzerParams = benutzerParams.set('bisDatum', this.bisDatum + 'T23:59:59');
+    if (isBenutzerFilter) {
+      // Mapping: BENUTZER_ERSTELLT -> ERSTELLT, BENUTZER_GELOESCHT -> GELOESCHT
+      const backendTyp = this.aenderungsTyp.replace('BENUTZER_', '');
+      benutzerParams = benutzerParams.set('aenderungsTyp', backendTyp);
+    }
+
+    const notenPromise = (isZuweisungFilter || isBenutzerFilter)
       ? Promise.resolve([] as AuditEintrag[])
       : firstValueFrom(this.http.get<ApiResponse<AuditEintrag[]>>('/api/noten/audit', { params: notenParams }))
           .then(res => (res?.data ?? []).map(e => ({ ...e, quelle: 'noten' as const })))
           .catch(() => [] as AuditEintrag[]);
 
-    const zuweisungPromise = isNotenFilter
+    const zuweisungPromise = (isNotenFilter || isBenutzerFilter)
       ? Promise.resolve([] as AuditEintrag[])
       : firstValueFrom(this.http.get<ApiResponse<ZuweisungAuditEintrag[]>>('/api/module-zuweisungen/audit', { params: zuweisungParams }))
-          .then(res => (res?.data ?? []).map(z => this.mapZuweisungToAudit(z)))
-          .catch(() => [] as AuditEintrag[]);
+          .then(res => {
+            const list = res?.data ?? [];
+            if (Array.isArray(list)) {
+              return list.map(z => this.mapZuweisungToAudit(z));
+            }
+            return [];
+          })
+          .catch((err) => {
+            console.warn('Zuweisungs-Audit fehlgeschlagen:', err);
+            return [] as AuditEintrag[];
+          });
 
-    Promise.all([notenPromise, zuweisungPromise]).then(([noten, zuweisungen]) => {
-      void this.applyAuditData([...noten, ...zuweisungen]);
+    // Benutzer-Audit nur für Admins laden
+    const benutzerPromise = (isNotenFilter || isZuweisungFilter || !this.auth.isAdmin())
+      ? Promise.resolve([] as AuditEintrag[])
+      : firstValueFrom(this.http.get<ApiResponse<BenutzerAuditEintrag[]>>('/api/users/audit', { params: benutzerParams }))
+          .then(res => {
+            const list = res?.data ?? [];
+            if (Array.isArray(list)) {
+              return list.map(b => this.mapBenutzerToAudit(b));
+            }
+            return [];
+          })
+          .catch((err) => {
+            console.warn('Benutzer-Audit fehlgeschlagen:', err);
+            return [] as AuditEintrag[];
+          });
+
+    Promise.all([notenPromise, zuweisungPromise, benutzerPromise]).then(([noten, zuweisungen, benutzer]) => {
+      void this.applyAuditData([...noten, ...zuweisungen, ...benutzer]);
     }).catch(err => {
       const msg = err?.error?.message ?? err?.message ?? 'Fehler beim Laden des Protokolls';
       this.error.set(msg);
@@ -516,6 +623,26 @@ export class AuditComponent implements OnInit {
       geaendertAm: z.geaendertAm,
       dozentId: z.dozentId,
       quelle: 'zuweisung'
+    };
+  }
+
+  private mapBenutzerToAudit(b: BenutzerAuditEintrag): AuditEintrag {
+    // Prefix mit BENUTZER_ um im Frontend unterscheiden zu können
+    const frontendTyp = 'BENUTZER_' + b.aenderungsTyp;
+    return {
+      id: b.id,
+      noteId: 0,
+      einschreibungId: null,
+      modulId: null,
+      geaendertVon: b.geaendertVon,
+      aenderungsTyp: frontendTyp,
+      alterWert: null,
+      neuerWert: null,
+      kommentar: b.details,
+      geaendertAm: b.geaendertAm,
+      benutzerId: b.benutzerId,
+      benutzername: b.benutzername,
+      quelle: 'benutzer'
     };
   }
 
@@ -590,14 +717,23 @@ export class AuditComponent implements OnInit {
     const headers = ['Zeit', 'Aktion', 'Typ', 'Bezug', 'Modul', 'Geändert von', 'Detail', 'Vorher', 'Nachher', 'Kommentar'];
     const lines = [headers.join(';')];
     for (const e of rows) {
+      let typ = 'Note';
+      let bezug = '#' + e.noteId;
+      if (e.quelle === 'benutzer') {
+        typ = 'Benutzer';
+        bezug = 'Benutzer ' + (e.benutzername ?? e.benutzerId);
+      } else if (e.quelle === 'zuweisung') {
+        typ = 'Zuweisung';
+        bezug = 'Dozent ' + (e.dozentName ?? e.dozentId);
+      }
       const row = [
         this.formatDate(e.geaendertAm),
         this.labelForTyp(e.aenderungsTyp),
-        e.quelle === 'zuweisung' ? 'Zuweisung' : 'Note',
-        e.quelle === 'zuweisung' ? ('Dozent ' + (e.dozentName ?? e.dozentId)) : ('#' + e.noteId),
-        e.modulName ?? e.modulId ?? '',
+        typ,
+        bezug,
+        e.quelle === 'benutzer' ? '' : (e.modulName ?? e.modulId ?? ''),
         e.geaendertVonName ?? e.geaendertVon,
-        e.quelle === 'zuweisung' ? '' : (e.studentName ?? (e.einschreibungId ?? '')),
+        e.quelle === 'noten' ? (e.studentName ?? (e.einschreibungId ?? '')) : '',
         e.alterWert ?? '',
         e.neuerWert ?? '',
         (e.kommentar ?? '').replaceAll(';', ',')
@@ -622,9 +758,31 @@ export class AuditComponent implements OnInit {
       'FREIGABE_ZURUECKGENOMMEN': 'Zurückgenommen',
       'STORNIERT': 'Storniert',
       'ZUWEISUNG_ERSTELLT': 'Zuweisung erstellt',
-      'ZUWEISUNG_GELOESCHT': 'Zuweisung gelöscht'
+      'ZUWEISUNG_GELOESCHT': 'Zuweisung gelöscht',
+      'BENUTZER_ERSTELLT': 'Benutzer erstellt',
+      'BENUTZER_GELOESCHT': 'Benutzer gelöscht'
     };
     return map[typ] ?? typ;
+  }
+
+  getBezug(e: AuditEintrag): string {
+    if (e.quelle === 'benutzer') {
+      return 'Benutzer ' + (e.benutzername ?? e.benutzerId);
+    }
+    if (e.quelle === 'zuweisung') {
+      return 'Dozent ' + (e.dozentName ?? e.dozentId);
+    }
+    return '#' + e.noteId;
+  }
+
+  getDetail(e: AuditEintrag): string {
+    if (e.quelle === 'benutzer') {
+      return e.kommentar ?? '–';
+    }
+    if (e.quelle === 'zuweisung') {
+      return e.kommentar ?? '–';
+    }
+    return e.studentName ?? (e.einschreibungId ? 'Einschr. ' + e.einschreibungId : '–');
   }
 
   formatDate(iso: string): string {

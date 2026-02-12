@@ -87,6 +87,7 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
 
           <button 
             class="user-avatar"
+            [ngClass]="'avatar--' + userRoleClass"
             (click)="userMenuToggle.emit()"
             [title]="userName">
             <img 
@@ -104,10 +105,6 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
             <a routerLink="/profile" class="dropdown-item">
               <span class="material-icons-outlined">person</span>
               Profil
-            </a>
-            <a routerLink="/settings" class="dropdown-item" *ngIf="userRole === 'ADMIN'">
-              <span class="material-icons-outlined">settings</span>
-              Einstellungen
             </a>
             <hr class="dropdown-divider">
             <button class="dropdown-item dropdown-item--danger" (click)="logout.emit()">
@@ -284,33 +281,33 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
     }
 
     .badge--admin {
-      background: var(--bg-elevated);
-      color: var(--text-secondary);
-      border-color: var(--border-color);
+      background: rgba(220, 38, 38, 0.12);
+      color: #f87171;
+      border: 1px solid rgba(220, 38, 38, 0.3);
     }
 
     .badge--hochschul_verwalter {
-      background: var(--bg-elevated);
-      color: var(--text-secondary);
-      border-color: var(--border-color);
+      background: rgba(22, 163, 74, 0.12);
+      color: #4ade80;
+      border: 1px solid rgba(22, 163, 74, 0.3);
     }
 
     .badge--dozent, .badge--lehrender {
-      background: var(--bg-elevated);
-      color: var(--text-secondary);
-      border-color: var(--border-color);
+      background: rgba(147, 51, 234, 0.12);
+      color: #c084fc;
+      border: 1px solid rgba(147, 51, 234, 0.3);
     }
 
     .badge--pruefungsamt {
-      background: var(--bg-elevated);
-      color: var(--text-secondary);
-      border-color: var(--border-color);
+      background: rgba(202, 138, 4, 0.12);
+      color: #fcd34d;
+      border: 1px solid rgba(202, 138, 4, 0.3);
     }
 
     .badge--student {
-      background: var(--bg-elevated);
-      color: var(--text-secondary);
-      border-color: var(--border-color);
+      background: rgba(37, 99, 235, 0.12);
+      color: #60a5fa;
+      border: 1px solid rgba(37, 99, 235, 0.3);
     }
 
     /* Avatar */
@@ -329,7 +326,23 @@ import { DebugPanelComponent } from '../debug-panel/debug-panel.component';
     }
 
     .user-avatar:hover {
-      border-color: var(--text-secondary);
+      filter: brightness(1.1);
+    }
+
+    .avatar--admin {
+      border-color: rgba(220, 38, 38, 0.6);
+    }
+    .avatar--hochschul_verwalter {
+      border-color: rgba(22, 163, 74, 0.6);
+    }
+    .avatar--dozent, .avatar--lehrender {
+      border-color: rgba(147, 51, 234, 0.6);
+    }
+    .avatar--pruefungsamt {
+      border-color: rgba(202, 138, 4, 0.6);
+    }
+    .avatar--student {
+      border-color: rgba(37, 99, 235, 0.6);
     }
 
     .avatar-img {

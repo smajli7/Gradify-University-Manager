@@ -17,7 +17,7 @@ interface DemoUser {
   standalone: true,
   imports: [CommonModule, FormsModule],
   template: `
-    <div class="login-page">
+    <div class="login-page" (click)="skipSplash()">
       <!-- Persistent Light Beams - distributed around edges, avoiding center -->
       <div class="beams-container">
         <div class="beam beam--1"></div>
@@ -35,12 +35,13 @@ interface DemoUser {
       </div>
 
       <div class="login-container animate-slide-up">
-        <!-- Splash Overlay (fades out) -->
-        <div class="splash-overlay" [class.splash-overlay--hidden]="isTransitioning">
+        <!-- Splash Overlay (fades out, click to skip) -->
+        <div class="splash-overlay" [class.splash-overlay--hidden]="isTransitioning"
+             [class.splash-overlay--skipped]="splashSkipped">
         </div>
 
         <!-- Logo (starts centered, slides up to final position) -->
-        <div class="logo-wrapper">
+        <div class="logo-wrapper" [class.logo-wrapper--skipped]="splashSkipped">
           <!-- Frame with gradient -->
           <div class="logo-frame-container">
             <svg class="logo-frame-svg" viewBox="0 0 200 52" fill="none" xmlns="http://www.w3.org/2000/svg">
@@ -101,14 +102,14 @@ interface DemoUser {
           </svg>
 
           <div class="login-card">
-            <h2 class="login-title">Willkommen zurück</h2>
-            <p class="login-subtitle">Melden Sie sich an, um fortzufahren</p>
+            <h2 class="login-title">Willkommen bei Gradify</h2>
+            <p class="login-subtitle">Anmelden, um fortzufahren</p>
 
             <form (ngSubmit)="onLogin()" class="login-form">
               <!-- Username field with CSS animated frame -->
               <div class="form-group">
                 <label for="username">Benutzername</label>
-                <div class="input-wrapper">
+                <div class="input-wrapper" [class.input-wrapper--filled]="demoFilled">
                   <span class="input-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                       <defs>
@@ -135,7 +136,7 @@ interface DemoUser {
               <!-- Password field with CSS animated frame -->
               <div class="form-group">
                 <label for="password">Passwort</label>
-                <div class="input-wrapper">
+                <div class="input-wrapper" [class.input-wrapper--filled]="demoFilled">
                   <span class="input-icon">
                     <svg width="20" height="20" viewBox="0 0 24 24" fill="none">
                       <defs>
@@ -232,7 +233,7 @@ interface DemoUser {
           </div>
         </div>
 
-        <p class="footer-text" [class.content--visible]="showContent">© 2026 Gradify - Hochschule</p>
+        <p class="footer-text" [class.content--visible]="showContent">© 2026 Gradify · Hochschulnotenverwaltung</p>
       </div>
     </div>
   `,
@@ -265,11 +266,18 @@ interface DemoUser {
       transition: opacity 0.8s ease, visibility 0.8s ease;
       overflow: hidden;
       pointer-events: none;
+      cursor: pointer;
     }
 
     .splash-overlay--hidden {
       opacity: 0;
       visibility: hidden;
+    }
+
+    .splash-overlay--skipped {
+      opacity: 0;
+      visibility: hidden;
+      transition: opacity 0.3s ease, visibility 0.3s ease;
     }
 
     /* Logo Wrapper - slides from center to top position */
@@ -284,6 +292,12 @@ interface DemoUser {
       /* Start centered */
       top: 50%;
       transform: translate(-50%, -50%);
+    }
+
+    .logo-wrapper--skipped {
+      animation: none;
+      top: 5px;
+      transform: translate(-50%, 0) scale(0.75);
     }
 
     @keyframes logoSlideUp {
@@ -669,6 +683,7 @@ interface DemoUser {
       z-index: 2;
       opacity: 0;
       border: 1px solid var(--border-color);
+      box-shadow: 0 8px 32px rgba(0, 0, 0, 0.25), 0 2px 8px rgba(0, 0, 0, 0.15);
     }
 
     .content--visible .login-card {
@@ -730,8 +745,14 @@ interface DemoUser {
     }
 
     .input-wrapper:focus-within {
-      border-color: var(--border-color-light);
-      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.04);
+      border-color: rgba(200, 210, 220, 0.35);
+      box-shadow: 0 0 0 3px rgba(200, 210, 220, 0.06), 0 0 12px rgba(200, 210, 220, 0.04);
+    }
+
+    .input-wrapper--filled {
+      border-color: rgba(34, 197, 94, 0.4);
+      box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.08), 0 0 16px rgba(34, 197, 94, 0.06);
+      transition: border-color 0.3s ease, box-shadow 0.3s ease;
     }
 
     /* Animated border for inputs (dezent, Theme-Farben) */
@@ -863,7 +884,8 @@ interface DemoUser {
 
     .submit-btn:hover {
       background: var(--bg-hover);
-      border-color: var(--border-color-light);
+      border-color: rgba(200, 210, 220, 0.3);
+      box-shadow: 0 0 0 2px rgba(200, 210, 220, 0.05), 0 0 12px rgba(200, 210, 220, 0.04);
     }
 
     .submit-btn:active {
@@ -931,48 +953,53 @@ interface DemoUser {
     .demo-role-buttons {
       display: flex;
       flex-wrap: wrap;
-      gap: 6px;
+      gap: 10px;
       justify-content: center;
-      margin-bottom: var(--spacing-sm);
+      margin-bottom: var(--spacing-md);
     }
 
     .demo-role-btn {
       display: flex;
       align-items: center;
       justify-content: center;
-      width: 36px;
-      height: 36px;
+      width: 42px;
+      height: 42px;
       padding: 0;
       background: var(--bg-elevated);
-      border: 1px solid var(--border-color);
-      border-radius: 6px;
+      border: 1.5px solid var(--border-color);
+      border-radius: 10px;
       cursor: pointer;
-      transition: border-color 0.2s, background 0.2s;
+      transition: border-color 0.2s, background 0.2s, box-shadow 0.2s, transform 0.15s;
     }
 
     .demo-role-btn .material-icons-outlined {
-      font-size: 18px;
+      font-size: 20px;
     }
 
-    .demo-role-btn:hover,
-    .demo-role-btn.active {
+    .demo-role-btn:hover {
+      transform: translateY(-1px);
       border-width: 2px;
     }
 
+    .demo-role-btn.active {
+      border-width: 2px;
+      transform: translateY(-1px);
+    }
+
     .demo-role-btn--admin { color: #dc2626; }
-    .demo-role-btn--admin:hover, .demo-role-btn--admin.active { border-color: #b91c1c; background: rgba(127, 29, 29, 0.5); }
+    .demo-role-btn--admin:hover, .demo-role-btn--admin.active { border-color: #b91c1c; background: rgba(127, 29, 29, 0.5); box-shadow: 0 0 12px rgba(220, 38, 38, 0.15); }
 
     .demo-role-btn--hv { color: #16a34a; }
-    .demo-role-btn--hv:hover, .demo-role-btn--hv.active { border-color: #15803d; background: rgba(20, 83, 45, 0.5); }
+    .demo-role-btn--hv:hover, .demo-role-btn--hv.active { border-color: #15803d; background: rgba(20, 83, 45, 0.5); box-shadow: 0 0 12px rgba(22, 163, 74, 0.15); }
 
     .demo-role-btn--pa { color: #ca8a04; }
-    .demo-role-btn--pa:hover, .demo-role-btn--pa.active { border-color: #a16207; background: rgba(113, 63, 18, 0.5); }
+    .demo-role-btn--pa:hover, .demo-role-btn--pa.active { border-color: #a16207; background: rgba(113, 63, 18, 0.5); box-shadow: 0 0 12px rgba(202, 138, 4, 0.15); }
 
     .demo-role-btn--dozent { color: #9333ea; }
-    .demo-role-btn--dozent:hover, .demo-role-btn--dozent.active { border-color: #7e22ce; background: rgba(88, 28, 135, 0.5); }
+    .demo-role-btn--dozent:hover, .demo-role-btn--dozent.active { border-color: #7e22ce; background: rgba(88, 28, 135, 0.5); box-shadow: 0 0 12px rgba(147, 51, 234, 0.15); }
 
     .demo-role-btn--student { color: #2563eb; }
-    .demo-role-btn--student:hover, .demo-role-btn--student.active { border-color: #1d4ed8; background: rgba(29, 78, 216, 0.35); }
+    .demo-role-btn--student:hover, .demo-role-btn--student.active { border-color: #1d4ed8; background: rgba(29, 78, 216, 0.35); box-shadow: 0 0 12px rgba(37, 99, 235, 0.15); }
 
     .demo-select {
       width: 100%;
@@ -1023,12 +1050,17 @@ interface DemoUser {
         padding: var(--spacing-lg);
       }
 
-      .logo-text {
-        font-size: var(--font-size-2xl);
+      .demo-role-buttons {
+        gap: 8px;
       }
 
-      .logo-icon {
-        font-size: 36px;
+      .demo-role-btn {
+        width: 38px;
+        height: 38px;
+      }
+
+      .demo-role-btn .material-icons-outlined {
+        font-size: 18px;
       }
     }
   `]
@@ -1045,9 +1077,12 @@ export class LoginComponent implements OnInit {
   errorMessage = '';
   showContent = false;
   isTransitioning = false;
+  splashSkipped = false;
+  demoFilled = false;
   activeRole: string | null = null;
   demoUsers: DemoUser[] = [];
   selectedDemoUser = '';
+  private splashTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
     // Animation sequence timing:
@@ -1058,10 +1093,22 @@ export class LoginComponent implements OnInit {
     // 1.5s: Subtle fade to white (1.2s duration)
     // 2.8s: Logo slides up, splash fades, login appears
 
-    setTimeout(() => {
+    this.splashTimer = setTimeout(() => {
       this.isTransitioning = true;
       this.showContent = true;
+      this.splashTimer = null;
     }, 2800);
+  }
+
+  skipSplash(): void {
+    if (this.showContent) return; // Already shown
+    if (this.splashTimer) {
+      clearTimeout(this.splashTimer);
+      this.splashTimer = null;
+    }
+    this.splashSkipped = true;
+    this.isTransitioning = true;
+    this.showContent = true;
   }
 
   ngOnInit(): void {
@@ -1102,6 +1149,17 @@ export class LoginComponent implements OnInit {
       this.username = u.username;
       this.password = u.password;
       this.errorMessage = '';
+
+      // Visual feedback: green glow on inputs
+      this.demoFilled = true;
+      setTimeout(() => this.demoFilled = false, 600);
+
+      // Auto-login after short delay so user sees the filled fields
+      setTimeout(() => {
+        if (this.username && this.password && !this.isLoading) {
+          this.onLogin();
+        }
+      }, 400);
     }
   }
 

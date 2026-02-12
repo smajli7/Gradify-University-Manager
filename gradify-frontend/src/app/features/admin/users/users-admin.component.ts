@@ -208,19 +208,15 @@ interface ImportResult {
                         </svg>
                       </button>
                       <button 
-                        class="btn-icon btn-toggle" 
-                        (click)="toggleUserStatus(user)" 
-                        [title]="user.aktiv ? 'Deaktivieren' : 'Aktivieren'">
-                        @if (user.aktiv) {
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <line x1="18" y1="6" x2="6" y2="18"/>
-                            <line x1="6" y1="6" x2="18" y2="18"/>
-                          </svg>
-                        } @else {
-                          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
-                            <polyline points="20 6 9 17 4 12"/>
-                          </svg>
-                        }
+                        class="btn-icon btn-delete" 
+                        (click)="deleteUser(user)" 
+                        title="Benutzer löschen">
+                        <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                          <polyline points="3 6 5 6 21 6"/>
+                          <path d="M19 6v14a2 2 0 0 1-2 2H7a2 2 0 0 1-2-2V6m3 0V4a2 2 0 0 1 2-2h4a2 2 0 0 1 2 2v2"/>
+                          <line x1="10" y1="11" x2="10" y2="17"/>
+                          <line x1="14" y1="11" x2="14" y2="17"/>
+                        </svg>
                       </button>
                     </div>
                   </td>
@@ -259,87 +255,64 @@ interface ImportResult {
             <div class="modal-body">
               <div class="form-grid">
                 <div class="form-group">
-                  <label>Benutzername*</label>
-                  <input 
-                    type="text" 
-                    class="form-input"
-                    [(ngModel)]="formData.username"
-                    placeholder="prof.mueller"
-                    [disabled]="editMode()">
+                  <label>Vorname</label>
+                  <input type="text" class="form-input" [(ngModel)]="formData.vorname" placeholder="Max">
                 </div>
+                <div class="form-group">
+                  <label>Nachname</label>
+                  <input type="text" class="form-input" [(ngModel)]="formData.nachname" placeholder="Mustermann">
+                </div>
+                <div class="form-group full-width">
+                  <label>E-Mail</label>
+                  <input type="email" class="form-input" [(ngModel)]="formData.email" placeholder="max.mustermann&#64;hochschule.de">
+                </div>
+              </div>
 
+              <div class="form-divider"></div>
+
+              <div class="form-grid">
+                <div class="form-group">
+                  <label>Benutzername</label>
+                  <input type="text" class="form-input" [(ngModel)]="formData.username" placeholder="m.mustermann" [disabled]="editMode()">
+                </div>
                 @if (!editMode()) {
                   <div class="form-group">
-                    <label>Passwort*</label>
-                    <input 
-                      type="password" 
-                      class="form-input"
-                      [(ngModel)]="formData.password"
-                      placeholder="********">
+                    <label>Passwort</label>
+                    <input type="password" class="form-input" [(ngModel)]="formData.password" placeholder="••••••••">
                   </div>
                 }
+              </div>
 
+              <div class="form-divider"></div>
+
+              <div class="form-grid">
                 <div class="form-group">
-                  <label>Vorname*</label>
-                  <input 
-                    type="text" 
-                    class="form-input"
-                    [(ngModel)]="formData.vorname"
-                    placeholder="Max">
+                  <label>Hochschule</label>
+                  <select class="form-input" [(ngModel)]="formData.mandantId">
+                    <option value="">Bitte wählen</option>
+                    @for (m of mandanten(); track m.id) {
+                      <option [value]="m.id">{{ m.name }}</option>
+                    }
+                  </select>
                 </div>
-
                 <div class="form-group">
-                  <label>Nachname*</label>
-                  <input 
-                    type="text" 
-                    class="form-input"
-                    [(ngModel)]="formData.nachname"
-                    placeholder="Mustermann">
-                </div>
-
-                <div class="form-group full-width">
-                  <label>E-Mail*</label>
-                  <input 
-                    type="email" 
-                    class="form-input"
-                    [(ngModel)]="formData.email"
-                    placeholder="max@example.com">
-                </div>
-
-                <div class="form-group">
-                  <label>Rolle*</label>
+                  <label>Rolle</label>
                   <select class="form-input" [(ngModel)]="formData.rolle">
-                    <option value="">-- Rolle wählen --</option>
+                    <option value="">Bitte wählen</option>
                     <option value="ROLE_STUDENT">Student</option>
                     <option value="ROLE_LEHRENDER">Dozent</option>
                     <option value="ROLE_PRUEFUNGSAMT">Prüfungsamt</option>
-                    <option value="ROLE_HOCHSCHUL_VERWALTER">Hochschul-Verwalter</option>
+                    <option value="ROLE_HOCHSCHUL_VERWALTER">Verwalter</option>
                     <option value="ROLE_ADMIN">Admin</option>
                   </select>
                 </div>
+              </div>
 
-                @if (!editMode() && (formData.rolle === 'ROLE_HOCHSCHUL_VERWALTER' || formData.rolle === 'ROLE_PRUEFUNGSAMT')) {
-                  <div class="form-group full-width">
-                    <label>Hochschule*</label>
-                    <select class="form-input" [(ngModel)]="formData.mandantId" required>
-                      <option value="">-- Hochschule wählen --</option>
-                      @for (m of mandanten(); track m.id) {
-                        <option [value]="m.id">{{ m.name }} ({{ m.kuerzel }})</option>
-                      }
-                    </select>
-                    <span class="form-hint">Für Hochschul-Verwalter und Prüfungsamt muss die zugeordnete Hochschule gewählt werden.</span>
-                  </div>
-                }
-
-                <div class="form-group">
-                  <label class="checkbox-label">
-                    <input 
-                      type="checkbox" 
-                      class="checkbox"
-                      [(ngModel)]="formData.aktiv">
-                    <span>Benutzer aktiv</span>
-                  </label>
-                </div>
+              <div class="form-status-row">
+                <label class="checkbox-label">
+                  <input type="checkbox" class="checkbox" [(ngModel)]="formData.aktiv">
+                  <span>Benutzer aktiv</span>
+                </label>
               </div>
             </div>
 
@@ -670,9 +643,10 @@ interface ImportResult {
       color: var(--text-primary);
     }
 
-    .btn-icon.btn-toggle:hover {
-      border-color: var(--color-success);
-      color: var(--color-success);
+    .btn-icon.btn-delete:hover {
+      border-color: var(--accent-red);
+      color: var(--accent-red);
+      background: rgba(239, 68, 68, 0.1);
     }
 
     .btn-icon svg {
@@ -689,16 +663,14 @@ interface ImportResult {
     /* Modal */
     .modal-overlay {
       position: fixed;
-      top: 0;
-      left: 0;
-      right: 0;
-      bottom: 0;
+      inset: 0;
       background: rgba(0, 0, 0, 0.7);
       display: flex;
       align-items: center;
       justify-content: center;
       z-index: 1000;
       animation: fadeIn 0.2s;
+      backdrop-filter: blur(2px);
     }
 
     .modal {
@@ -706,10 +678,12 @@ interface ImportResult {
       border: 1px solid var(--border-color);
       border-radius: var(--radius-lg);
       width: 90%;
-      max-width: 600px;
+      max-width: 520px;
       max-height: 90vh;
       overflow-y: auto;
       animation: slideUp 0.3s ease;
+      margin: auto;
+      position: relative;
     }
 
     @keyframes slideUp {
@@ -732,8 +706,9 @@ interface ImportResult {
     }
 
     .modal-header h2 {
-      font-size: 1.25rem;
+      font-size: 1.125rem;
       margin: 0;
+      font-weight: 600;
     }
 
     .modal-close {
@@ -760,12 +735,26 @@ interface ImportResult {
       padding: var(--spacing-lg);
     }
 
+    .form-divider {
+      height: 1px;
+      background: var(--border-color);
+      margin: var(--spacing-lg) 0;
+    }
+
+    .form-status-row {
+      margin-top: var(--spacing-md);
+      padding-top: var(--spacing-md);
+      border-top: 1px solid var(--border-color);
+    }
+
     .modal-footer {
       display: flex;
       justify-content: flex-end;
       gap: var(--spacing-sm);
       padding: var(--spacing-lg);
       border-top: 1px solid var(--border-color);
+      background: var(--bg-deep);
+      border-radius: 0 0 var(--radius-lg) var(--radius-lg);
     }
 
     .form-grid {
@@ -798,6 +787,15 @@ interface ImportResult {
       color: var(--text-primary);
       font-size: 0.9375rem;
       transition: all 0.2s;
+    }
+
+    select.form-input {
+      appearance: none;
+      padding-right: 36px;
+      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='%239ca3af' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+      background-repeat: no-repeat;
+      background-position: right 12px center;
+      cursor: pointer;
     }
 
     .form-input:focus {
@@ -1175,6 +1173,24 @@ export class UsersAdminComponent implements OnInit {
     this.showModal.set(true);
   }
 
+  deleteUser(user: User): void {
+    const name = `${user.vorname} ${user.nachname}`.trim() || user.benutzername;
+    if (!confirm(`Benutzer "${name}" wirklich löschen?\n\nDiese Aktion kann nicht rückgängig gemacht werden.`)) {
+      return;
+    }
+    
+    this.http.delete(`/api/users/${user.id}`).subscribe({
+      next: () => {
+        this.users.update(users => users.filter(u => u.id !== user.id));
+        console.log(`Benutzer ${user.id} gelöscht`);
+      },
+      error: (err) => {
+        console.error('Fehler beim Löschen:', err);
+        alert('Fehler beim Löschen des Benutzers. Möglicherweise gibt es noch verknüpfte Daten.');
+      }
+    });
+  }
+
   getRoleLabel(rollen: Role[]): string {
     if (!rollen || rollen.length === 0) return 'Keine Rolle';
     const role = rollen[0].name;
@@ -1251,18 +1267,6 @@ export class UsersAdminComponent implements OnInit {
       console.error('Error saving user:', error);
       const msg = this.extractErrorMessage(error);
       this.toast.error('Fehler beim Speichern: ' + msg);
-    }
-  }
-
-  async toggleUserStatus(user: User): Promise<void> {
-    try {
-      await firstValueFrom(
-        this.http.patch<ApiResponse<User>>(`/api/users/${user.id}/toggle-status`, {})
-      );
-      await this.loadUsers();
-    } catch (error: any) {
-      console.error('Error toggling user status:', error);
-      this.toast.error('Fehler: ' + (error.error?.message || error.message));
     }
   }
 

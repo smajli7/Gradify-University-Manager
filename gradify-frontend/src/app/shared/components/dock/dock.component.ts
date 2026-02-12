@@ -303,7 +303,7 @@ export class DockComponent {
 
   /** Gruppierung für Sidebar: Studium / Leistung / Konto etc. */
   get groupedItems(): { section: string; items: DockItem[] }[] {
-    const order = ['Prüfungsamt', '', 'Studium', 'Leistung', 'Verwaltung', 'Akademisch', 'Lehre', 'LEHRE', 'Konto'];
+    const order = ['Prüfungsamt', '', 'Studium', 'Leistung', 'Verwaltung', 'Auswertung', 'Akademisch', 'Lehre', 'LEHRE', 'Konto'];
     const map = new Map<string, DockItem[]>();
     for (const item of this.visibleItems) {
       const s = item.section ?? '';

@@ -171,11 +171,20 @@ npm start
 
 Frontend läuft auf http://localhost:4200
 
+### 6. CLI starten (nicht-grafisches UI)
+
+```powershell
+.\gradify-cli.ps1
+```
+
+Das interaktive Konsolen-Interface bietet Menüführung für **alle Systemfunktionen** (Benutzerverwaltung, Notenverwaltung, Berechnungen, Import/Export, Audit, GraphQL-Abfragen, uvm.) – ohne grafische Oberfläche. Siehe [Konsolen-Nutzung](documentation/konsolen-nutzung.md).
+
 ## Projektstruktur
 
 ```
 webapp-http-200/
 ├── pom.xml                         # Parent POM
+├── gradify-cli.ps1                 # Interaktives CLI (nicht-grafisches UI)
 ├── docker-compose.yml              # PostgreSQL
 ├── docker/
 │   └── init-databases.sql          # DB-Initialisierung

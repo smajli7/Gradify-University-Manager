@@ -30,4 +30,15 @@ public final class SecurityUtils {
         }
         return null;
     }
+
+    /** Gibt die ID des aktuell angemeldeten Benutzers zurueck. */
+    public static Long getCurrentUserId() {
+        AuthPrincipal ap = getAuthPrincipal();
+        if (ap == null || ap.getUserId() == null) return null;
+        try {
+            return Long.parseLong(ap.getUserId());
+        } catch (NumberFormatException e) {
+            return null;
+        }
+    }
 }

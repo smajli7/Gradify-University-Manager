@@ -180,7 +180,7 @@ export class ShellComponent implements OnInit {
       label: 'Protokoll',
       route: '/grades/audit',
       icon: 'assets/icons/audit.svg',
-      roles: ['PRUEFUNGSAMT', 'ADMIN', 'HOCHSCHUL_VERWALTER'],
+      roles: ['PRUEFUNGSAMT', 'HOCHSCHUL_VERWALTER'],
       section: 'Prüfungsamt'
     },
     {
@@ -241,12 +241,46 @@ export class ShellComponent implements OnInit {
       roles: ['ADMIN', 'HOCHSCHUL_VERWALTER', 'PRUEFUNGSAMT'],
       section: 'Verwaltung'
     },
+    // === ADMIN: Auswertung (eigene Sektion) ===
+    {
+      id: 'students-admin',
+      label: 'Studenten',
+      route: '/students',
+      icon: 'assets/icons/students.svg',
+      roles: ['ADMIN'],
+      section: 'Auswertung'
+    },
+    {
+      id: 'validation-admin',
+      label: 'Validierung',
+      route: '/grades/validation',
+      icon: 'assets/icons/validation.svg',
+      roles: ['ADMIN'],
+      section: 'Auswertung'
+    },
+    {
+      id: 'stats-admin',
+      label: 'Statistik',
+      route: '/stats',
+      icon: 'assets/icons/stats.svg',
+      roles: ['ADMIN'],
+      section: 'Auswertung'
+    },
+    {
+      id: 'audit-admin',
+      label: 'Protokoll',
+      route: '/grades/audit',
+      icon: 'assets/icons/audit.svg',
+      roles: ['ADMIN'],
+      section: 'Auswertung'
+    },
+    // === HOCHSCHUL_VERWALTER: Akademisch (wie bisher) ===
     {
       id: 'students',
       label: 'Studenten',
       route: '/students',
       icon: 'assets/icons/students.svg',
-      roles: ['ADMIN', 'HOCHSCHUL_VERWALTER'],
+      roles: ['HOCHSCHUL_VERWALTER'],
       section: 'Akademisch'
     },
     {
@@ -254,7 +288,7 @@ export class ShellComponent implements OnInit {
       label: 'Validierung',
       route: '/grades/validation',
       icon: 'assets/icons/validation.svg',
-      roles: ['ADMIN', 'HOCHSCHUL_VERWALTER'],
+      roles: ['HOCHSCHUL_VERWALTER'],
       section: 'Akademisch'
     },
     {
@@ -262,7 +296,7 @@ export class ShellComponent implements OnInit {
       label: 'Statistik',
       route: '/stats',
       icon: 'assets/icons/stats.svg',
-      roles: ['ADMIN', 'DOZENT', 'HOCHSCHUL_VERWALTER'],
+      roles: ['LEHRENDER', 'HOCHSCHUL_VERWALTER'],
       section: 'Akademisch'
     },
     {
@@ -270,7 +304,7 @@ export class ShellComponent implements OnInit {
       label: 'Studienplan',
       route: '/study-plan',
       icon: 'assets/icons/calculation.svg',
-      roles: ['ADMIN', 'STUDENT'],
+      roles: ['STUDENT'],
       section: 'Studium'
     },
     

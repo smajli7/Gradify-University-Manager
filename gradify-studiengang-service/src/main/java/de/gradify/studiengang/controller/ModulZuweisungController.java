@@ -16,6 +16,7 @@ import org.springframework.web.bind.annotation.*;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.LocalTime;
+import java.util.Comparator;
 import java.util.List;
 import java.util.Optional;
 
@@ -80,9 +81,18 @@ public class ModulZuweisungController {
         if (aenderungsTypStr != null && !aenderungsTypStr.isBlank()) {
             try {
                 typ = ModulZuweisungHistorie.AenderungsTyp.valueOf(aenderungsTypStr.toUpperCase().trim());
-            } catch (IllegalArgumentException ignored) {}
+            } catch (IllegalArgumentException ignored) {
+                // Ungueltiger Typ soll nur als "kein Filter" behandelt werden.
+            }
         }
-        List<ModulZuweisungHistorie> entries = modulZuweisungHistorieRepository.findFiltered(vonDatum, bisDatum, typ);
+        final ModulZuweisungHistorie.AenderungsTyp filterTyp = typ;
+        List<ModulZuweisungHistorie> entries = modulZuweisungHistorieRepository.findAll().stream()
+                .filter(h -> vonDatum == null || (h.getGeaendertAm() != null && !h.getGeaendertAm().isBefore(vonDatum)))
+                .filter(h -> bisDatum == null || (h.getGeaendertAm() != null && !h.getGeaendertAm().isAfter(bisDatum)))
+                .filter(h -> filterTyp == null || h.getAenderungsTyp() == filterTyp)
+                .sorted(Comparator.comparing(ModulZuweisungHistorie::getGeaendertAm,
+                        Comparator.nullsLast(Comparator.naturalOrder())).reversed())
+                .toList();
         return ResponseEntity.ok(ApiResponse.success(entries));
     }
 

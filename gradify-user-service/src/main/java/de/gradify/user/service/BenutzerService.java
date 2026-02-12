@@ -4,7 +4,9 @@ import de.gradify.user.dto.BenutzerDto;
 import de.gradify.user.dto.CreateBenutzerRequest;
 import de.gradify.user.dto.UpdateBenutzerRequest;
 import de.gradify.user.entity.Benutzer;
+import de.gradify.user.entity.BenutzerHistorie;
 import de.gradify.user.entity.Rolle;
+import de.gradify.user.repository.BenutzerHistorieRepository;
 import de.gradify.user.repository.BenutzerRepository;
 import de.gradify.user.repository.RolleRepository;
 import lombok.RequiredArgsConstructor;
@@ -13,6 +15,7 @@ import org.springframework.security.crypto.password.PasswordEncoder;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
+import java.time.LocalDateTime;
 import java.util.HashSet;
 import java.util.List;
 import java.util.Optional;
@@ -26,6 +29,7 @@ import java.util.stream.Collectors;
 public class BenutzerService {
 
     private final BenutzerRepository benutzerRepository;
+    private final BenutzerHistorieRepository benutzerHistorieRepository;
     private final RolleRepository rolleRepository;
     private final PasswordEncoder passwordEncoder;
 
@@ -54,7 +58,7 @@ public class BenutzerService {
     }
 
     @Transactional
-    public BenutzerDto create(CreateBenutzerRequest request) {
+    public BenutzerDto create(CreateBenutzerRequest request, Long erstelltVon) {
         log.info("Creating user: {}", request.getBenutzername());
         
         if (benutzerRepository.existsByBenutzername(request.getBenutzername())) {
@@ -84,6 +88,13 @@ public class BenutzerService {
             .build();
         
         Benutzer saved = benutzerRepository.save(benutzer);
+        
+        // Audit-Log erstellen
+        String rollenStr = rollen.stream().map(Rolle::getName).collect(Collectors.joining(", "));
+        saveHistorie(saved.getId(), saved.getBenutzername(), erstelltVon, 
+                BenutzerHistorie.AenderungsTyp.ERSTELLT, 
+                "Benutzer erstellt mit Rollen: " + (rollenStr.isEmpty() ? "keine" : rollenStr));
+        
         return toDto(saved);
     }
 
@@ -114,11 +125,22 @@ public class BenutzerService {
     }
 
     @Transactional
-    public boolean delete(Long id) {
+    public boolean delete(Long id, Long geloeschtVon) {
         log.info("Deleting user: {}", id);
         
-        if (benutzerRepository.existsById(id)) {
+        Optional<Benutzer> benutzerOpt = benutzerRepository.findById(id);
+        if (benutzerOpt.isPresent()) {
+            Benutzer benutzer = benutzerOpt.get();
+            String benutzername = benutzer.getBenutzername();
+            String details = "Benutzer gelöscht: " + benutzer.getVorname() + " " + benutzer.getNachname() + 
+                           " (" + benutzername + ")";
+            
             benutzerRepository.deleteById(id);
+            
+            // Audit-Log erstellen
+            saveHistorie(id, benutzername, geloeschtVon, 
+                    BenutzerHistorie.AenderungsTyp.GELOESCHT, details);
+            
             return true;
         }
         return false;
@@ -174,5 +196,28 @@ public class BenutzerService {
             .letzterLogin(benutzer.getLetzterLogin())
             .erstelltAm(benutzer.getErstelltAm())
             .build();
+    }
+
+    private void saveHistorie(Long benutzerId, String benutzername, Long geaendertVon,
+                              BenutzerHistorie.AenderungsTyp typ, String details) {
+        BenutzerHistorie historie = BenutzerHistorie.builder()
+                .benutzerId(benutzerId)
+                .benutzername(benutzername)
+                .aenderungsTyp(typ)
+                .geaendertVon(geaendertVon)
+                .geaendertAm(LocalDateTime.now())
+                .details(details)
+                .build();
+        benutzerHistorieRepository.save(historie);
+        log.debug("Benutzer-Historie gespeichert: {} - {}", typ, benutzername);
+    }
+
+    public List<BenutzerHistorie> getAuditLog(Long benutzerId, BenutzerHistorie.AenderungsTyp typ,
+                                               LocalDateTime vonDatum, LocalDateTime bisDatum) {
+        return benutzerHistorieRepository.findAuditEintraege(benutzerId, typ, vonDatum, bisDatum);
+    }
+
+    public List<BenutzerHistorie> getAllAuditLog() {
+        return benutzerHistorieRepository.findAllOrderByGeaendertAmDesc();
     }
 }

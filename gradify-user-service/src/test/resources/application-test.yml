@@ -1,0 +1,31 @@
+# Test-Konfiguration fuer User-Service
+spring:
+  datasource:
+    url: jdbc:h2:mem:testdb;DB_CLOSE_DELAY=-1;MODE=PostgreSQL
+    driver-class-name: org.h2.Driver
+    username: sa
+    password: 
+  jpa:
+    hibernate:
+      ddl-auto: create-drop
+    show-sql: false
+    database-platform: org.hibernate.dialect.H2Dialect
+
+  # GraphQL
+  graphql:
+    schema:
+      inspection:
+        enabled: false
+
+# gRPC deaktiviert fuer Unit Tests
+grpc:
+  server:
+    port: -1
+  client:
+    GLOBAL:
+      negotiation-type: plaintext
+
+# Security permissive fuer Tests
+security:
+  jwt:
+    secret: test-secret-key-for-unit-tests-only-not-for-production

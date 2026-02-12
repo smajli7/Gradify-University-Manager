@@ -151,10 +151,20 @@ interface StudentWithGrade extends StudentInfo {
         </div>
       }
 
-      <!-- Modul-Auswahl (kompakt) -->
+      <!-- Modul-Auswahl -->
       @if (module().length > 0) {
         <div class="modul-picker card">
-          <label class="modul-picker-label">Modul</label>
+          <div class="modul-picker-header">
+            <div class="modul-picker-icon">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+                <path d="M2 3h6a4 4 0 0 1 4 4v14a3 3 0 0 0-3-3H2z"/><path d="M22 3h-6a4 4 0 0 0-4 4v14a3 3 0 0 1 3-3h7z"/>
+              </svg>
+            </div>
+            <div class="modul-picker-text">
+              <span class="modul-picker-label">Modul auswählen</span>
+              <span class="modul-picker-hint">{{ module().length }} Module zugewiesen</span>
+            </div>
+          </div>
           <div class="modul-picker-row">
             <select class="modul-select" [ngModel]="selectedModul()?.id" (ngModelChange)="onModulSelect($event)">
               <option [ngValue]="null">-- Modul wählen --</option>
@@ -169,17 +179,32 @@ interface StudentWithGrade extends StudentInfo {
         </div>
       }
 
+      <!-- Hinweis wenn kein Modul gewählt -->
+      @if (module().length > 0 && !selectedModul() && !loading()) {
+        <div class="select-hint-card card">
+          <div class="select-hint-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/>
+              <path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/>
+              <path d="M8 7h8M8 11h6"/>
+            </svg>
+          </div>
+          <h3 class="select-hint-title">Modul auswählen</h3>
+          <p class="select-hint-text">Wählen Sie oben ein Modul aus, um die Notenerfassung für die eingeschriebenen Studierenden zu starten.</p>
+        </div>
+      }
+
       @if (selectedModul(); as modul) {
-        <!-- Zeile A: Kontext (Modul • Meta | Datum) -->
-        <div class="context-bar">
+        <!-- Kontext-Bar (Modul-Info + Datum) -->
+        <div class="context-bar card">
           <div class="context-left">
-            <span class="context-modul">{{ modul.modulNr }} – {{ modul.name }}</span>
-            <span class="context-sep">·</span>
-            <span class="context-meta">{{ modul.pruefungsform }}</span>
-            <span class="context-sep">·</span>
-            <span class="context-meta">{{ modul.ects }} ECTS</span>
-            <span class="context-sep">·</span>
-            <span class="context-meta">Semester {{ modul.semester }}</span>
+            <span class="context-badge">{{ modul.modulNr }}</span>
+            <span class="context-modul">{{ modul.name }}</span>
+            <div class="context-tags">
+              <span class="context-tag">{{ modul.pruefungsform }}</span>
+              <span class="context-tag">{{ modul.ects }} ECTS</span>
+              <span class="context-tag">{{ modul.semester }}. Sem</span>
+            </div>
           </div>
           <div class="context-right">
             <label class="context-date-label" title="Standard-Prüfungsdatum für neue/geänderte Noten beim Einreichen">Prüfungsdatum</label>
@@ -622,26 +647,45 @@ interface StudentWithGrade extends StudentInfo {
       background: rgba(255, 255, 255, 0.25);
     }
 
-    .modul-picker { padding: var(--spacing-md); }
-    .modul-picker-label { display: block; font-size: 0.75rem; color: var(--text-muted); margin-bottom: 6px; }
+    .modul-picker { padding: var(--spacing-lg); }
+    .modul-picker-header { display: flex; align-items: center; gap: 14px; margin-bottom: var(--spacing-md); }
+    .modul-picker-icon { width: 40px; height: 40px; display: flex; align-items: center; justify-content: center; border-radius: 10px; background: rgba(139, 92, 246, 0.1); color: #a78bfa; flex-shrink: 0; }
+    .modul-picker-icon svg { width: 22px; height: 22px; }
+    .modul-picker-text { display: flex; flex-direction: column; gap: 2px; }
+    .modul-picker-label { font-size: 0.95rem; font-weight: 600; color: var(--text-primary); }
+    .modul-picker-hint { font-size: 0.8rem; color: var(--text-muted); }
     .modul-picker-row { display: flex; gap: var(--spacing-sm); align-items: center; }
-    .modul-select { flex: 1; max-width: 400px; padding: var(--spacing-sm) var(--spacing-md); background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--text-primary); }
-    .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); }
+    .modul-select { flex: 1; max-width: 480px; padding: 12px 16px; background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.9rem; transition: border-color 0.2s, box-shadow 0.2s; cursor: pointer; }
+    .modul-select:focus { outline: none; border-color: rgba(139, 92, 246, 0.4); box-shadow: 0 0 0 3px rgba(139, 92, 246, 0.08); }
+    .modul-select:hover { border-color: rgba(255, 255, 255, 0.2); }
+    .btn-ghost { background: transparent; color: var(--text-secondary); border: 1px solid var(--border-color); transition: all 0.2s; }
+    .btn-ghost:hover { background: rgba(255, 255, 255, 0.06); border-color: rgba(255, 255, 255, 0.2); }
     .btn-sm { padding: 4px 8px; font-size: 0.8rem; }
-    .btn-icon-only { padding: 8px; width: 36px; height: 36px; }
+    .btn-icon-only { padding: 8px; width: 40px; height: 40px; border-radius: var(--radius-md); }
     .btn-icon-only svg { width: 18px; height: 18px; }
     .btn-secondary { background: var(--bg-elevated); color: var(--text-primary); border: 1px solid var(--border-color); }
     .spinner-inline { display: inline-block; width: 14px; height: 14px; border: 2px solid transparent; border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 6px; }
 
-    .context-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 8px 0; margin-bottom: 8px; }
-    .context-left, .context-right { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
-    .context-modul { font-weight: 600; color: var(--text-primary); font-size: 0.95rem; }
-    .context-meta { font-size: 0.8rem; color: var(--text-muted); }
-    .context-sep { color: var(--text-muted); font-size: 0.8rem; }
-    .context-date-label { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
-    .context-date { padding: 6px 10px; background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-sm); color: var(--text-primary); font-size: 0.85rem; }
+    /* Select-Hint Card (kein Modul gewählt) */
+    .select-hint-card { display: flex; flex-direction: column; align-items: center; padding: var(--spacing-2xl) var(--spacing-xl); text-align: center; }
+    .select-hint-icon { width: 56px; height: 56px; display: flex; align-items: center; justify-content: center; border-radius: 14px; background: rgba(139, 92, 246, 0.08); color: rgba(139, 92, 246, 0.5); margin-bottom: var(--spacing-md); }
+    .select-hint-icon svg { width: 28px; height: 28px; }
+    .select-hint-title { margin: 0 0 var(--spacing-xs) 0; font-size: 1.1rem; font-weight: 600; color: var(--text-primary); }
+    .select-hint-text { margin: 0; font-size: 0.9rem; color: var(--text-muted); max-width: 400px; line-height: 1.5; }
 
-    .action-bar { position: sticky; top: 0; z-index: 12; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 10px 14px; margin-bottom: 12px; background: var(--bg-surface); border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+    /* Context Bar */
+    .context-bar { display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 16px; padding: var(--spacing-md) var(--spacing-lg); margin-bottom: var(--spacing-md); }
+    .context-left { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; }
+    .context-right { display: flex; align-items: center; gap: 8px; }
+    .context-badge { display: inline-flex; align-items: center; justify-content: center; padding: 4px 10px; background: rgba(139, 92, 246, 0.12); color: #a78bfa; border-radius: 6px; font-size: 0.8rem; font-weight: 700; letter-spacing: 0.02em; }
+    .context-modul { font-weight: 600; color: var(--text-primary); font-size: 0.95rem; }
+    .context-tags { display: flex; gap: 6px; }
+    .context-tag { font-size: 0.75rem; color: var(--text-muted); padding: 3px 8px; background: rgba(255, 255, 255, 0.04); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 4px; }
+    .context-date-label { font-size: 0.8rem; color: var(--text-muted); white-space: nowrap; }
+    .context-date { padding: 8px 12px; background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-md); color: var(--text-primary); font-size: 0.85rem; transition: border-color 0.2s; }
+    .context-date:focus { outline: none; border-color: rgba(139, 92, 246, 0.4); }
+
+    .action-bar { position: sticky; top: 0; z-index: 12; display: flex; flex-wrap: wrap; align-items: center; justify-content: space-between; gap: 12px; padding: 12px 18px; margin-bottom: var(--spacing-md); background: rgba(18, 18, 18, 0.95); backdrop-filter: blur(12px); border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15); }
     .action-chips { display: flex; align-items: center; gap: 8px; }
     .chip { font-size: 0.8rem; color: var(--text-secondary); padding: 5px 10px; border-radius: var(--radius-sm); background: var(--bg-elevated); }
     .chip--muted { color: var(--text-muted); }
@@ -660,14 +704,14 @@ interface StudentWithGrade extends StudentInfo {
     .grade-entry-hint-icon { display: inline-flex; flex-shrink: 0; color: var(--color-danger, #dc2626); }
     .note-readonly { font-size: 0.875rem; color: var(--text-muted); }
 
-    .table-wrap { overflow: auto; max-height: 60vh; border: 1px solid var(--border-color); border-radius: var(--radius-md); }
+    .table-wrap { overflow: auto; max-height: 60vh; border: 1px solid var(--border-color); border-radius: var(--radius-lg); box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1); }
     .flat-table { width: 100%; border-collapse: collapse; }
-    .flat-table th, .flat-table td { padding: 8px 12px; font-size: 0.875rem; text-align: left; vertical-align: middle; border: none; border-bottom: 1px solid transparent; }
-    .flat-table thead th { font-weight: 600; color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.04em; background: var(--bg-elevated); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 5; }
+    .flat-table th, .flat-table td { padding: 10px 14px; font-size: 0.875rem; text-align: left; vertical-align: middle; border: none; border-bottom: 1px solid rgba(255, 255, 255, 0.04); }
+    .flat-table thead th { font-weight: 600; color: var(--text-muted); font-size: 0.7rem; text-transform: uppercase; letter-spacing: 0.05em; background: var(--bg-elevated); border-bottom: 1px solid var(--border-color); position: sticky; top: 0; z-index: 5; padding: 12px 14px; }
     .flat-row { transition: background 0.12s ease; }
-    .flat-row--odd { background: rgba(255,255,255,0.02); }
-    .flat-row:hover { background: var(--bg-hover); }
-    .flat-row:hover td { border-bottom-color: rgba(255,255,255,0.06); }
+    .flat-row--odd { background: rgba(255, 255, 255, 0.015); }
+    .flat-row:hover { background: rgba(255, 255, 255, 0.04); }
+    .flat-row:hover td { border-bottom-color: rgba(255, 255, 255, 0.06); }
     .col-dot { width: 24px; padding-left: 12px; }
     .col-matrikel { width: 88px; }
     .col-name { min-width: 140px; }
@@ -676,21 +720,22 @@ interface StudentWithGrade extends StudentInfo {
     .col-bemerkung { min-width: 140px; }
     .col-save { width: 90px; }
 
-    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; }
-    .status-dot--open { background: var(--text-muted); opacity: 0.9; }
-    .status-dot--unsaved { background: var(--color-warning, #b45309); opacity: 0.95; }
-    .status-dot--saved { background: var(--color-success, #0d9488); opacity: 0.9; }
-    .status-dot--error { background: var(--color-danger, #dc2626); opacity: 0.9; }
+    .status-dot { display: inline-block; width: 8px; height: 8px; border-radius: 50%; flex-shrink: 0; transition: background 0.2s; }
+    .status-dot--open { background: rgba(255, 255, 255, 0.15); border: 1.5px solid rgba(255, 255, 255, 0.2); width: 7px; height: 7px; }
+    .status-dot--unsaved { background: #fbbf24; box-shadow: 0 0 6px rgba(251, 191, 36, 0.3); }
+    .status-dot--saved { background: #4ade80; box-shadow: 0 0 6px rgba(34, 197, 94, 0.3); }
+    .status-dot--error { background: #f87171; box-shadow: 0 0 6px rgba(239, 68, 68, 0.3); }
     .status-dot--saving { background: var(--text-muted); animation: pulse 1s ease infinite; }
     @keyframes pulse { 50% { opacity: 0.5; } }
 
-    .note-select { width: 100%; min-width: 72px; padding: 6px 8px; font-size: 0.875rem; font-weight: 500; color: var(--text-primary); background: var(--bg-deep); border: none; border-radius: var(--radius-sm); cursor: pointer; appearance: auto; }
-    .note-select:focus { outline: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.12); }
-    .versuch-select { width: 100%; min-width: 52px; padding: 6px 8px; font-size: 0.85rem; color: var(--text-primary); background: var(--bg-deep); border: none; border-radius: var(--radius-sm); cursor: pointer; }
-    .versuch-select:focus { outline: none; box-shadow: 0 0 0 2px rgba(255,255,255,0.08); }
-    .btn-row-save { padding: 4px 8px; font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; }
-    .btn-row-save:hover:not(:disabled) { background: var(--bg-hover); color: var(--text-primary); }
-    .btn-row-save:disabled { opacity: 0.5; cursor: not-allowed; }
+    .note-select { width: 100%; min-width: 78px; padding: 8px 10px; font-size: 0.875rem; font-weight: 500; color: var(--text-primary); background: var(--bg-deep); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; cursor: pointer; appearance: auto; transition: border-color 0.2s, box-shadow 0.2s; }
+    .note-select:focus { outline: none; border-color: rgba(139, 92, 246, 0.4); box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.1); }
+    .note-select:hover { border-color: rgba(255, 255, 255, 0.15); }
+    .versuch-select { width: 100%; min-width: 56px; padding: 8px 10px; font-size: 0.85rem; color: var(--text-primary); background: var(--bg-deep); border: 1px solid rgba(255, 255, 255, 0.08); border-radius: 6px; cursor: pointer; transition: border-color 0.2s; }
+    .versuch-select:focus { outline: none; border-color: rgba(139, 92, 246, 0.4); box-shadow: 0 0 0 2px rgba(139, 92, 246, 0.08); }
+    .btn-row-save { padding: 6px 12px; font-size: 0.8rem; font-weight: 500; color: var(--text-secondary); background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: 6px; cursor: pointer; transition: all 0.2s; }
+    .btn-row-save:hover:not(:disabled) { background: rgba(139, 92, 246, 0.1); border-color: rgba(139, 92, 246, 0.3); color: #a78bfa; }
+    .btn-row-save:disabled { opacity: 0.4; cursor: not-allowed; }
     .btn-row-save .spinner-tiny { display: inline-block; width: 12px; height: 12px; border: 2px solid var(--border-color); border-top-color: currentColor; border-radius: 50%; animation: spin 0.8s linear infinite; vertical-align: middle; margin-right: 4px; }
 
     .btn-bemerkung { display: inline-flex; align-items: center; gap: 4px; padding: 4px 10px; font-size: 0.8rem; color: var(--text-secondary); background: var(--bg-elevated); border: 1px solid var(--border-color); border-radius: var(--radius-sm); cursor: pointer; }
