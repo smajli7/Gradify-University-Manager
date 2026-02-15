@@ -1,0 +1,844 @@
+\documentclass[12pt,a4paper,ngerman]{article}
+
+% ── Pakete ──────────────────────────────────────────────────────────────────
+\usepackage[utf8]{inputenc}
+\usepackage[T1]{fontenc}
+\usepackage{babel}
+\usepackage{lmodern}
+\usepackage[margin=2.5cm]{geometry}
+\usepackage{graphicx}
+\usepackage{booktabs}
+\usepackage{longtable}
+\usepackage{array}
+\usepackage{tabularx}
+\usepackage{enumitem}
+\usepackage{hyperref}
+\usepackage{xcolor}
+\usepackage{listings}
+\usepackage{fancyhdr}
+\usepackage{titlesec}
+\usepackage{parskip}
+\usepackage{amsmath}
+\usepackage{float}
+\usepackage{caption}
+\usepackage{multirow}
+
+% ── Farben ──────────────────────────────────────────────────────────────────
+\definecolor{gradifyblue}{HTML}{00A8CC}
+\definecolor{sectioncolor}{HTML}{2C3E50}
+\definecolor{linkcolor}{HTML}{1A5276}
+\definecolor{codebg}{HTML}{F4F6F7}
+\definecolor{codeframe}{HTML}{D5DBDB}
+
+% ── Hyperlinks ──────────────────────────────────────────────────────────────
+\hypersetup{
+    colorlinks=true,
+    linkcolor=sectioncolor,
+    urlcolor=linkcolor,
+    citecolor=sectioncolor,
+    pdfauthor={Gruppe webapp-http-200},
+    pdftitle={Gradify -- Projektdokumentation},
+}
+
+% ── Überschriften ───────────────────────────────────────────────────────────
+\titleformat{\section}{\Large\bfseries\color{sectioncolor}}{\thesection}{1em}{}
+\titleformat{\subsection}{\large\bfseries\color{sectioncolor}}{\thesubsection}{1em}{}
+\titleformat{\subsubsection}{\normalsize\bfseries\color{sectioncolor}}{\thesubsubsection}{1em}{}
+
+% ── Header / Footer ────────────────────────────────────────────────────────
+\pagestyle{fancy}
+\fancyhf{}
+\fancyhead[L]{\small\textit{Gradify -- Notenmanagement-System}}
+\fancyhead[R]{\small\textit{WiSe 2025/26}}
+\fancyfoot[C]{\thepage}
+\renewcommand{\headrulewidth}{0.4pt}
+
+% ── Code-Listings ───────────────────────────────────────────────────────────
+\lstset{
+    backgroundcolor=\color{codebg},
+    frame=single,
+    rulecolor=\color{codeframe},
+    basicstyle=\ttfamily\small,
+    breaklines=true,
+    tabsize=2,
+    showstringspaces=false,
+}
+
+% ── Tabellenbreite ──────────────────────────────────────────────────────────
+\newcolumntype{L}[1]{>{\raggedright\arraybackslash}p{#1}}
+\newcolumntype{C}[1]{>{\centering\arraybackslash}p{#1}}
+
+% ════════════════════════════════════════════════════════════════════════════
+\begin{document}
+
+% ── Titelseite ──────────────────────────────────────────────────────────────
+\begin{titlepage}
+\centering
+\vspace*{2cm}
+
+{\Huge\bfseries\color{sectioncolor} Gradify}\\[0.5cm]
+{\LARGE Notenmanagement-System für Hochschulen}\\[2cm]
+
+{\Large Projektdokumentation}\\[0.5cm]
+{\large Web-basierte Anwendungssysteme -- WiSe 2025/26}\\[2cm]
+
+\begin{tabular}{ll}
+\textbf{Modul:}       & Web-basierte Anwendungssysteme \\
+\textbf{Dozent:}      & Prof. Lehmann \\
+\textbf{Gruppe:}      & webapp-http-200 \\[0.3cm]
+\textbf{Teammitglieder:} & Jakub Naruszko (Matrikelnr. 1511408) \\
+                          & Louisa Kristin Bahr (Matrikelnr. 1508628) \\[0.3cm]
+\textbf{Abgabedatum:} & 23.02.2026 \\
+\end{tabular}
+
+\vfill
+
+{\large Frankfurt University of Applied Sciences}\\[0.3cm]
+{\normalsize Februar 2026}
+\end{titlepage}
+
+% ── Inhaltsverzeichnis ─────────────────────────────────────────────────────
+\newpage
+\tableofcontents
+\newpage
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Systemübersicht}
+% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Projektbeschreibung}
+
+Gradify ist ein web-basiertes Notenmanagement-System für Hochschulen. Das System ermöglicht die Verwaltung von Studierenden, die Erfassung und Validierung von Modulnoten sowie die automatisierte Berechnung von Gesamt- und Durchschnittsnoten gemäß hochschulspezifischer Prüfungsordnungen. Verschiedene Nutzerrollen verfügen über differenzierte Berechtigungen. Das System ist mandantenfähig konzipiert, sodass mehrere Hochschulen unabhängig voneinander arbeiten können.
+
+\begin{table}[H]
+\centering
+\caption{Unterstützte Studiengänge}
+\begin{tabular}{llcr}
+\toprule
+\textbf{Studiengang} & \textbf{Abschluss} & \textbf{Regelstudienzeit} & \textbf{ECTS} \\
+\midrule
+Bioverfahrenstechnik & Bachelor of Engineering & 7 Semester & 210 \\
+Forschung in der Sozialen Arbeit & Master of Arts & 4 Semester & 120 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Architekturentscheidung: Microservices}
+
+Das Anwendungssystem folgt einer Microservice-Architektur. Die Entscheidung gegen einen Monolithen und für Microservices wurde aus folgenden Gründen getroffen:
+
+\begin{itemize}[nosep]
+\item \textbf{Entkopplung:} Jeder Service ist für genau eine fachliche Domäne verantwortlich (z.\,B. Noten, Berechnung, Benutzer). Änderungen an einem Service erfordern kein erneutes Deployment aller anderen Services.
+\item \textbf{Unabhängige Skalierung:} Services mit hoher Last (z.\,B. der Berechnungs-Service während der Prüfungsphase) können unabhängig skaliert werden.
+\item \textbf{Technologievielfalt:} Die Projektanforderung verlangt den Einsatz von REST, GraphQL und gRPC. Eine Microservice-Architektur ermöglicht es, für jeden Kommunikationsweg das jeweils geeignetste Protokoll einzusetzen.
+\item \textbf{Eigene Datenhaltung:} Jeder Service besitzt eine eigene PostgreSQL-Datenbank. Dadurch wird eine echte Entkopplung auf Datenebene erreicht, und Multi-Tenancy kann pro Service individuell implementiert werden.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Serviceübersicht}
+\begin{tabular}{clL{6.5cm}cc}
+\toprule
+\textbf{Nr.} & \textbf{Service} & \textbf{Verantwortlichkeit} & \textbf{HTTP} & \textbf{gRPC} \\
+\midrule
+1 & API-Gateway          & Zentraler Einstiegspunkt, Routing, CORS             & 8080 & --   \\
+2 & Auth-Service         & Authentifizierung, JWT-Token-Management              & 8081 & --   \\
+3 & User-Service         & Benutzerverwaltung, Rollen, Studentendaten           & 8082 & 9082 \\
+4 & Studiengang-Service  & Studiengänge, Module, POs, Einschreibungen           & 8083 & 9083 \\
+5 & Noten-Service        & Notenerfassung, -validierung, -freigabe              & 8084 & 9084 \\
+6 & Berechnungs-Service  & Gesamt- und Durchschnittsnoten-Berechnung            & 8085 & 9085 \\
+7 & Frontend (Angular)   & Grafische Benutzeroberfläche (SPA + PWA)             & 4200 & --   \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Architekturdiagramm}
+
+\begin{lstlisting}[basicstyle=\ttfamily\footnotesize, columns=fullflexible, keepspaces=true]
+                    +--------------------+
+                    |  Angular Frontend  |
+                    |    (Port 4200)     |
+                    +---------+----------+
+                              | REST + GraphQL
+                              v
+                    +--------------------+
+                    |    API-Gateway     |
+                    |    (Port 8080)     |
+                    +---------+----------+
+                              |
+      +-----------------------+-----------------------+
+      |                       |                       |
+      v                       v                       v
++-------------+     +-------------+     +------------------+
+|Auth-Service |     |User-Service |     |Studiengang-Svc   |
+| (Port 8081) |     | (Port 8082) |     | (Port 8083)      |
++------+------+     +------+------+     +--------+---------+
+       | gRPC              |                     |
+       +-------------------+                     |
+                          +----------------------+
+                          |
+                          v
+              +-------------------+  RabbitMQ  +-------------------+
+              |   Noten-Service   | ---------> | Berechnungs-Svc   |
+              |   (Port 8084)     | <-- gRPC ->|   (Port 8085)     |
+              +--------+----------+            +--------+----------+
+                       |                                |
+                       v                                v
+              +-------------------+            +-------------------+
+              |    PostgreSQL     |            |    PostgreSQL     |
+              | (je eigene DB)    |            | (je eigene DB)    |
+              +-------------------+            +-------------------+
+\end{lstlisting}
+
+Jeder Service besitzt eine eigene PostgreSQL-Datenbank. Der Datenaustausch erfolgt ausschließlich über REST-, GraphQL- und gRPC-Schnittstellen sowie RabbitMQ für asynchrone Kommunikation.
+
+\subsection{Technologie-Stack}
+
+\begin{table}[H]
+\centering
+\caption{Eingesetzte Technologien mit Begründung}
+\begin{tabular}{llL{6cm}}
+\toprule
+\textbf{Technologie} & \textbf{Version} & \textbf{Begründung} \\
+\midrule
+Spring Boot       & 3.3.7  & De-facto-Standard für Java-Microservices; umfangreiches Ökosystem für REST, GraphQL, gRPC, Security \\
+Java              & 17     & LTS-Version mit modernen Sprachfeatures (Records, Pattern Matching) \\
+PostgreSQL        & 16     & Robuste relationale Datenbank; exzellente JSON-Unterstützung für PO-Regelwerke \\
+RabbitMQ          & 3.x    & Einfacher als Apache Kafka; perfekt für Task-Queues; exzellente Spring-Integration \\
+Angular           & 18.2   & Enterprise-Framework mit TypeScript; starkes Ökosystem (Material, Apollo, PWA-Support) \\
+Angular Material  & 18.2   & Konsistente, barrierefreie UI-Komponenten; spart Entwicklungszeit \\
+Apollo Angular    & 7.0    & Führender GraphQL-Client; Caching, Typ-Generierung \\
+Docker            & 24+    & Container-Standard; reproduzierbare Builds \\
+Kubernetes        & 1.28+  & Orchestrierung; automatische Skalierung, Selbstheilung, Zero-Downtime-Deployments \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Nutzerrollen}
+
+Das System definiert fünf aktiv genutzte Rollen. Die Zuordnung erfolgt n:m, sodass ein Benutzer mehrere Rollen gleichzeitig besitzen kann.
+
+\begin{table}[H]
+\centering
+\caption{Nutzerrollen und Berechtigungen}
+\begin{tabular}{lL{10cm}}
+\toprule
+\textbf{Rolle} & \textbf{Hauptfunktionen} \\
+\midrule
+ROLE\_ADMIN               & Vollzugriff auf alle Systemfunktionen; Benutzerverwaltung, Mandantenanlage, Rollenzuweisung \\
+ROLE\_HOCHSCHUL\_VERWALTER & Mandantenverwaltung, Dozenten-Modul-Zuweisungen, Studierendenverwaltung \\
+ROLE\_LEHRENDER            & Noten erfassen und bearbeiten für zugewiesene Module; Kursstatistiken einsehen \\
+ROLE\_PRUEFUNGSAMT         & Notenvalidierung und -freigabe, Gesamtnotenberechnung, Berichte, Studierendenverwaltung \\
+ROLE\_STUDENT              & Eigene Noten und Gesamtnote einsehen, Studienfortschritt, Studienplan, Profilverwaltung \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{User Stories (Anforderungsbezug)}
+
+Zur fachlichen Einordnung der Systemfunktionen werden die zentralen Nutzungsszenarien in User Stories verdichtet:
+
+\begin{table}[H]
+\centering
+\caption{Repräsentative User Stories}
+\begin{tabular}{lL{3cm}L{4.5cm}L{4.5cm}}
+\toprule
+\textbf{ID} & \textbf{Rolle} & \textbf{Ziel} & \textbf{Nutzen} \\
+\midrule
+US-1 & Lehrender & Noten für zugewiesene Module erfassen und korrigieren & Prüfungsleistungen werden zeitnah und strukturiert dokumentiert \\
+US-2 & Prüfungsamt & Erfasste Noten validieren, freigeben oder zurückweisen & Qualitätssicherung vor Veröffentlichung an Studierende \\
+US-3 & Studierender & Eigene Noten, Fortschritt und Studienplan einsehen & Transparente Lernstandskontrolle und Studienplanung \\
+US-4 & Hochschulverwalter & Dozenten-Modul-Zuweisungen und Studierendenlisten verwalten & Operative Steuerung pro Mandant ohne Systemeingriffe \\
+US-5 & Admin & Mandanten und Benutzer inkl. Rollen zentral verwalten & Sichere, mandantenfähige Betriebsführung des Gesamtsystems \\
+US-6 & System (asynchron) & Nach Notenänderung automatisch Gesamtnote neu berechnen & Konsistente Berechnungsergebnisse ohne manuelle Folgeprozesse \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Prozessabläufe (Sequenzdarstellung)}
+
+Die folgenden textuellen Sequenzdarstellungen ergänzen die Architekturübersicht um zentrale End-to-End-Abläufe:
+
+\textbf{Ablauf A: Login und Token-Ausgabe}
+\begin{lstlisting}
+Client -> API-Gateway: POST /api/auth/login
+API-Gateway -> Auth-Service: /api/auth/login
+Auth-Service -> User-Service (gRPC): ValidateCredentials
+User-Service --> Auth-Service: valid, userId, roles, mandantId
+Auth-Service --> API-Gateway: accessToken + refreshToken
+API-Gateway --> Client: 200 OK (JWT-Daten)
+\end{lstlisting}
+
+\textbf{Ablauf B: Notenänderung mit automatischer Neuberechnung}
+\begin{lstlisting}
+Lehrender -> Frontend: Note erfassen/aendern
+Frontend -> API-Gateway: POST/PUT /api/noten
+API-Gateway -> Noten-Service: Request weiterleiten
+Noten-Service -> RabbitMQ: note.created/note.updated Event
+RabbitMQ -> Berechnungs-Service: Event zustellen
+Berechnungs-Service -> Studiengang-Service (gRPC): GetRegelwerk/GetEinschreibungDetails
+Berechnungs-Service -> Noten-Service (gRPC): GetNotenFuerBerechnung
+Berechnungs-Service -> DB: Berechnungsergebnis + ModulBerechnung speichern
+\end{lstlisting}
+
+\subsection{Datenhoheit (Data Ownership)}
+
+Die Datenhaltung folgt dem Prinzip \textit{Service owns its data}: Auth- und User-Service nutzen zentrale Datenbanken, während Studiengang-, Noten- und Berechnungs-Service tenant-spezifische Datenbanken verwenden. Ein direkter Datenbankzugriff zwischen Services ist ausgeschlossen -- der Datenaustausch erfolgt ausschließlich über APIs. Dieses Prinzip gewährleistet lose Kopplung, Datenisolation und unabhängige Schema-Evolutionen.
+
+\begin{table}[H]
+\centering
+\caption{Datenhoheit pro Service}
+\begin{tabular}{lL{9cm}}
+\toprule
+\textbf{Service} & \textbf{Entitäten} \\
+\midrule
+Auth-Service        & RefreshToken, LoginVersuch, TenantRegistry \\
+User-Service        & Benutzer, Student, Rolle, BenutzerHistorie \\
+Studiengang-Service & Mandant, Studiengang, Prüfungsordnung, Modul, PoRegelwerk, Einschreibung, ModulZuweisung, WahlpflichtWahl \\
+Noten-Service       & Note, NotenHistorie (Audit-Log) \\
+Berechnungs-Service & Berechnungsergebnis, ModulBerechnung \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{API-Gateway}
+% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Begründung}
+
+Ein zentraler API-Gateway wurde aus folgenden Gründen integriert:
+
+\begin{itemize}[nosep]
+\item \textbf{Single Entry Point:} Das Frontend muss nur einen einzigen Host ansprechen, statt die Adressen aller Microservices zu kennen. Dies vereinfacht die Frontend-Konfiguration erheblich.
+\item \textbf{Querschnittsfunktionen:} CORS-Handling, Authentifizierungsweiterleitung und Request-Logging werden zentral implementiert, statt in jedem Service redundant.
+\item \textbf{Entkopplung:} Die interne Service-Topologie (Ports, Hostnamen) bleibt dem Client verborgen. Services können umbenannt, verschoben oder skaliert werden, ohne dass das Frontend angepasst werden muss.
+\item \textbf{GraphQL-Aggregation:} Da drei Services eigene GraphQL-Endpunkte bereitstellen, ermöglicht der Gateway ein einheitliches Routing über servicespezifische Pfade (\texttt{/graphql/user}, \texttt{/graphql/studiengang}, \texttt{/graphql/noten}).
+\end{itemize}
+
+\textbf{Technologie:} Spring Cloud Gateway (reaktiv, Netty-basiert) auf Port 8080.
+
+\subsection{Routing-Konfiguration}
+
+\begin{table}[H]
+\centering
+\caption{REST- und GraphQL-Routing}
+\begin{tabular}{L{5.5cm}lr}
+\toprule
+\textbf{Pfad-Präfix} & \textbf{Ziel-Service} & \textbf{Port} \\
+\midrule
+\texttt{/api/auth/**}               & Auth-Service        & 8081 \\
+\texttt{/api/users/**}, \texttt{/api/students/**} & User-Service & 8082 \\
+\texttt{/api/mandanten/**}, \texttt{/api/studiengaenge/**}, \texttt{/api/module/**}, \texttt{/api/module-zuweisungen/**}, \texttt{/api/pruefungsordnungen/**}, \texttt{/api/einschreibungen/**}, \texttt{/api/import/**} & Studiengang-Svc. & 8083 \\
+\texttt{/api/noten/**}              & Noten-Service       & 8084 \\
+\texttt{/api/berechnungen/**}       & Berechnungs-Svc.    & 8085 \\
+\texttt{/graphql/user}              & User-Service        & 8082 \\
+\texttt{/graphql/studiengang}       & Studiengang-Svc.    & 8083 \\
+\texttt{/graphql/noten}             & Noten-Service       & 8084 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Ein globaler \texttt{ForwardAuthorizationFilter} leitet den JWT-\texttt{Authorization}-Header an alle Backend-Services weiter. GraphQL-Pfade werden per \texttt{RewritePath}-Filter auf den jeweiligen \texttt{/graphql}-Endpunkt umgeschrieben. CORS ist für das Frontend (\texttt{localhost:4200}) konfiguriert. Im Docker-/Kubernetes-Profil werden alle \texttt{localhost}-Adressen durch Container-Servicenamen ersetzt.
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Auth-Service}
+% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Begründung für einen eigenen Authentifizierungsdienst}
+
+Die Authentifizierung wurde bewusst in einen eigenständigen Service ausgelagert:
+
+\begin{itemize}[nosep]
+\item \textbf{Separation of Concerns:} Authentifizierung (Wer ist der Benutzer?) wird von Autorisierung (Was darf der Benutzer?) und von der Benutzerverwaltung (CRUD auf Benutzerkonten) getrennt. Dies entspricht dem Single-Responsibility-Prinzip.
+\item \textbf{Unabhängige Skalierung:} Der Auth-Service kann bei hoher Login-Last (z.\,B. Semesterbeginn) unabhängig skaliert werden.
+\item \textbf{Erweiterbarkeit:} Zukünftige Erweiterungen wie OAuth2/OpenID Connect oder Multi-Faktor-Authentifizierung können implementiert werden, ohne andere Services zu verändern.
+\item \textbf{Sicherheit:} Token-Generierung und -Validierung sind an einer Stelle zentralisiert. Der JWT-Secret wird nicht über mehrere Services verteilt.
+\end{itemize}
+
+\subsection{Authentifizierungsablauf}
+
+\begin{enumerate}
+\item Der Client sendet Benutzername und Passwort an \texttt{POST /api/auth/login}.
+\item Der Auth-Service fragt den User-Service per gRPC (\texttt{ValidateCredentials}) ab. Dabei wird das Passwort gegen den BCrypt-Hash validiert.
+\item Bei erfolgreicher Validierung generiert der Auth-Service einen JWT Access-Token (HMAC-SHA256, 3~Stunden gültig) und einen Refresh-Token (7~Tage gültig, in der Datenbank persistiert).
+\item Der Login-Versuch wird in der Tabelle \texttt{login\_versuche} protokolliert (Erfolgreich/Fehlergrund).
+\item Access-Token, Refresh-Token und Benutzerinfo (id, Name, Rollen, mandantId, studentId) werden zurückgegeben.
+\end{enumerate}
+
+Der Access-Token enthält die Claims \texttt{sub} (Benutzer-ID), \texttt{name}, \texttt{roles[]}, \texttt{mandantId} und \texttt{exp}. Jeder Backend-Service validiert den Token über einen \texttt{JwtAuthFilter} in seiner eigenen Security-Konfiguration -- eine erneute Abfrage an den Auth-Service ist nicht notwendig, da die Signatur lokal geprüft wird.
+
+\subsection{Token-Refresh-Strategie}
+
+Wenn der Access-Token abläuft, sendet der Client den Refresh-Token an \texttt{POST /api/auth/refresh}. Der Auth-Service prüft, ob der Refresh-Token gültig und nicht widerrufen ist, und stellt einen neuen Access-Token aus. Beim Logout werden alle Refresh-Tokens des Benutzers widerrufen, sodass keine neuen Access-Tokens mehr generiert werden können.
+
+\subsection{REST-Endpunkte}
+
+\begin{table}[H]
+\centering
+\begin{tabular}{llL{5cm}l}
+\toprule
+\textbf{Methode} & \textbf{Endpunkt} & \textbf{Beschreibung} & \textbf{Auth} \\
+\midrule
+POST & \texttt{/api/auth/login}       & Anmelden (gibt JWT + Refresh-Token zurück) & Öffentlich \\
+POST & \texttt{/api/auth/refresh}     & Neuen Access-Token ausstellen              & Öffentlich \\
+GET  & \texttt{/api/auth/validate}    & Token-Gültigkeit prüfen                    & JWT \\
+GET  & \texttt{/api/auth/me}          & Aktuellen Benutzer aus Token auslesen      & JWT \\
+POST & \texttt{/api/auth/logout}      & Alle Refresh-Tokens widerrufen             & JWT \\
+GET  & \texttt{/api/auth/grpc-status} & gRPC-Verbindungsstatus prüfen              & Öffentlich \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{User-Service}
+% ════════════════════════════════════════════════════════════════════════════
+
+Der User-Service (Ports 8082/9082) ist die zentrale Verwaltungseinheit für alle Benutzerdaten, Rollen und Studierenden-Stammdaten. Er wird von anderen Services ausschließlich über gRPC abgefragt und stellt REST sowie GraphQL nur für das Frontend bereit.
+
+\subsection{Entitäten}
+
+\textbf{Benutzer:} id (Long), benutzername, email, passwortHash (BCrypt), vorname, nachname, mandantId, aktiv (Soft-Delete), rollen (n:m), letzterLogin, erstelltAm.
+
+\textbf{Student:} id, benutzer (1:1-Beziehung), matrikelnummer (unique), geburtsdatum, status (AKTIV / BEURLAUBT / EXMATRIKULIERT).
+
+\textbf{Rolle:} Vordefiniert: ROLE\_STUDENT (1), ROLE\_LEHRENDER (2), ROLE\_PRUEFUNGSAMT (3), ROLE\_STUDIENGANGLEITUNG (4), ROLE\_ADMIN (5), ROLE\_HOCHSCHUL\_VERWALTER (6). Die Rolle ROLE\_STUDIENGANGLEITUNG ist im Datenmodell vorhanden, wird im aktuellen Funktionsumfang jedoch nicht aktiv in der Navigation oder den Guards verwendet.
+
+\textbf{BenutzerHistorie:} Audit-Log für Benutzeränderungen (ERSTELLT/GELOESCHT).
+
+\subsection{Schnittstellen}
+
+\textbf{REST} (\texttt{/api/users}, \texttt{/api/students}): Umfassende CRUD-Endpunkte, CSV-Import/Export, Rollenverwaltung, Audit-Log. Zugriffssteuerung: \texttt{/api/users} nur für ADMIN; \texttt{/api/students} für ADMIN, PRUEFUNGSAMT und HOCHSCHUL\_VERWALTER.
+
+\textbf{GraphQL} (\texttt{/graphql}): Queries für Benutzer, Studenten, Matrikel-Suche. Mutations für CRUD und Rollenzuweisung. Ermöglicht dem Frontend, verschachtelte Daten (z.\,B. Student mit Benutzerinfos) in einer Anfrage zu laden.
+
+\textbf{gRPC} (Port 9082): \texttt{UserValidationService} (ValidateCredentials, GetUserById, GetUserByUsername) -- aufgerufen vom Auth-Service. \texttt{StudentDataService} (StudentExists, GetStudent, GetStudentsByIds, GetStudentsByStudiengang) -- aufgerufen vom Studiengang-Service (im Hauptfluss primär über GetStudentsByIds).
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Studiengang-Service}
+% ════════════════════════════════════════════════════════════════════════════
+
+Der Studiengang-Service (Ports 8083/9083) verwaltet die fachlichen Stammdaten: Mandanten, Studiengänge, Prüfungsordnungen mit Berechnungsregelwerken (JSON), Module mit Gewichtungen, Einschreibungen, Dozenten-Modul-Zuweisungen und Wahlpflichtfachwahlen.
+
+\subsection{Entitäten}
+
+\textbf{Mandant:} Repräsentiert eine Hochschule (id, name, kuerzel). Die Anlage eines Mandanten löst das automatische Provisioning der Tenant-Datenbanken aus.
+
+\textbf{Studiengang:} name, kuerzel, abschlussart (BACHELOR/MASTER), regelstudienzeit, gesamtEcts, studienvariante (ALLGEMEIN/DUAL).
+
+\textbf{Modul:} modulNr, name, ects, semester, pruefungsform (7 Typen), bewertungsart (NOTE / BESTANDEN\_NICHT\_BESTANDEN), gewichtung, modultyp (PFLICHT/WAHLPFLICHT/ZUSATZ), wahlpflichtGruppe.
+
+\textbf{PoRegelwerk:} Speichert die Berechnungsformel und Parameter als JSON. Dadurch kann die Berechnungslogik pro Studiengang konfiguriert werden, ohne Code zu ändern.
+
+\textbf{Einschreibung:} Verknüpft einen Studenten mit einem Studiengang und einer PO-Version. Status: AKTIV, ABGESCHLOSSEN, ABGEBROCHEN.
+
+\textbf{ModulZuweisung + Historie:} Zuordnung von Dozenten zu Modulen mit lückenloser Protokollierung.
+
+\textbf{WahlpflichtWahl:} Ermöglicht es Studierenden, innerhalb von Wahlpflichtgruppen ein Modul zu wählen (z.\,B. Modul 5.1 oder 5.2 im Master FSA).
+
+\subsection{gRPC-Schnittstellen}
+
+\textbf{Eingehend} (RegelwerkService, Port 9083): \texttt{GetRegelwerk}, \texttt{GetModulGewichtungen}, \texttt{GetEinschreibungDetails} -- aufgerufen vom Berechnungs-Service, um PO-Formeln und Modulstrukturen zu laden.
+
+\textbf{Ausgehend} (StudentDataService, Port 9082): \texttt{StudentExists}, \texttt{GetStudent}, \texttt{GetStudentsByIds}, \texttt{GetStudentsByStudiengang} -- aufgerufen am User-Service, um Studentendaten bei Einschreibungen und Listenabfragen zu verifizieren.
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Noten-Service}
+% ════════════════════════════════════════════════════════════════════════════
+
+Der Noten-Service (Ports 8084/9084) ist für den vollständigen Notenlebenszyklus zuständig und veröffentlicht Änderungsevents über RabbitMQ.
+
+\subsection{Notenlebenszyklus}
+
+\begin{center}
+\textbf{ERFASST} $\xrightarrow{\text{Prüfungsamt}}$ \textbf{VALIDIERT} $\xrightarrow{\text{Prüfungsamt}}$ \textbf{FREIGEGEBEN}
+\end{center}
+
+\begin{itemize}[nosep]
+\item \textbf{ERFASST:} Note wurde durch einen Lehrenden eingegeben und kann noch bearbeitet werden.
+\item \textbf{VALIDIERT:} Note wurde vom Prüfungsamt geprüft. Eine Ablehnung (\texttt{reject}) setzt den Status zurück auf ERFASST.
+\item \textbf{FREIGEGEBEN:} Note ist für Studierende sichtbar und löst eine Neuberechnung der Gesamtnote aus.
+\end{itemize}
+
+\subsection{Audit-Log (Nachvollziehbarkeit)}
+
+Jede Notenänderung wird in der Tabelle \texttt{noten\_historie} protokolliert: Wer hat wann welchen Wert geändert (alter Wert, neuer Wert, Kommentar). Sechs Änderungstypen werden unterschieden: ERSTELLT, NOTE\_GEAENDERT, VALIDIERT, FREIGEGEBEN, FREIGABE\_ZURUECKGENOMMEN und STORNIERT. Das Audit-Log ist über \texttt{GET /api/noten/audit} mit umfangreichen Filterparametern abrufbar. Dozenten sehen nur Einträge zu ihren zugewiesenen Modulen; Prüfungsamt und Admin sehen alle Einträge ihres Mandanten.
+
+\subsection{RabbitMQ (Producer)}
+
+Bei jeder Notenänderung veröffentlicht der Service ein \texttt{NoteEvent} über den Topic Exchange \texttt{gradify.events}. Routing-Keys: \texttt{note.created}, \texttt{note.updated}, \texttt{note.validated}, \texttt{note.released}, \texttt{note.deleted}. Das Event enthält: noteId, einschreibungId, modulId, noteWert, mandantId, ausgeloestVon. Der Berechnungs-Service konsumiert diese Events und berechnet die Gesamtnote automatisch neu.
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Berechnungs-Service}
+% ════════════════════════════════════════════════════════════════════════════
+
+Der Berechnungs-Service (Ports 8085/9085) führt alle Notenberechnungen durch und speichert Ergebnisse mit Detailaufschlüsselung pro Modul. Er bezieht seine Daten ausschließlich über gRPC von anderen Services und wird über RabbitMQ-Events automatisch getriggert.
+
+\subsection{Berechnungsablauf}
+
+\begin{enumerate}
+\item Eine Notenänderung im Noten-Service löst ein RabbitMQ-Event aus.
+\item Der Berechnungs-Service empfängt das Event auf der Queue \texttt{queue.berechnung.neuberechnung}.
+\item Per gRPC werden Einschreibungsdetails (poId, ectsGesamt, studiengangName) und Modulgewichtungen vom Studiengang-Service geladen.
+\item Per gRPC werden die aktuellen Noten der Einschreibung vom Noten-Service geladen.
+\item Die Gesamtnote wird gemäß der PO-Formel berechnet.
+\item Das Ergebnis wird zusammen mit der Detailaufschlüsselung (Beitrag jedes Moduls) in der Datenbank gespeichert.
+\end{enumerate}
+
+\subsection{Entitäten}
+
+\textbf{Berechnungsergebnis:} einschreibungId (unique), gesamtnote (gerundet), gesamtnoteRoh (ungerundet), status (VORLAEUFIG/ENDGUELTIG), moduleBestanden, moduleGesamt, ectsErreicht, ectsGesamt.
+
+\textbf{ModulBerechnung:} Pro Modul: modulNr, modulName, note, gewichtung, inGesamtnote, bestanden, ects, gewichteterBeitrag. Ermöglicht eine transparente Aufschlüsselung, wie sich die Gesamtnote zusammensetzt.
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Kommunikationskonzept}
+% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Protokollwahl mit Begründung}
+
+Gemäß Projektanforderung werden REST, GraphQL und gRPC eingesetzt. Zusätzlich wurde RabbitMQ als Message Queue integriert. Die Zuordnung erfolgt nach Anwendungsfall:
+
+\begin{table}[H]
+\centering
+\caption{Protokollwahl mit Begründung}
+\begin{tabular}{lL{4cm}L{6cm}}
+\toprule
+\textbf{Protokoll} & \textbf{Einsatzbereich} & \textbf{Warum dieses Protokoll?} \\
+\midrule
+REST     & Schreiboperationen (CRUD), Login, Statusänderungen & Jeder Request entspricht genau einer Aktion; HTTP-Semantik (GET/POST/PUT/DELETE) ist intuitiv; einfach zu implementieren und zu testen \\
+GraphQL  & Dashboard-Ansichten, flexible Leseabfragen & Frontend bestimmt Datenstruktur; eine Anfrage statt mehrerer REST-Calls; reduziert Netzwerk-Roundtrips für verschachtelte Daten (z.\,B. Student mit Noten und Modulen) \\
+gRPC     & Service-zu-Service-Kommunikation (Backend $\leftrightarrow$ Backend) & Binäres Protokoll (Protocol Buffers) ist schneller als JSON; Typsicherheit durch \texttt{.proto}-Dateien zur Compile-Zeit; Streaming-Unterstützung \\
+RabbitMQ & Notenänderung $\rightarrow$ automatische Neuberechnung & Lose Kopplung (Producer kennt Consumer nicht); Fehlertoleranz (Events werden gepuffert); Skalierbarkeit (mehrere Consumer parallel); Erweiterbarkeit (neue Consumer ohne Änderung am Producer) \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Alle gRPC-Verbindungen}
+
+\begin{table}[H]
+\centering
+\caption{gRPC-Verbindungen im System}
+\begin{tabular}{llll}
+\toprule
+\textbf{Von} & \textbf{Nach (Port)} & \textbf{Methode} & \textbf{Zweck} \\
+\midrule
+Auth-Service      & User (9082)        & ValidateCredentials      & Login-Prüfung \\
+Auth-Service      & User (9082)        & GetUserById/GetUserByUsername & Methoden im Auth-Client zur Benutzerdatenauflösung \\
+Studiengang-Svc.  & User (9082)        & StudentExists/GetStudent/GetStudentsByIds/GetStudentsByStudiengang & Studentendaten bei Einschreibung und Listenauflösung \\
+Berechnungs-Svc.  & Studiengang (9083) & GetRegelwerk             & PO-Berechnungsformel \\
+Berechnungs-Svc.  & Studiengang (9083) & GetModulGewichtungen     & Gewichtungen aller Module \\
+Berechnungs-Svc.  & Studiengang (9083) & GetEinschreibungDetails  & poId, ectsGesamt, studiengangName \\
+Berechnungs-Svc.  & Noten (9084)       & GetNotenFuerBerechnung   & Noten einer Einschreibung \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Message Queue: Warum RabbitMQ?}
+
+Für die asynchrone Kommunikation wurde RabbitMQ gegenüber Apache Kafka bevorzugt. RabbitMQ bietet eine geringere Komplexität und ist als Task-Queue für das vorliegende Szenario (Notenänderung $\rightarrow$ Neuberechnung) besser geeignet. Die Spring Boot Integration (\texttt{spring-amqp}) ist exzellent dokumentiert. Kafka wäre bei Event-Streaming mit hohem Durchsatz (Millionen Events/Sekunde) vorteilhafter, was für das Gradify-Szenario nicht erforderlich ist.
+
+\textbf{Technische Umsetzung:} Exchange \texttt{gradify.events} (Topic-Typ), Queue \texttt{queue.berechnung.neuberechnung}, JSON-Serialisierung, durable Queues. Jedes Event enthält eine \texttt{mandantId}, sodass der Consumer den korrekten Tenant-Kontext setzen kann.
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Frontend (Angular SPA + PWA)}
+% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Begründung für Angular}
+
+Angular wurde als Frontend-Framework gewählt, da es als Enterprise-Framework mit TypeScript eine starke Typisierung bietet, die Fehler zur Entwicklungszeit abfängt. Das Angular-Ökosystem bietet mit Angular Material eine umfassende UI-Komponentenbibliothek, mit Apollo Angular einen ausgereiften GraphQL-Client und mit dem Angular Service Worker nativen PWA-Support. Im Vergleich zu React oder Vue bietet Angular eine stärkere Strukturvorgabe (Module, Services, Guards), was bei einem Team-Projekt die Konsistenz fördert.
+
+\subsection{Responsive Design}
+
+Das Frontend ist vollständig responsiv gestaltet und passt sich an verschiedene Bildschirmgrößen an:
+
+\begin{table}[H]
+\centering
+\caption{Responsive Breakpoints}
+\begin{tabular}{lcL{6cm}}
+\toprule
+\textbf{Breakpoint} & \textbf{Breite} & \textbf{Navigation} \\
+\midrule
+Desktop  & $\geq$ 769\,px    & Feste linke Sidebar (240\,px breit) mit Sektionsgruppen. Aktives Item wird durch orangefarbene Leiste am linken Rand markiert. Die Sidebar ist auf 68\,px (nur Icons) zusammenklappbar. \\
+Tablet   & 769--1024\,px     & Gleiches Verhalten wie Desktop (kein separater Tablet-Breakpoint in der Implementierung) \\
+Mobil    & $<$ 768\,px       & Sidebar wird ausgeblendet; Hamburger-Menü mit mobiler Overlay-Navigation. Vollbild-Content-Bereich. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Alle Tabellen, Formulare und Karten verwenden flexible CSS-Layouts (Flexbox/Grid) und passen sich automatisch an. Angular Material-Komponenten bringen responsive Verhaltensweisen bereits mit. Die Sidebar nutzt \texttt{backdrop-filter: blur(12px)} für einen modernen Glasmorphismus-Effekt.
+
+\subsection{Progressive Web App (PWA)}
+
+Gradify ist als Progressive Web App konfiguriert. Dies wurde umgesetzt, weil Studierende und Lehrende häufig mobile Geräte nutzen und eine installierbare App ohne App-Store-Veröffentlichung einen schnelleren Zugang zum System bietet.
+
+\begin{table}[H]
+\centering
+\caption{PWA-Features und Begründung}
+\begin{tabular}{lL{9cm}}
+\toprule
+\textbf{Feature} & \textbf{Beschreibung und Begründung} \\
+\midrule
+Installierbarkeit & Die App kann über das Web App Manifest (\texttt{manifest.webmanifest}) auf dem Homescreen von Smartphones oder dem Desktop installiert werden. Dadurch entfällt der Umweg über den Browser und die App startet wie eine native Anwendung. \\
+Standalone-Modus & Im installierten Zustand wird die App ohne Browser-Chrome (Adressleiste, Tabs) dargestellt. Dies schafft ein immersives Nutzungserlebnis. \\
+Service Worker & Der Angular Service Worker (\texttt{ngsw-config.json}) cachet die App-Shell (HTML, CSS, JavaScript) und statische Assets (Icons, Fonts) vorab. Bei erneutem Aufruf wird die App sofort aus dem Cache geladen, was die Ladezeit drastisch reduziert. API- und GraphQL-Anfragen werden bewusst \textbf{nicht} gecachet, da Notendaten stets aktuell sein müssen. \\
+Offline-Shell & Ohne Netzwerkverbindung wird die App-Struktur aus dem Cache geladen und ein Offline-Banner angezeigt. Datenanfragen sind im Offline-Modus nicht möglich (Datenschutz und Aktualität). \\
+Branding & Splashscreen über Manifest-Farben (\texttt{theme\_color: \#00F2FF}, \texttt{background\_color: \#0B0E14}); diese Werte sind derzeit vom Laufzeit-Theme getrennt. Icons in 72\,px bis 512\,px für alle Geräteklassen. \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Design: Professionelles Dark-Theme}
+
+Das Frontend verwendet ein professionelles Dark-Theme mit gedämpften Grautönen und dezenten Akzentfarben. Die Designentscheidung für ein dunkles Theme wurde getroffen, weil es die Augenbelastung bei längerer Nutzung reduziert, in Hochschulumgebungen (Vorlesungssäle, Bibliotheken) weniger Umgebungslicht abstrahlt und eine klare visuelle Hierarchie durch Elevationsstufen ermöglicht. Bewusst wird kein reines Schwarz oder Weiß verwendet -- stattdessen abgestufte Grautöne für eine natürlichere Darstellung.
+
+\begin{table}[H]
+\centering
+\caption{Farbschema (CSS-Variablen)}
+\begin{tabular}{llL{6cm}}
+\toprule
+\textbf{Kategorie} & \textbf{Hex} & \textbf{Verwendung} \\
+\midrule
+Deep Background    & \texttt{\#121212} & Haupthintergrund (tiefste Ebene) \\
+Surface            & \texttt{\#1A1A1A} & Karten, Panels, Sidebar \\
+Elevated           & \texttt{\#242424} & Hover-States, Dialoge, Dropdowns \\
+Text Primary       & \texttt{\#E8E8E8} & Haupttext, Überschriften \\
+Text Secondary     & \texttt{\#A1A1AA} & Beschreibungen, Labels \\
+Text Muted         & \texttt{\#71717A} & Platzhalter, deaktivierte Elemente \\
+Akzent (Orange)    & \texttt{\#F97316} & Aktive Sidebar-Elemente, Fokus-Rahmen \\
+Success            & \texttt{\#15803D} & Bestanden, Erfolgsmeldungen \\
+Danger             & \texttt{\#B91C1C} & Nicht bestanden, Fehlermeldungen \\
+Warning            & \texttt{\#A16207} & Warnhinweise \\
+Border             & \texttt{\#27272A} & Trennlinien, Kartenrahmen \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\textbf{Schriftart:} DM Sans (Google Fonts) als Primärschrift, mit System-Fallbacks (-apple-system, Segoe UI, sans-serif).
+
+\textbf{Notenfarbkodierung:} Notenwerte werden über semantische Farben visualisiert -- Grün für bestanden, Rot für nicht bestanden, Orange für Warnungen. Dadurch können Studierende ihren Leistungsstand auf einen Blick erfassen.
+
+\subsection{Authentifizierung und rollenbasierte Navigation}
+
+Der JWT Access-Token wird im \texttt{localStorage} gespeichert. Ein \texttt{authInterceptor} fügt ihn als \texttt{Authorization: Bearer}-Header an jede HTTP-Anfrage an. Die Methode \texttt{refreshToken()} ist implementiert, wird jedoch aktuell nicht automatisch bei HTTP-401-Fehlern durch einen globalen Refresh-Interceptor ausgelöst. Route Guards schützen alle authentifizierten Routen und leiten nach dem Login basierend auf der Rolle um (z.\,B. ADMIN $\rightarrow$ \texttt{/admin}, STUDENT $\rightarrow$ \texttt{/dashboard}).
+
+Die Sidebar-Navigation filtert ihre Einträge automatisch nach der Rolle des angemeldeten Benutzers. So sieht ein Student nur die Bereiche \glqq Übersicht\grqq{}, \glqq Noten\grqq{}, \glqq Fortschritt\grqq{} und \glqq Studienplan\grqq{}, während ein Admin alle Administrations- und Verwaltungsfunktionen sieht. Die Sektionsüberschriften in der Sidebar (u.\,a. \glqq Prüfungsamt\grqq{}, \glqq Verwaltung\grqq{}, \glqq Auswertung\grqq{}, \glqq Akademisch\grqq{}, \glqq LEHRE\grqq{}, \glqq Leistung\grqq{}, \glqq Studium\grqq{}, \glqq Konto\grqq{}) gruppieren die Funktionen logisch.
+
+\subsection{Zusätzliche Frontend-Features}
+
+\begin{itemize}[nosep]
+\item \textbf{Chart.js:} Visualisierung von Notenstatistiken und Notenspiegel als Balken- und Kreisdiagramme.
+\item \textbf{jsPDF:} Client-seitiger PDF-Export von Notenübersichten und Berechnungsdetails.
+\item \textbf{CSV Import/Export:} Massenverarbeitung von Benutzer-, Studiengang- und Notendaten über Datei-Upload im Admin-Bereich.
+\item \textbf{Skeleton-Loading:} Platzhalter-Animationen während des Datenladens (ngx-skeleton-loader) für bessere wahrgenommene Ladezeit.
+\end{itemize}
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Konsolen-Nutzung (nicht-grafisches UI)}
+% ════════════════════════════════════════════════════════════════════════════
+
+Gemäß Projektanforderung muss das System über ein nicht-grafisches User Interface nutzbar sein. Gradify stellt hierfür zwei Wege bereit:
+
+\subsection{Interaktives CLI}
+
+Das PowerShell-Skript \texttt{gradify-cli.ps1} bietet eine menügeführte Konsolenanwendung, die alle Systemfunktionen abdeckt: Authentifizierung, Mandanten- und Studiengangsverwaltung, Benutzerverwaltung, Notenerfassung und -validierung, Berechnungen, CSV-Import/Export, Audit-Log und GraphQL-Abfragen. Es nutzt REST und GraphQL über den API-Gateway.
+
+\subsection{Direkte API-Nutzung und Add-ons}
+
+Alternativ sind alle Funktionen ohne Angular-Frontend direkt über HTTP-Clients bzw. Web-Inspektionsoberflächen nutzbar:
+
+\begin{itemize}[nosep]
+\item \textbf{curl (CLI):} Direkte REST- und GraphQL-Aufrufe über den API-Gateway (z.\,B. \texttt{POST /api/auth/login}, \texttt{POST /graphql/user}).
+\item \textbf{PowerShell HTTP-Client:} \texttt{Invoke-RestMethod} als native Windows-Alternative zu \texttt{curl}.
+\item \textbf{Swagger UI / OpenAPI (Web):} Interaktive REST-Dokumentation je Service unter \texttt{/swagger-ui.html}; zeigt alle Endpunkte, Parameter, Request/Response-Schemata und erlaubt Testaufrufe im Browser.
+\item \textbf{GraphiQL (Web):} Interaktive GraphQL-Oberfläche der GraphQL-fähigen Services unter \texttt{/graphiql}; ermöglicht Schema-Inspektion und Query-Tests.
+\item \textbf{gRPC-Inspektion:} Service-zu-Service-Aufrufe können über \texttt{grpcurl} geprüft werden.
+\item \textbf{Actuator:} Betriebs- und Health-Status über \texttt{/actuator/health} je Service.
+\end{itemize}
+
+\textbf{Beispiel-URLs (lokale Entwicklung):}
+\begin{itemize}[nosep]
+\item Swagger UI: \texttt{http://localhost:8081/swagger-ui.html}, \texttt{http://localhost:8082/swagger-ui.html}, \texttt{http://localhost:8083/swagger-ui.html}, \texttt{http://localhost:8084/swagger-ui.html}, \texttt{http://localhost:8085/swagger-ui.html}
+\item GraphiQL: \texttt{http://localhost:8082/graphiql}, \texttt{http://localhost:8083/graphiql}, \texttt{http://localhost:8084/graphiql}
+\item GraphQL über Gateway: \texttt{http://localhost:8080/graphql/user}, \texttt{http://localhost:8080/graphql/studiengang}, \texttt{http://localhost:8080/graphql/noten}
+\end{itemize}
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Berechnungslogik}
+% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Allgemeine Regeln}
+
+Es gilt die deutsche Hochschulnotenskala: 1,0 / 1,3 / 1,7 / 2,0 / 2,3 / 2,7 / 3,0 / 3,3 / 3,7 / 4,0 / 5,0. Eine Prüfung gilt als bestanden bei Note $\leq$ 4,0. Die Gesamtnote wird auf eine Dezimalstelle kaufmännisch gerundet. Wiederholungsversuche: maximal 2 (plus 1 auf Antrag); Abschlussarbeit maximal 1 Wiederholung.
+
+\subsection{Bioverfahrenstechnik (Bachelor) -- Gewichtete Berechnung}
+
+\textbf{Rechtsgrundlage:} § 11 Bildung der Gesamtnote (PO 2023)
+
+\[
+\text{Gesamtnote} = \frac{\sum_{i} (\text{Note}_i \times \text{Gewichtung}_i)}{\sum_{i} \text{Gewichtung}_i}
+\]
+
+Es werden ausschließlich Module mit Bewertungsart \textit{NOTE} und Gewichtung $> 0$ berücksichtigt. Modul~1 (Einführung) wird mit \glqq bestanden/nicht bestanden\grqq{} bewertet und geht nicht ein. Die Summe aller Gewichtungen beträgt 37 (32 benotete Module). Die höchste Einzelgewichtung hat die Bachelor-Arbeit mit~9.
+
+\begin{table}[H]
+\centering
+\caption{Beispielmodule BVT mit Gewichtungen (Auszug)}
+\begin{tabular}{clcrr}
+\toprule
+\textbf{Nr.} & \textbf{Modulname} & \textbf{ECTS} & \textbf{Gew.} & \textbf{In Berechnung} \\
+\midrule
+1  & Einführung in die BVT     & 5  & 0 & Nein \\
+2  & Technische Mechanik       & 5  & 1 & Ja \\
+4  & Mathematik 1              & 10 & 2 & Ja \\
+31 & Teamprojekt               & 10 & 2 & Ja \\
+32 & Praxisphase               & 30 & 5 & Ja \\
+33 & Bachelor-Arbeit           & 15 & 9 & Ja \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+\subsection{Forschung in der Sozialen Arbeit (Master) -- Gemischte Berechnung}
+
+\textbf{Rechtsgrundlage:} § 9 Bildung der Gesamtnote (PO 2022)
+
+\[
+\text{Gesamtnote} = \frac{2 \times \text{Note}_{\text{Thesis}} + 1 \times \text{Modulmittel}}{3}
+\]
+
+Das Modulmittel ist das arithmetische Mittel der benoteten Module 1, 2, 3, 4, 5, 7 und 8:
+
+\[
+\text{Modulmittel} = \frac{\text{Note}_1 + \text{Note}_2 + \text{Note}_3 + \text{Note}_4 + \text{Note}_5 + \text{Note}_7 + \text{Note}_8}{7}
+\]
+
+Module 6, 9, 10 und 11 werden mit \glqq bestanden/nicht bestanden\grqq{} bewertet und gehen nicht in die Gesamtnote ein. Wahlpflichtmodule: Modul~5 (5.1 oder 5.2) und Modul~8 (8.1, 8.2 oder 8.3).
+
+\subsection{Vergleich der Berechnungsarten}
+
+\begin{table}[H]
+\centering
+\caption{Vergleich BVT und FSA}
+\begin{tabular}{lll}
+\toprule
+\textbf{Aspekt} & \textbf{BVT (Bachelor)} & \textbf{FSA (Master)} \\
+\midrule
+Berechnungsart     & Gewichtete Summe      & Arithmetisch gemischt \\
+Formel             & $\Sigma(N \times G) / \Sigma(G)$ & $(2 \times T + M) / 3$ \\
+Anzahl Module      & 33                    & 12 \\
+Module ohne Note   & 1                     & 4 \\
+Max. Gewichtung    & 9 (Bachelor-Arbeit)   & 2 (Master-Thesis) \\
+Gesamtgewicht      & 37                    & 3 \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Deployment}
+% ════════════════════════════════════════════════════════════════════════════
+
+\subsection{Docker -- Begründung und Umsetzung}
+
+Docker wird eingesetzt, um reproduzierbare, plattformunabhängige Builds zu gewährleisten. Jeder Entwickler und jede CI/CD-Pipeline arbeitet mit identischen Container-Images, unabhängig vom Betriebssystem. Zudem vereinfacht Docker die Verwaltung von Infrastruktur-Abhängigkeiten (PostgreSQL, RabbitMQ).
+
+Jeder Spring Boot Service wird auf Basis von \texttt{eclipse-temurin:17-jre-alpine} in einem eigenen Container ausgeliefert. Das Angular-Frontend wird in einem Multi-Stage-Build kompiliert (Node~20 für den Build, nginx:alpine für die Auslieferung). Die Datei \texttt{docker-compose.yml} orchestriert alle Container mit korrekten Abhängigkeiten. Health-Checks sind für die Infrastruktur-Container (PostgreSQL, RabbitMQ) definiert; die Application-Services starten über \texttt{depends\_on} mit \texttt{service\_healthy}/\texttt{service\_started}.
+
+\subsection{Kubernetes -- Begründung und Umsetzung}
+
+Kubernetes wird eingesetzt, um eine produktionsnahe Umgebung mit folgenden Vorteilen bereitzustellen:
+
+\begin{itemize}[nosep]
+\item \textbf{Hochverfügbarkeit:} Alle Applikationsservices laufen mit je 2~Replicas. Bei Ausfall eines Pods übernimmt der andere ohne Unterbrechung.
+\item \textbf{Selbstheilung:} Liveness- und Readiness-Probes (\texttt{/actuator/health}) erkennen fehlerhafte Pods automatisch und starten sie neu.
+\item \textbf{Skalierbarkeit:} Die Replica-Anzahl kann je Service unabhängig angepasst werden.
+\item \textbf{Deklarative Konfiguration:} Der gewünschte Zustand wird in YAML-Manifesten beschrieben. Kubernetes sorgt selbstständig für die Einhaltung.
+\item \textbf{Service Discovery:} Kubernetes Services stellen DNS-Namen bereit (z.\,B. \texttt{user-service:8082}), sodass keine IP-Adressen konfiguriert werden müssen.
+\end{itemize}
+
+\begin{table}[H]
+\centering
+\caption{Kubernetes-Manifeste}
+\begin{tabular}{llL{6.5cm}}
+\toprule
+\textbf{Manifest} & \textbf{Typ} & \textbf{Beschreibung} \\
+\midrule
+namespace.yml    & Namespace    & Isolierter Namespace \texttt{gradify} für Ressourcenisolation \\
+secrets.yml      & Secret       & Base64-kodierte DB-, RabbitMQ- und JWT-Zugangsdaten \\
+configmap.yml    & ConfigMap    & Service-Adressen, gRPC-Ports, Tenant-Konfiguration \\
+postgres.yml     & StatefulSet  & PostgreSQL mit PersistentVolumeClaim und Init-Script (Datenbankanlage) \\
+rabbitmq.yml     & Deployment   & RabbitMQ Message Broker mit Health-Probes \\
+*-service.yml    & Deployment   & Je 2 Replicas, getrennte HTTP- und gRPC-ClusterIP-Services \\
+ingress.yml      & Ingress      & Externer Zugang über \texttt{gradify.local}; \texttt{/api/*} $\rightarrow$ Gateway, \texttt{/*} $\rightarrow$ Frontend \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Das Deployment wird über \texttt{k8s/deploy.ps1} automatisiert: Maven-Build, Docker-Image-Erstellung, kubectl apply in korrekter Reihenfolge, Rollout-Überwachung.
+
+\subsection{Multi-Tenancy (Multi-Tenant Ready)}
+
+Gradify implementiert eine \textbf{DB-per-Tenant-Architektur}. Diese Entscheidung wurde getroffen, um eine vollständige Datenisolation zwischen Hochschulen auf Datenbankebene zu gewährleisten -- eine reine Filterung per \texttt{mandantId} in einer gemeinsamen Datenbank wäre zwar einfacher, bietet aber kein vergleichbares Isolationsniveau.
+
+\begin{itemize}[nosep]
+\item Jeder Mandant (Hochschule) erhält eigene Datenbanken: \texttt{gradify\_studiengang\_<kuerzel>}, \texttt{gradify\_noten\_<kuerzel>}, \texttt{gradify\_berechnung\_<kuerzel>}.
+\item Die Benutzerdaten werden zentral in \texttt{gradify\_user} verwaltet, da Benutzer mandantenübergreifend eindeutig sein müssen.
+\item Der \texttt{TenantContext} wird aus dem JWT-Token extrahiert (\texttt{mandantId} Claim) und über einen \texttt{TenantContextFilter} in den Request-Kontext gesetzt.
+\item Eine \texttt{DynamicTenantRoutingDataSource} leitet Datenbankabfragen zur Laufzeit an die korrekte Tenant-Datenbank weiter.
+\item Die zentrale \texttt{tenant\_registry} in der Auth-Datenbank ermöglicht das Hinzufügen neuer Mandanten zur Laufzeit ohne Neustart; die Mandantenliste wird mit einer Cache-TTL von 30 Sekunden aktualisiert.
+\end{itemize}
+
+% ════════════════════════════════════════════════════════════════════════════
+\section{Qualitätssicherung}
+% ════════════════════════════════════════════════════════════════════════════
+
+Das Projekt umfasst drei Test-Ebenen, die verschiedene Aspekte des Systems absichern:
+
+\begin{table}[H]
+\centering
+\caption{Test-Ebenen}
+\begin{tabular}{lL{4cm}L{6cm}}
+\toprule
+\textbf{Ebene} & \textbf{Werkzeuge} & \textbf{Was wird getestet?} \\
+\midrule
+Unit-Tests       & JUnit 5, Mockito     & Isolierte Geschäftslogik: Berechnungsformeln, Validierungsregeln, Service-Methoden mit gemockten Abhängigkeiten \\
+Integrationstests & Testcontainers, Spring Boot Test & Einzelner Service mit echter PostgreSQL-Datenbank und ggf. RabbitMQ im Container. Testet Repository-Queries, Security-Konfiguration, JPA-Mappings \\
+End-to-End-Tests & RestTemplate, Docker Compose & Kompletter Systemtest über alle Services hinweg: Login, Notenerfassung, Validierung, Berechnung. Alle Services laufen in Docker-Containern \\
+\bottomrule
+\end{tabular}
+\end{table}
+
+Die Testausführung ist über PowerShell-Skripte im Ordner \texttt{test/} automatisiert (\texttt{run-unit.ps1}, \texttt{run-integration-auth.ps1}, \texttt{run-integration-user.ps1}, \texttt{run-integration-studiengang.ps1}, \texttt{run-integration-noten.ps1}, \texttt{run-integration-berechnung.ps1}, \texttt{run-integration-all.ps1}, \texttt{run-e2e.ps1}). E2E-Tests verwenden dynamische Readiness-Checks (\texttt{/actuator/health}) statt fester Wartezeiten, um die Testdauer zu minimieren.
+
+% ════════════════════════════════════════════════════════════════════════════
+\appendix
+% ════════════════════════════════════════════════════════════════════════════
+
+\section{Prüfungsordnung -- Bioverfahrenstechnik (Auszug)}
+
+Gemäß § 11 der PO 2023 wird die Gesamtnote als gewichteter Durchschnitt aller benoteten Module gebildet. Modul~1 (Einführung) wird mit \glqq bestanden/nicht bestanden\grqq{} bewertet und geht mit Gewichtung~0 nicht in die Berechnung ein. Die vollständige Modulliste mit 33 Modulen und Gewichtungsfaktoren ist in \texttt{bioverfahrenstechnik.md} bzw. in der Berechnungslogik (Dokument~13) hinterlegt.
+
+\section{Prüfungsordnung -- Forschung in der Sozialen Arbeit (Auszug)}
+
+Gemäß § 9 der PO 2022 setzt sich die Gesamtnote aus der Master-Thesis (Gewichtung~2) und dem arithmetischen Mittel der benoteten Module (Gewichtung~1) zusammen. Module 6, 9, 10 und 11 werden mit \glqq bestanden/nicht bestanden\grqq{} bewertet. Wahlpflichtmodule: Modul~5 (5.1 oder 5.2) und Modul~8 (8.1, 8.2 oder 8.3). Die Modulliste mit Gewichtungen ist in \texttt{forschungsozialearbeit.md} bzw. in Dokument~13 enthalten.
+
+\section{Repository-Struktur}
+
+\begin{lstlisting}
+webapp-http-200/
+  gradify-api-gateway/         API-Gateway (Spring Cloud Gateway)
+  gradify-auth-service/        Authentifizierungsservice
+  gradify-user-service/        Benutzerverwaltung
+  gradify-studiengang-service/ Studiengangsverwaltung
+  gradify-noten-service/       Notenverwaltung
+  gradify-berechnungs-service/ Berechnungsservice
+  gradify-shared/              Gemeinsame DTOs, Proto-Dateien, Events
+  gradify-frontend/            Angular 18 SPA + PWA
+  gradify-e2e-tests/           End-to-End-Tests
+  gradify-cli.ps1              Interaktives Konsolen-UI
+  k8s/                         Kubernetes-Manifeste + Deploy-Script
+  test/                        Automatisierte Testskripte
+  docker/                      Init-SQL-Skripte
+  documentation/               Projektdokumentation (Markdown + LaTeX)
+\end{lstlisting}
+
+\end{document}
