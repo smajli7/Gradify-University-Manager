@@ -58,6 +58,7 @@ public class SecurityConfig {
             .authorizeHttpRequests(auth -> auth
                 // Swagger/OpenAPI immer erlauben
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
+                .requestMatchers("/graphiql", "/graphiql/**").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
                 
                 // Mandanten-Verwaltung: nur ADMIN
@@ -73,6 +74,8 @@ public class SecurityConfig {
                 .requestMatchers(HttpMethod.GET, "/api/studiengaenge/**").authenticated()
                 
                 // module-zuweisungen VOR module/** (spezifischer Pfad zuerst), /** wie Noten-Service
+                .requestMatchers(new AntPathRequestMatcher("/api/module-zuweisungen", "GET")).hasAnyRole("ADMIN", "HOCHSCHUL_VERWALTER", "PRUEFUNGSAMT")
+                .requestMatchers(new AntPathRequestMatcher("/api/module-zuweisungen/dozent/**", "GET")).hasAnyRole("ADMIN", "HOCHSCHUL_VERWALTER", "PRUEFUNGSAMT", "LEHRENDER")
                 .requestMatchers(new AntPathRequestMatcher("/api/module-zuweisungen/audit", "GET")).hasAnyRole("ADMIN", "HOCHSCHUL_VERWALTER", "PRUEFUNGSAMT", "LEHRENDER")
                 .requestMatchers(new AntPathRequestMatcher("/api/module-zuweisungen/**", "OPTIONS")).permitAll()
                 .requestMatchers(new AntPathRequestMatcher("/api/module-zuweisungen/**", "POST")).hasAnyRole("ADMIN", "HOCHSCHUL_VERWALTER", "PRUEFUNGSAMT")

@@ -429,6 +429,28 @@ function Initialize-StudentContext {
     }
 }
 
+# Laedt Module bevorzugt po-spezifisch, sonst ueber Studiengang.
+function Get-ModuleForEinschreibung {
+    param([object]$Einschreibung)
+
+    if (-not $Einschreibung) { return @() }
+
+    $module = @()
+    $poId = $Einschreibung.pruefungsordnungId
+    $sgId = $Einschreibung.studiengangId
+
+    if ($poId) {
+        $module = Invoke-GradifyApi -Path "/api/studiengaenge/po/$poId/module"
+    }
+
+    if ((-not $module -or @($module).Count -eq 0) -and $sgId) {
+        $module = Invoke-GradifyApi -Path "/api/studiengaenge/$sgId/module"
+    }
+
+    if ($module) { return @($module) }
+    return @()
+}
+
 # ==================== API-AUFRUF (REST) ====================
 
 function Invoke-GradifyApi {
@@ -727,7 +749,7 @@ function Show-MandantenMenu {
         Write-Host ""
         
         # Mandanten-Ansicht nur fuer Admin/Verwalter
-        if (Test-IsAdmin -or Test-IsVerwalter) {
+        if ((Test-IsAdmin) -or (Test-IsVerwalter)) {
             Write-Host "  [1]  Alle Mandanten (Hochschulen)"
         }
         
@@ -738,7 +760,7 @@ function Show-MandantenMenu {
         Write-Host "  [0]  Zurueck" -ForegroundColor DarkGray
 
         switch (Read-MenuChoice) {
-            "1" { if (Test-IsAdmin -or Test-IsVerwalter) { Show-AllMandanten } }
+            "1" { if ((Test-IsAdmin) -or (Test-IsVerwalter)) { Show-AllMandanten } }
             "2" { Show-Studiengaenge }
             "3" { Show-StudiengangModule }
             "4" { Show-Pruefungsordnungen }
@@ -765,7 +787,7 @@ function Show-Studiengaenge {
     Write-Header "Studiengaenge"
     
     # Optional Mandant filtern
-    if (Test-IsAdmin -or Test-IsVerwalter) {
+    if ((Test-IsAdmin) -or (Test-IsVerwalter)) {
         Write-Host ""
         Write-Host "  [1] Alle Studiengaenge  [2] Nach Mandant filtern" -ForegroundColor DarkGray
         $mode = Read-MenuChoice
@@ -963,7 +985,7 @@ function New-Benutzer {
     # Rollen auswaehlen (optional)
     Write-Host ""
     Write-Host "  Rollen auswaehlen (optional):" -ForegroundColor Cyan
-    $rollen = Invoke-GradifyApi -Path "/api/roles"
+    $rollen = Invoke-GradifyApi -Path "/api/users/roles"
     $rollenIds = @()
     if ($rollen -and $rollen.Count -gt 0) {
         $idx = 1
@@ -1123,7 +1145,7 @@ function Show-StudentenMenu {
         Write-Host "  [2]  Student suchen (ID oder Matrikel)"
         
         # Verwaltung (Admin, Verwalter)
-        if (Test-IsAdmin -or Test-IsVerwalter) {
+        if ((Test-IsAdmin) -or (Test-IsVerwalter)) {
             Write-Host ""
             Write-Host "  --- Verwaltung ---" -ForegroundColor DarkGray
             Write-Host "  [3]  Student erstellen"
@@ -1137,9 +1159,9 @@ function Show-StudentenMenu {
         switch (Read-MenuChoice) {
             "1" { Show-AllStudenten }
             "2" { Show-StudentSuche }
-            "3" { if (Test-IsAdmin -or Test-IsVerwalter) { New-Student } }
-            "4" { if (Test-IsAdmin -or Test-IsVerwalter) { Edit-Student } }
-            "5" { if (Test-IsAdmin -or Test-IsVerwalter) { Remove-Student } }
+            "3" { if ((Test-IsAdmin) -or (Test-IsVerwalter)) { New-Student } }
+            "4" { if ((Test-IsAdmin) -or (Test-IsVerwalter)) { Edit-Student } }
+            "5" { if ((Test-IsAdmin) -or (Test-IsVerwalter)) { Remove-Student } }
             "0" { return }
         }
     }
@@ -1275,7 +1297,7 @@ function Show-EinschreibungMenu {
         Write-Host "  [2]  Einschreibungen eines Studenten"
         
         # Verwaltung (Admin, Verwalter, Pruefungsamt)
-        if (Test-IsAdmin -or Test-IsVerwalter -or Test-IsPruefamt) {
+        if ((Test-IsAdmin) -or (Test-IsVerwalter) -or (Test-IsPruefamt)) {
             Write-Host ""
             Write-Host "  --- Verwaltung ---" -ForegroundColor DarkGray
             Write-Host "  [3]  Neue Einschreibung"
@@ -1284,7 +1306,7 @@ function Show-EinschreibungMenu {
         }
         
         # Abbrechen (nur Admin, Verwalter)
-        if (Test-IsAdmin -or Test-IsVerwalter) {
+        if ((Test-IsAdmin) -or (Test-IsVerwalter)) {
             Write-Host "  [6]  Einschreibung abbrechen" -ForegroundColor DarkYellow
         }
         
@@ -1294,10 +1316,10 @@ function Show-EinschreibungMenu {
         switch (Read-MenuChoice) {
             "1" { Show-AllEinschreibungen }
             "2" { Show-StudentEinschreibungen }
-            "3" { if (Test-IsAdmin -or Test-IsVerwalter -or Test-IsPruefamt) { New-Einschreibung } }
-            "4" { if (Test-IsAdmin -or Test-IsVerwalter -or Test-IsPruefamt) { Complete-Einschreibung } }
-            "5" { if (Test-IsAdmin -or Test-IsVerwalter -or Test-IsPruefamt) { Increment-Semester } }
-            "6" { if (Test-IsAdmin -or Test-IsVerwalter) { Cancel-Einschreibung } }
+            "3" { if ((Test-IsAdmin) -or (Test-IsVerwalter) -or (Test-IsPruefamt)) { New-Einschreibung } }
+            "4" { if ((Test-IsAdmin) -or (Test-IsVerwalter) -or (Test-IsPruefamt)) { Complete-Einschreibung } }
+            "5" { if ((Test-IsAdmin) -or (Test-IsVerwalter) -or (Test-IsPruefamt)) { Increment-Semester } }
+            "6" { if ((Test-IsAdmin) -or (Test-IsVerwalter)) { Cancel-Einschreibung } }
             "0" { return }
         }
     }
@@ -1349,10 +1371,36 @@ function New-Einschreibung {
     # Studiengang auswaehlen
     $studiengangId = Select-Studiengang -Title "In welchen Studiengang?"
     if (-not $studiengangId) { Pause-CLI; return }
+
+    # Pruefungsordnung auswaehlen (Pflichtfeld im Backend)
+    $pruefungsordnungen = Invoke-GradifyApi -Path "/api/studiengaenge/$studiengangId/pruefungsordnungen"
+    if (-not $pruefungsordnungen -or $pruefungsordnungen.Count -eq 0) {
+        Write-Error "Keine Pruefungsordnungen fuer diesen Studiengang gefunden."
+        Pause-CLI; return
+    }
+
+    Write-Host ""
+    Write-Host "  Pruefungsordnung auswaehlen:" -ForegroundColor Cyan
+    $idx = 1
+    foreach ($po in $pruefungsordnungen) {
+        $version = if ($po.version) { $po.version } else { "PO $($po.id)" }
+        $gueltigAb = if ($po.gueltigAb) { " (gueltig ab $($po.gueltigAb))" } else { "" }
+        Write-Host "    [$idx] $version$gueltigAb" -ForegroundColor White
+        $idx++
+    }
+    Write-Host ""
+    $choice = Read-UserInput -Prompt "PO-Nummer" -Required
+    $selIdx = [int]$choice - 1
+    if ($selIdx -lt 0 -or $selIdx -ge $pruefungsordnungen.Count) {
+        Write-Error "Ungueltige Auswahl."
+        Pause-CLI; return
+    }
+    $pruefungsordnungId = $pruefungsordnungen[$selIdx].id
     
     $body = @{
-        studentId     = [int]$studentId
-        studiengangId = [int]$studiengangId
+        studentId         = [int]$studentId
+        studiengangId     = [int]$studiengangId
+        pruefungsordnungId = [int]$pruefungsordnungId
     }
 
     if (Confirm-Action "Einschreibung erstellen?") {
@@ -1415,7 +1463,7 @@ function Show-NotenMenu {
         Write-Host "  [4]  Notenstatistik"
         
         # Erfassung (Admin, Lehrender)
-        if (Test-IsAdmin -or Test-IsLehrender) {
+        if ((Test-IsAdmin) -or (Test-IsLehrender)) {
             Write-Host ""
             Write-Host "  --- Erfassung ---" -ForegroundColor DarkGray
             Write-Host "  [5]  Note erfassen"
@@ -1423,7 +1471,7 @@ function Show-NotenMenu {
         }
         
         # Validierung/Freigabe (Admin, Pruefungsamt, Verwalter)
-        if (Test-IsAdmin -or Test-IsPruefamt -or Test-IsVerwalter) {
+        if ((Test-IsAdmin) -or (Test-IsPruefamt) -or (Test-IsVerwalter)) {
             Write-Host ""
             Write-Host "  --- Validierung ---" -ForegroundColor DarkGray
             Write-Host "  [7]  Note validieren"
@@ -1445,11 +1493,11 @@ function Show-NotenMenu {
             "2"  { Show-NotenModul }
             "3"  { Show-GueltigeNoten }
             "4"  { Show-NotenStatistik }
-            "5"  { if (Test-IsAdmin -or Test-IsLehrender) { New-Note } }
-            "6"  { if (Test-IsAdmin -or Test-IsLehrender) { Edit-Note } }
-            "7"  { if (Test-IsAdmin -or Test-IsPruefamt -or Test-IsVerwalter) { Confirm-Note } }
-            "8"  { if (Test-IsAdmin -or Test-IsPruefamt -or Test-IsVerwalter) { Release-Note } }
-            "9"  { if (Test-IsAdmin -or Test-IsPruefamt -or Test-IsVerwalter) { Reject-Note } }
+            "5"  { if ((Test-IsAdmin) -or (Test-IsLehrender)) { New-Note } }
+            "6"  { if ((Test-IsAdmin) -or (Test-IsLehrender)) { Edit-Note } }
+            "7"  { if ((Test-IsAdmin) -or (Test-IsPruefamt) -or (Test-IsVerwalter)) { Confirm-Note } }
+            "8"  { if ((Test-IsAdmin) -or (Test-IsPruefamt) -or (Test-IsVerwalter)) { Release-Note } }
+            "9"  { if ((Test-IsAdmin) -or (Test-IsPruefamt) -or (Test-IsVerwalter)) { Reject-Note } }
             "10" { if (Test-IsAdmin) { Remove-Note } }
             "0"  { return }
         }
@@ -1575,17 +1623,16 @@ function New-Note {
     Write-Host "  Schritt 2: Modul auswaehlen" -ForegroundColor Cyan
     Write-Host ""
     
-    $sgId = $selectedEinschreibung.studiengangId
-    $module = Invoke-GradifyApi -Path "/api/studiengaenge/$sgId/module"
+    $module = Get-ModuleForEinschreibung -Einschreibung $selectedEinschreibung
     if (-not $module -or $module.Count -eq 0) {
-        Write-Error "Keine Module fuer diesen Studiengang gefunden."
+        Write-Error "Keine Module fuer diese Einschreibung gefunden."
         Pause-CLI; return
     }
     
     $idx = 1
     $modulListe = @()
     foreach ($m in $module) {
-        $bewertung = if ($m.bewertungsart -eq "BENOTET") { "" } else { " [b/nb]" }
+        $bewertung = if ($m.bewertungsart -eq "BESTANDEN_NICHT_BESTANDEN") { " [b/nb]" } else { "" }
         Write-Host "    [$($idx.ToString().PadLeft(2))] " -NoNewline -ForegroundColor DarkGray
         Write-Host "$($m.name.PadRight(30).Substring(0,30))" -NoNewline -ForegroundColor White
         Write-Host " $($m.ects) ECTS  Sem.$($m.semester)$bewertung" -ForegroundColor DarkGray
@@ -1617,7 +1664,7 @@ function New-Note {
         pruefungsdatum  = Read-DateValue -Default (Get-Date -Format "yyyy-MM-dd") -Required
     }
     
-    if ($selectedModul.bewertungsart -eq "BENOTET") {
+    if ($selectedModul.bewertungsart -eq "NOTE") {
         $noteWert = Read-NoteValue -Required
         $body["noteWert"] = $noteWert
         $body["bestanden"] = ($noteWert -le 4.0)
@@ -1627,7 +1674,6 @@ function New-Note {
     
     $kommentar = Read-UserInput -Prompt "Kommentar (optional)"
     if ($kommentar) { $body["kommentar"] = $kommentar }
-    if ($script:UserId) { $body["erfasstVon"] = [int]$script:UserId }
 
     Write-Host ""
     if (Confirm-Action "Note erfassen?") {
@@ -1690,17 +1736,6 @@ function Edit-Note {
         $noteWert = Read-NoteValue -Required
         $body["noteWert"] = $noteWert
         $body["bestanden"] = ($noteWert -le 4.0)
-    }
-    
-    # Versuch (optional)
-    $v = Read-UserInput -Prompt "Neuer Versuch 1-3 (leer = unveraendert)"
-    if ($v) {
-        $vInt = 0
-        if ([int]::TryParse($v, [ref]$vInt) -and $vInt -ge 1 -and $vInt -le 3) {
-            $body["versuch"] = $vInt
-        } else {
-            Write-Host "    Ignoriert (ungueltig)" -ForegroundColor DarkYellow
-        }
     }
     
     # Datum (optional mit Validierung)
@@ -1895,7 +1930,7 @@ function Show-BerechnungMenu {
         Write-Host "  [4]  Berechnungsarten anzeigen"
         
         # Berechnung ausloesen (Admin, Pruefungsamt)
-        if (Test-IsAdmin -or Test-IsPruefamt) {
+        if ((Test-IsAdmin) -or (Test-IsPruefamt)) {
             Write-Host ""
             Write-Host "  --- Aktionen ---" -ForegroundColor DarkGray
             Write-Host "  [5]  Gesamtnote neu berechnen"
@@ -1909,7 +1944,7 @@ function Show-BerechnungMenu {
             "2" { Show-Fortschritt }
             "3" { Show-Durchschnitt }
             "4" { Show-Berechnungsarten }
-            "5" { if (Test-IsAdmin -or Test-IsPruefamt) { Invoke-Berechnung } }
+            "5" { if ((Test-IsAdmin) -or (Test-IsPruefamt)) { Invoke-Berechnung } }
             "0" { return }
         }
     }
@@ -2312,7 +2347,7 @@ function Show-NotenAudit {
     if ($v) { $qp["vonDatum"] = $v }
     $v = Read-UserInput -Prompt "Bis Datum (YYYY-MM-DD)"
     if ($v) { $qp["bisDatum"] = $v }
-    $v = Read-UserInput -Prompt "Aenderungstyp (ERSTELLT/AKTUALISIERT/VALIDIERT/FREIGEGEBEN/GELOESCHT)"
+    $v = Read-UserInput -Prompt "Aenderungstyp (ERSTELLT/NOTE_GEAENDERT/VALIDIERT/FREIGEGEBEN/FREIGABE_ZURUECKGENOMMEN/STORNIERT)"
     if ($v) { $qp["aenderungsTyp"] = $v.ToUpper() }
     $qp["limit"] = "100"
 
@@ -2322,10 +2357,10 @@ function Show-NotenAudit {
             @{ Header="ID";       Field="id";             Width=5  },
             @{ Header="Note-ID";  Field="noteId";         Width=8  },
             @{ Header="Typ";      Field="aenderungsTyp";  Width=15 },
-            @{ Header="Benutzer"; Field="benutzerId";     Width=9  },
+            @{ Header="Benutzer"; Width=18; Expression={ param($r) if($r.geaendertVonName){$r.geaendertVonName}elseif($r.geaendertVon){$r.geaendertVon}elseif($r.benutzerId){$r.benutzerId}else{"-"} } },
             @{ Header="Alt";      Width=6;  Expression={ param($r) if($r.alterWert){$r.alterWert}else{"-"} } },
             @{ Header="Neu";      Width=6;  Expression={ param($r) if($r.neuerWert){$r.neuerWert}else{"-"} } },
-            @{ Header="Zeitpunkt"; Field="zeitpunkt";     Width=20 },
+            @{ Header="Zeitpunkt"; Width=20; Expression={ param($r) if($r.geaendertAm){$r.geaendertAm}elseif($r.zeitpunkt){$r.zeitpunkt}else{"-"} } },
             @{ Header="Kommentar"; Field="kommentar";     Width=20 }
         )
     }
@@ -2352,7 +2387,8 @@ function Show-ModulAudit {
             @{ Header="Dozent-ID"; Field="dozentId";       Width=10 },
             @{ Header="Modul-ID";  Field="modulId";        Width=10 },
             @{ Header="Typ";       Field="aenderungsTyp";  Width=15 },
-            @{ Header="Zeitpunkt"; Field="zeitpunkt";      Width=20 }
+            @{ Header="Von";       Field="geaendertVon";   Width=8  },
+            @{ Header="Zeitpunkt"; Width=20; Expression={ param($r) if($r.geaendertAm){$r.geaendertAm}elseif($r.zeitpunkt){$r.zeitpunkt}else{"-"} } }
         )
     }
     Pause-CLI
@@ -2625,9 +2661,15 @@ function Show-GrpcStatus {
 function Show-TokenValidation {
     Write-Header "Token validieren"
     $result = Invoke-GradifyApi -Path "/api/auth/validate"
-    if ($result) {
+    if ($null -eq $result) {
+        Pause-CLI
+        return
+    }
+    if ([bool]$result) {
         Write-Success "Token ist gueltig."
         Write-Host "  Details: $($result | ConvertTo-Json -Compress)" -ForegroundColor DarkGray
+    } else {
+        Write-Warn "Token ist ungueltig oder abgelaufen."
     }
     Pause-CLI
 }
@@ -2663,7 +2705,7 @@ function Show-MeineModulZuweisungen {
         return
     }
     
-    $zuweisungen = Invoke-GradifyApi -Path "/api/modul-zuweisungen/dozent/$($script:UserId)"
+    $zuweisungen = Invoke-GradifyApi -Path "/api/module-zuweisungen/dozent/$($script:UserId)"
     if (-not $zuweisungen -or $zuweisungen.Count -eq 0) {
         Write-Info "Keine Module zugewiesen."
         Pause-CLI
@@ -2744,7 +2786,7 @@ function Show-ModulZuweisungMenu {
 
 function Show-AllModulZuweisungen {
     Write-Header "Alle Modul-Zuweisungen"
-    $data = Invoke-GradifyApi -Path "/api/modul-zuweisungen"
+    $data = Invoke-GradifyApi -Path "/api/module-zuweisungen"
     if ($data -and $data.Count -gt 0) {
         # Benutzer laden fuer Namensaufloesung
         $users = Invoke-GradifyApi -Path "/api/users"
@@ -2785,7 +2827,7 @@ function Show-DozentModulZuweisungen {
     $dozentId = Select-Benutzer -Title "Welchen Dozenten anzeigen?"
     if (-not $dozentId) { Pause-CLI; return }
     
-    $data = Invoke-GradifyApi -Path "/api/modul-zuweisungen/dozent/$dozentId"
+    $data = Invoke-GradifyApi -Path "/api/module-zuweisungen/dozent/$dozentId"
     if ($data -and $data.Count -gt 0) {
         Write-Host ""
         foreach ($z in $data) {
@@ -2850,7 +2892,7 @@ function Remove-ModulZuweisung {
     Write-Header "Zuweisung entfernen"
     
     # Alle Zuweisungen anzeigen
-    $zuweisungen = Invoke-GradifyApi -Path "/api/modul-zuweisungen"
+    $zuweisungen = Invoke-GradifyApi -Path "/api/module-zuweisungen"
     if (-not $zuweisungen -or $zuweisungen.Count -eq 0) {
         Write-Info "Keine Zuweisungen vorhanden."
         Pause-CLI; return
@@ -2917,9 +2959,7 @@ function Show-MeineNoten {
 
     # Module laden fuer Namen-Aufloesung
     $einschreibung = $script:Einschreibungen | Where-Object { $_.id -eq $eid } | Select-Object -First 1
-    $sgId = if ($einschreibung) { $einschreibung.studiengangId } else { $null }
-    $module = @()
-    if ($sgId) { $module = Invoke-GradifyApi -Path "/api/studiengaenge/$sgId/module" }
+    $module = Get-ModuleForEinschreibung -Einschreibung $einschreibung
     
     $data = Invoke-GradifyApi -Path "/api/noten/einschreibung/$eid"
     if ($data) {
@@ -2980,9 +3020,7 @@ function Show-MeinFortschritt {
         # Fallback: Aus Noten + Modulen berechnen
         $noten = Invoke-GradifyApi -Path "/api/noten/einschreibung/$eid"
         $einschreibung = $script:Einschreibungen | Where-Object { $_.id -eq $eid } | Select-Object -First 1
-        $sgId = if ($einschreibung) { $einschreibung.studiengangId } else { $null }
-        $module = @()
-        if ($sgId) { $module = Invoke-GradifyApi -Path "/api/studiengaenge/$sgId/module" }
+        $module = Get-ModuleForEinschreibung -Einschreibung $einschreibung
         
         Write-Host ""
         if ($noten) {
@@ -3099,9 +3137,7 @@ function Show-MeineBerechnungsDetails {
         # Fallback: Eigene Berechnung zeigen
         $noten = Invoke-GradifyApi -Path "/api/noten/einschreibung/$eid"
         $einschreibung = $script:Einschreibungen | Where-Object { $_.id -eq $eid } | Select-Object -First 1
-        $sgId = if ($einschreibung) { $einschreibung.studiengangId } else { $null }
-        $module = @()
-        if ($sgId) { $module = Invoke-GradifyApi -Path "/api/studiengaenge/$sgId/module" }
+        $module = Get-ModuleForEinschreibung -Einschreibung $einschreibung
         
         Write-Host ""
         if ($noten) {
@@ -3163,13 +3199,11 @@ function Show-MeinStudiengang {
     if (-not $eid) { Pause-CLI; return }
 
     $einschreibung = $script:Einschreibungen | Where-Object { $_.id -eq $eid } | Select-Object -First 1
-    $sgId = if ($einschreibung) { $einschreibung.studiengangId } else { $null }
-
-    if (-not $sgId) {
+    $data = Get-ModuleForEinschreibung -Einschreibung $einschreibung
+    if ((-not $data -or $data.Count -eq 0)) {
         $sgId = Read-UserInput -Prompt "Studiengang-ID" -Required
+        if ($sgId) { $data = Invoke-GradifyApi -Path "/api/studiengaenge/$sgId/module" }
     }
-
-    $data = Invoke-GradifyApi -Path "/api/studiengaenge/$sgId/module"
     if ($data) {
         Show-DataTable -Data $data -Columns @(
             @{ Header="Nr";       Field="modulNr";        Width=5  },

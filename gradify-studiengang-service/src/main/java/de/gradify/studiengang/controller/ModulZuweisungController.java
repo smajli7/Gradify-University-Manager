@@ -29,6 +29,23 @@ public class ModulZuweisungController {
     private final ModulZuweisungRepository modulZuweisungRepository;
     private final ModulZuweisungHistorieRepository modulZuweisungHistorieRepository;
 
+    @GetMapping
+    public ResponseEntity<ApiResponse<List<ModulZuweisung>>> getAll() {
+        List<ModulZuweisung> list = modulZuweisungRepository.findAll().stream()
+                .sorted(Comparator.comparing(ModulZuweisung::getDozentId)
+                        .thenComparing(ModulZuweisung::getModulId))
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(list));
+    }
+
+    @GetMapping("/dozent/{dozentId}")
+    public ResponseEntity<ApiResponse<List<ModulZuweisung>>> getByDozent(@PathVariable("dozentId") Long dozentId) {
+        List<ModulZuweisung> list = modulZuweisungRepository.findByDozentId(dozentId).stream()
+                .sorted(Comparator.comparing(ModulZuweisung::getModulId))
+                .toList();
+        return ResponseEntity.ok(ApiResponse.success(list));
+    }
+
     @PostMapping
     public ResponseEntity<ApiResponse<ModulZuweisung>> create(@RequestBody ModulZuweisungRequest request) {
         if (request.getDozentId() == null || request.getModulId() == null) {
