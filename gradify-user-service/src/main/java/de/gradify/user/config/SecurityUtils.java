@@ -19,16 +19,22 @@ public final class SecurityUtils {
         return null;
     }
 
-    /** Effektive Mandant-ID fuer Studenten-/Benutzer-Filter: Verwalter nur eigene, Admin null (= alle). */
+    /**
+     * Effektive Mandant-ID fuer Studenten-/Benutzer-Filter.
+     * Admin: null (= sieht alles).
+     * Alle anderen Rollen (Pruefungsamt, Lehrender, Student, Hochschulverwalter):
+     * nur Daten der eigenen Hochschule (mandantId aus JWT).
+     * Falls bei Nicht-Admins keine gueltige mandantId vorhanden ist, wird ein
+     * nicht existierender Mandant (-1) zurueckgegeben, damit kein globaler
+     * Datenzugriff moeglich ist.
+     */
     public static Long getEffectiveMandantIdForFilter() {
         AuthPrincipal ap = getAuthPrincipal();
         if (ap == null) return null;
         if (ap.isSystemAdmin()) return null; // Admin darf alles sehen
-        if (ap.isHochschulVerwalter()) {
-            Long mid = ap.getMandantId();
-            return (mid != null && mid > 0) ? mid : null;
-        }
-        return null;
+        // Alle Nicht-Admin-Rollen sind an ihre Hochschule gebunden
+        Long mid = ap.getMandantId();
+        return (mid != null && mid > 0) ? mid : -1L;
     }
 
     /** Gibt die ID des aktuell angemeldeten Benutzers zurueck. */

@@ -1162,6 +1162,14 @@ export class StudentsComponent implements OnInit {
       email: this.addFormEmail.trim(),
       passwort
     };
+    const targetMandantId = this.authService.isHochschulVerwalter()
+      ? this.authService.getMandantId()
+      : (this.authService.isAdmin()
+        ? (this.mandantenForSelect().find(m => m.kuerzel === kuerzel)?.id ?? null)
+        : this.authService.getMandantId());
+    if (targetMandantId != null) {
+      body['mandantId'] = Number(targetMandantId);
+    }
     if (this.addFormGeburtsdatum) body['geburtsdatum'] = this.addFormGeburtsdatum;
     try {
       const res = await firstValueFrom(this.http.post<{ success: boolean; data?: { id: number }; message?: string; error?: string }>(

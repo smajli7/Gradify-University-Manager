@@ -29,13 +29,16 @@ public class AuthPrincipal {
         return hasRole("HOCHSCHUL_VERWALTER");
     }
 
+    /**
+     * Prueft ob der Benutzer auf den angegebenen Mandanten zugreifen darf.
+     * Admin: darf auf alle Mandanten zugreifen.
+     * Alle anderen Rollen: nur auf den eigenen Mandanten.
+     */
     public boolean canAccessMandant(Long mandantId) {
         if (mandantId == null) return false;
         if (hasRole("ADMIN")) return true;
-        if (isHochschulVerwalter() && this.mandantId != null) {
-            return this.mandantId.equals(mandantId);
-        }
-        return false;
+        // Alle Nicht-Admin-Rollen: nur eigener Mandant
+        return this.mandantId != null && this.mandantId.equals(mandantId);
     }
 
     public static AuthPrincipal from(String userId, Long mandantId, List<String> roles) {

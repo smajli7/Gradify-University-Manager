@@ -79,6 +79,9 @@ gradify:
   tenant-registry:
     enabled: false
   tenants: "1:thm,2:gu"  # Für gRPC-Aufrufer (Studiengang/Noten) – Mandant-Mapping
+  # Demo-Login: Passwort für alle Demo-Nutzer (von /api/users/demo-logins bereitgestellt)
+  demo:
+    password: "web00100113!"
 
 ---
 # Profil für Entwicklung (lokale Datenbank mit Seed-Daten)

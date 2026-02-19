@@ -69,7 +69,7 @@ Es werden ausschließlich Module berücksichtigt, deren Bewertungsart „NOTE" i
 | 32 | Praxisphase | 30 | 5 | Ja |
 | 33 | Bachelor-Arbeit mit Kolloquium | 15 | 9 | Ja |
 
-**Summe der Gewichtungen:** 37 (ohne Modul 1)
+**Summe der Gewichtungen:** 46 (ohne Modul 1: 28×1 + Mathe1 2 + Teamprojekt 2 + Praxisphase 5 + BA 9)
 
 ### Beispielberechnung
 
@@ -82,7 +82,7 @@ Es werden ausschließlich Module berücksichtigt, deren Bewertungsart „NOTE" i
 | 33 (Bachelor-Arbeit) | 1,3 | 9 | 11,7 |
 
 $$
-\text{Gesamtnote} = \frac{67,5}{37} = 1,824... \approx 1,8
+\text{Gesamtnote} = \frac{67,5}{46} = 1,467... \approx 1,5
 $$
 
 ---
@@ -150,7 +150,7 @@ $$
 | Anzahl Module | 33 | 12 |
 | Module ohne Note | 1 (Modul 1) | 4 (Module 6, 9, 10, 11) |
 | Maximale Gewichtung | 9 (Bachelor-Arbeit) | 2 (Master-Thesis) |
-| Gesamtgewicht | 37 | 3 |
+| Gesamtgewicht | 46 | 3 |
 
 ---
 

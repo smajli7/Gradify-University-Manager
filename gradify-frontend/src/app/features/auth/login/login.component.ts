@@ -10,6 +10,20 @@ interface DemoUser {
   password: string;
   label: string;
   rolle: string;
+  passwordKnown: boolean;
+}
+
+interface DemoApiUser {
+  username: string;
+  rolle: string;
+  label?: string;
+  mandantId?: number | null;
+}
+
+/** API-Response: entweder Array (Legacy) oder { users, demoPassword } */
+interface DemoLoginsApiResponse {
+  users?: DemoApiUser[];
+  demoPassword?: string;
 }
 
 @Component({
@@ -222,12 +236,14 @@ interface DemoUser {
                 </button>
               </div>
               @if (activeRole) {
-                <select class="demo-select" [(ngModel)]="selectedDemoUser" (ngModelChange)="onDemoUserSelect($event)" name="demoUser">
-                  <option value="">- Nutzer wählen -</option>
-                  @for (u of usersForActiveRole; track u.username) {
-                    <option [value]="u.username">{{ u.label }}</option>
-                  }
-                </select>
+                <button type="button" class="demo-picker-trigger" (click)="toggleDemoPicker()">
+                  <span class="demo-picker-trigger__text">{{ selectedDemoUserLabel || '- Nutzer wählen -' }}</span>
+                  <span class="demo-picker-trigger__meta">{{ usersForActiveRole.length }} verfügbar</span>
+                  <span class="material-icons-outlined demo-picker-trigger__icon">expand_more</span>
+                </button>
+                @if (demoPasswordHint) {
+                  <p class="demo-hint">{{ demoPasswordHint }}</p>
+                }
               }
             </div>
           </div>
@@ -235,6 +251,47 @@ interface DemoUser {
 
         <p class="footer-text" [class.content--visible]="showContent">© 2026 Gradify · Hochschulnotenverwaltung</p>
       </div>
+
+      <!-- Demo-Picker Modal (Root-Level, immer über allem) -->
+      @if (showDemoPicker) {
+        <div class="demo-picker-overlay" (click)="closeDemoPicker()">
+          <div class="demo-picker-modal" (click)="$event.stopPropagation()">
+            <div class="demo-picker-modal__header">
+              <h3>Demo-Nutzer wählen</h3>
+              <button type="button" class="demo-picker-close" (click)="closeDemoPicker()" aria-label="Schließen">
+                <span class="material-icons-outlined">close</span>
+              </button>
+            </div>
+            <input
+              class="demo-picker-search"
+              type="text"
+              [(ngModel)]="demoSearch"
+              name="demoSearch"
+              placeholder="Suche nach Name oder Benutzername">
+            <div class="demo-picker-table-wrap">
+              <table class="demo-picker-table">
+                <thead>
+                  <tr>
+                    <th>Benutzername</th>
+                    <th>Name / Rolle</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  @for (u of filteredUsersForActiveRole; track u.username) {
+                    <tr (click)="selectDemoUserFromPicker(u.username)" [class.active]="u.username === selectedDemoUser">
+                      <td>{{ u.username }}</td>
+                      <td>{{ u.label }}</td>
+                    </tr>
+                  }
+                </tbody>
+              </table>
+              @if (filteredUsersForActiveRole.length === 0) {
+                <p class="demo-picker-empty">Keine Nutzer für diese Suche gefunden.</p>
+              }
+            </div>
+          </div>
+        </div>
+      }
     </div>
   `,
   styles: [`
@@ -1001,12 +1058,16 @@ interface DemoUser {
     .demo-role-btn--student { color: #2563eb; }
     .demo-role-btn--student:hover, .demo-role-btn--student.active { border-color: #1d4ed8; background: rgba(29, 78, 216, 0.35); box-shadow: 0 0 12px rgba(37, 99, 235, 0.15); }
 
-    .demo-select {
+    .demo-picker-trigger {
       width: 100%;
       max-width: 320px;
       margin: 0 auto;
-      display: block;
-      padding: 12px 40px 12px 14px;
+      min-height: 48px;
+      display: grid;
+      grid-template-columns: 1fr auto auto;
+      align-items: center;
+      gap: 8px;
+      padding: 10px 12px;
       background: var(--bg-elevated);
       border: 1px solid var(--border-color);
       border-radius: 8px;
@@ -1015,26 +1076,178 @@ interface DemoUser {
       color: var(--text-primary);
       cursor: pointer;
       outline: none;
-      appearance: none;
-      background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='20' height='20' viewBox='0 0 24 24' fill='none' stroke='%2371717A' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpath d='M6 9l6 6 6-6'/%3E%3C/svg%3E");
-      background-repeat: no-repeat;
-      background-position: right 12px center;
-      transition: border-color 0.2s ease, background-color 0.2s ease;
+      text-align: left;
+      transition: border-color 0.2s ease, background-color 0.2s ease, box-shadow 0.2s ease;
     }
 
-    .demo-select:hover {
+    .demo-picker-trigger:hover {
       border-color: var(--border-color-light);
+      background: var(--bg-hover);
     }
 
-    .demo-select:focus {
+    .demo-picker-trigger:focus {
       border-color: var(--border-color-light);
       box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.04);
     }
 
-    .demo-select option {
+    .demo-picker-trigger__text {
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .demo-picker-trigger__meta {
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      white-space: nowrap;
+    }
+
+    .demo-picker-trigger__icon {
+      font-size: 18px;
+      color: var(--text-muted);
+    }
+
+    .demo-picker-overlay {
+      position: fixed;
+      inset: 0;
+      background: rgba(0, 0, 0, 0.7);
+      backdrop-filter: blur(8px);
+      -webkit-backdrop-filter: blur(8px);
+      z-index: 9999;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      padding: var(--spacing-lg);
+    }
+
+    .demo-picker-modal {
+      width: min(640px, calc(100vw - 48px));
+      max-height: min(70vh, 560px);
       background: var(--bg-surface);
+      border: 1px solid var(--border-color);
+      border-radius: var(--radius-lg);
+      box-shadow: 0 24px 64px rgba(0, 0, 0, 0.5), 0 0 0 1px rgba(255, 255, 255, 0.04);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+    }
+
+    .demo-picker-modal__header {
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: var(--spacing-md) var(--spacing-lg);
+      border-bottom: 1px solid var(--border-color);
+      background: var(--bg-elevated);
+    }
+
+    .demo-picker-modal__header h3 {
+      margin: 0;
+      font-size: var(--font-size-lg);
+      font-weight: 600;
       color: var(--text-primary);
-      padding: 10px;
+    }
+
+    .demo-picker-close {
+      background: var(--bg-hover);
+      border: 1px solid var(--border-color);
+      color: var(--text-secondary);
+      width: 32px;
+      height: 32px;
+      border-radius: var(--radius-md);
+      cursor: pointer;
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      transition: background var(--transition-fast), border-color var(--transition-fast), color var(--transition-fast);
+    }
+
+    .demo-picker-close:hover {
+      color: var(--text-primary);
+      border-color: var(--border-color-light);
+      background: var(--bg-surface);
+    }
+
+    .demo-picker-search {
+      margin: var(--spacing-md) var(--spacing-lg);
+      padding: 10px 14px;
+      border-radius: var(--radius-md);
+      border: 1px solid var(--border-color);
+      background: var(--bg-deep);
+      color: var(--text-primary);
+      font-family: var(--font-family);
+      font-size: var(--font-size-sm);
+      outline: none;
+      transition: border-color var(--transition-fast), box-shadow var(--transition-fast);
+    }
+
+    .demo-picker-search::placeholder {
+      color: var(--text-muted);
+    }
+
+    .demo-picker-search:focus {
+      border-color: var(--border-color-light);
+      box-shadow: 0 0 0 2px rgba(255, 255, 255, 0.06);
+    }
+
+    .demo-picker-table-wrap {
+      overflow: auto;
+      padding: 0 var(--spacing-lg) var(--spacing-lg);
+    }
+
+    .demo-picker-table {
+      width: 100%;
+      border-collapse: collapse;
+      font-size: var(--font-size-sm);
+    }
+
+    .demo-picker-table th,
+    .demo-picker-table td {
+      padding: 12px 14px;
+      border-bottom: 1px solid var(--border-color);
+      text-align: left;
+      vertical-align: middle;
+    }
+
+    .demo-picker-table th {
+      font-size: var(--font-size-xs);
+      font-weight: 600;
+      color: var(--text-muted);
+      letter-spacing: 0.04em;
+      text-transform: uppercase;
+      position: sticky;
+      top: 0;
+      background: var(--bg-elevated);
+      z-index: 1;
+    }
+
+    .demo-picker-table tbody tr {
+      cursor: pointer;
+      transition: background-color var(--transition-fast);
+    }
+
+    .demo-picker-table tbody tr:hover {
+      background: var(--bg-hover);
+    }
+
+    .demo-picker-table tbody tr.active {
+      background: rgba(var(--color-primary-rgb), 0.08);
+    }
+
+    .demo-picker-empty {
+      margin: var(--spacing-md) 0 0;
+      padding: var(--spacing-md);
+      color: var(--text-muted);
+      font-size: var(--font-size-sm);
+      text-align: center;
+    }
+
+    .demo-hint {
+      margin: 8px auto 0;
+      max-width: 320px;
+      font-size: var(--font-size-xs);
+      color: var(--text-muted);
+      text-align: left;
     }
 
     /* Footer */
@@ -1062,13 +1275,31 @@ interface DemoUser {
       .demo-role-btn .material-icons-outlined {
         font-size: 18px;
       }
+
+      .demo-picker-trigger {
+        grid-template-columns: 1fr auto;
+      }
+
+      .demo-picker-trigger__meta {
+        display: none;
+      }
+
+      .demo-picker-modal {
+        width: calc(100vw - 16px);
+        max-height: 75vh;
+      }
+
+      .demo-picker-table th,
+      .demo-picker-table td {
+        padding: 9px 8px;
+      }
     }
   `]
 })
 export class LoginComponent implements OnInit {
-  private authService = inject(AuthService);
-  private router = inject(Router);
-  private http = inject(HttpClient);
+  private readonly authService = inject(AuthService);
+  private readonly router = inject(Router);
+  private readonly http = inject(HttpClient);
 
   username = '';
   password = '';
@@ -1082,6 +1313,9 @@ export class LoginComponent implements OnInit {
   activeRole: string | null = null;
   demoUsers: DemoUser[] = [];
   selectedDemoUser = '';
+  demoPasswordHint = '';
+  showDemoPicker = false;
+  demoSearch = '';
   private splashTimer: ReturnType<typeof setTimeout> | null = null;
 
   constructor() {
@@ -1112,6 +1346,48 @@ export class LoginComponent implements OnInit {
   }
 
   ngOnInit(): void {
+    this.loadDemoUsers();
+  }
+
+  /** Fallback-Passwort falls API keine demoPassword liefert */
+  private static readonly DEMO_PASSWORD_FALLBACK = 'web00100113!';
+
+  private loadDemoUsers(): void {
+    this.http.get<{ success: boolean; data?: DemoApiUser[] | DemoLoginsApiResponse }>('/api/users/demo-logins').subscribe({
+      next: (res) => {
+        const raw = res?.data;
+        let apiUsers: DemoApiUser[];
+        let demoPassword: string;
+
+        if (Array.isArray(raw)) {
+          apiUsers = raw;
+          demoPassword = LoginComponent.DEMO_PASSWORD_FALLBACK;
+        } else if (raw && typeof raw === 'object' && Array.isArray(raw.users)) {
+          apiUsers = raw.users;
+          demoPassword = (raw.demoPassword ?? '').trim() || LoginComponent.DEMO_PASSWORD_FALLBACK;
+        } else {
+          this.loadDemoUsersFromCsv();
+          return;
+        }
+
+        if (apiUsers.length === 0) {
+          this.loadDemoUsersFromCsv();
+          return;
+        }
+
+        this.demoUsers = apiUsers.map((u) => ({
+          username: u.username,
+          password: demoPassword,
+          label: (u.label?.trim() || `${u.username} (${u.rolle})`),
+          rolle: (u.rolle || '').trim(),
+          passwordKnown: true
+        }));
+      },
+      error: () => this.loadDemoUsersFromCsv()
+    });
+  }
+
+  private loadDemoUsersFromCsv(): void {
     this.http.get('assets/demo-zugaenge.csv', { responseType: 'text' }).subscribe({
       next: (csv) => this.parseDemoCsv(csv),
       error: () => this.demoUsers = []
@@ -1136,7 +1412,8 @@ export class LoginComponent implements OnInit {
           username: cols[0].trim(),
           password: cols[1].trim(),
           label: label.trim(),
-          rolle
+          rolle,
+          passwordKnown: true
         });
       }
     }
@@ -1146,20 +1423,27 @@ export class LoginComponent implements OnInit {
   onDemoUserSelect(username: string): void {
     const u = this.demoUsers.find(x => x.username === username);
     if (u) {
+      this.selectedDemoUser = username;
       this.username = u.username;
-      this.password = u.password;
       this.errorMessage = '';
+      this.demoPasswordHint = '';
 
       // Visual feedback: green glow on inputs
       this.demoFilled = true;
       setTimeout(() => this.demoFilled = false, 600);
 
-      // Auto-login after short delay so user sees the filled fields
-      setTimeout(() => {
-        if (this.username && this.password && !this.isLoading) {
-          this.onLogin();
-        }
-      }, 400);
+      if (u.passwordKnown) {
+        this.password = u.password;
+        // Auto-login after short delay so user sees the filled fields
+        setTimeout(() => {
+          if (this.username && this.password && !this.isLoading) {
+            this.onLogin();
+          }
+        }, 400);
+      } else {
+        this.password = '';
+        this.demoPasswordHint = 'Passwort manuell eingeben (wird aus Sicherheitsgruenden nicht angezeigt).';
+      }
     }
   }
 
@@ -1168,9 +1452,45 @@ export class LoginComponent implements OnInit {
     return this.demoUsers.filter(u => u.rolle === this.activeRole);
   }
 
+  get filteredUsersForActiveRole(): DemoUser[] {
+    const users = this.usersForActiveRole;
+    const term = this.demoSearch.trim().toLowerCase();
+    if (!term) return users;
+    return users.filter(u =>
+      u.username.toLowerCase().includes(term) ||
+      u.label.toLowerCase().includes(term)
+    );
+  }
+
+  get selectedDemoUserLabel(): string {
+    if (!this.selectedDemoUser) return '';
+    return this.demoUsers.find(u => u.username === this.selectedDemoUser)?.label ?? this.selectedDemoUser;
+  }
+
+  toggleDemoPicker(): void {
+    if (!this.activeRole) return;
+    this.showDemoPicker = !this.showDemoPicker;
+    if (this.showDemoPicker) {
+      this.demoSearch = '';
+    }
+  }
+
+  closeDemoPicker(): void {
+    this.showDemoPicker = false;
+  }
+
+  selectDemoUserFromPicker(username: string): void {
+    this.selectedDemoUser = username;
+    this.onDemoUserSelect(username);
+    this.closeDemoPicker();
+  }
+
   selectRole(rolle: string): void {
     this.activeRole = this.activeRole === rolle ? null : rolle;
     this.selectedDemoUser = '';
+    this.demoPasswordHint = '';
+    this.demoSearch = '';
+    this.showDemoPicker = false;
   }
 
   fillDemo(username: string, password: string): void {

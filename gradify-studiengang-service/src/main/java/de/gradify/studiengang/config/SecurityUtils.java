@@ -26,15 +26,16 @@ public final class SecurityUtils {
         return ap.canAccessMandant(mandantId);
     }
 
-    /** Prueft Zugriff: ADMIN immer, HV nur eigene Hochschule, sonst true (authenticated). */
+    /**
+     * Prueft Zugriff: ADMIN immer, alle anderen Rollen nur eigene Hochschule.
+     * Nicht-Admin-Rollen sind an ihre Hochschule (mandantId aus JWT) gebunden.
+     */
     public static boolean ensureMandantAccess(Long mandantId) {
         if (mandantId == null) return false;
         AuthPrincipal ap = getAuthPrincipal();
         if (ap == null) return false;
         if (ap.hasRole("ADMIN")) return true;
-        if (ap.isHochschulVerwalter()) {
-            return ap.getMandantId() != null && ap.getMandantId().equals(mandantId);
-        }
-        return true;
+        // Alle Nicht-Admin-Rollen: nur Zugriff auf eigene Hochschule
+        return ap.getMandantId() != null && ap.getMandantId().equals(mandantId);
     }
 }

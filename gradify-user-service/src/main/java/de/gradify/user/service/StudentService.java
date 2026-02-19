@@ -129,8 +129,9 @@ public class StudentService {
             throw new IllegalArgumentException("Email existiert bereits: " + request.getEmail());
         }
 
-        // MandantId aus Kürzel ermitteln (für jetzt: feste Mapping)
-        Long mandantId = getMandantIdFromKuerzel(mandantKuerzel);
+        // MandantId bevorzugt aus Request (dynamische Hochschulen),
+        // Fallback auf bekanntes Kürzel-Mapping.
+        Long mandantId = resolveMandantId(mandantKuerzel, request.getMandantId());
         
         // Benutzer erstellen oder laden
         Benutzer benutzer;
@@ -251,24 +252,50 @@ public class StudentService {
     }
 
     /**
-     * Prueft ob das Mandant-Kuerzel zur gegebenen Mandant-ID passt (fuer Verwalter-Zugriffskontrolle).
+     * Prueft ob das Mandant-Kuerzel zur gegebenen Mandant-ID passt.
+     * Fuer unbekannte Kuerzel wird false zurueckgegeben.
      */
     public boolean mandantKuerzelMatchesMandantId(String kuerzel, Long mandantId) {
-        try {
-            return getMandantIdFromKuerzel(kuerzel).equals(mandantId);
-        } catch (IllegalArgumentException e) {
-            return false;
-        }
+        if (mandantId == null || mandantId <= 0) return false;
+        Long mappedMandantId = getKnownMandantIdFromKuerzel(kuerzel);
+        return mappedMandantId != null && mappedMandantId.equals(mandantId);
     }
 
     /**
-     * Ermittelt die MandantId aus dem Kuerzel.
-     * TODO: In Produktion ueber gRPC vom Studiengang-Service abrufen.
+     * Prueft, ob ein Kuerzel fuer einen Mandanten erlaubt ist.
+     * Bekannte Kuerzel (THM/GU) muessen zum Mandanten passen.
+     * Unbekannte Kuerzel sind erlaubt, damit neu angelegte Hochschulen
+     * ohne Code-Release genutzt werden koennen.
      */
-    private Long getMandantIdFromKuerzel(String kuerzel) {
+    public boolean isMandantKuerzelAllowedForMandant(String kuerzel, Long mandantId) {
+        if (mandantId == null || mandantId <= 0) return false;
+        Long mappedMandantId = getKnownMandantIdFromKuerzel(kuerzel);
+        return mappedMandantId == null || mappedMandantId.equals(mandantId);
+    }
+
+    /**
+     * Ermittelt die MandantId aus Request + Kuerzel.
+     * Prioritaet: explizite MandantId (dynamische Hochschulen), danach
+     * bekanntes Legacy-Kuerzel-Mapping.
+     */
+    private Long resolveMandantId(String kuerzel, Long explicitMandantId) {
+        if (explicitMandantId != null && explicitMandantId > 0) {
+            return explicitMandantId;
+        }
+        Long mappedMandantId = getKnownMandantIdFromKuerzel(kuerzel);
+        if (mappedMandantId != null) {
+            return mappedMandantId;
+        }
+        throw new IllegalArgumentException("Unbekanntes Mandant-Kuerzel: " + kuerzel);
+    }
+
+    /**
+     * Legacy-Mapping fuer bekannte Demo-Mandanten.
+     */
+    private Long getKnownMandantIdFromKuerzel(String kuerzel) {
         if ("THM".equalsIgnoreCase(kuerzel)) return 1L;
         if ("GU".equalsIgnoreCase(kuerzel)) return 2L;
-        throw new IllegalArgumentException("Unbekanntes Mandant-Kuerzel: " + kuerzel);
+        return null;
     }
 
     /**

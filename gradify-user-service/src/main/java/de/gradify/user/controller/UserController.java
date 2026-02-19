@@ -4,12 +4,14 @@ import de.gradify.shared.dto.ApiResponse;
 import de.gradify.user.config.SecurityUtils;
 import de.gradify.user.dto.BenutzerDto;
 import de.gradify.user.dto.CreateBenutzerRequest;
+import de.gradify.user.dto.DemoLoginsResponse;
+import de.gradify.user.dto.DemoUserItem;
 import de.gradify.user.dto.UpdateBenutzerRequest;
 import de.gradify.user.entity.BenutzerHistorie;
-import de.gradify.user.entity.Rolle;
 import de.gradify.user.service.BenutzerService;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.format.annotation.DateTimeFormat;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
@@ -17,6 +19,7 @@ import org.springframework.web.bind.annotation.*;
 import jakarta.validation.Valid;
 import java.time.LocalDateTime;
 import java.util.List;
+import java.util.Set;
 import java.util.stream.Collectors;
 
 @RestController
@@ -26,6 +29,44 @@ import java.util.stream.Collectors;
 public class UserController {
 
     private final BenutzerService benutzerService;
+
+    @Value("${gradify.demo.password:web00100113!}")
+    private String demoPassword;
+
+    private static final List<String> ROLE_PRIORITY = List.of(
+            "ROLE_ADMIN",
+            "ROLE_HOCHSCHUL_VERWALTER",
+            "ROLE_PRUEFUNGSAMT",
+            "ROLE_LEHRENDER",
+            "ROLE_STUDENT"
+    );
+
+    @GetMapping("/demo-logins")
+    public ResponseEntity<ApiResponse<DemoLoginsResponse>> getDemoLogins() {
+        log.info("Getting demo login users (public test endpoint)");
+
+        List<DemoUserItem> users = benutzerService.findAll().stream()
+                .filter(BenutzerDto::isAktiv)
+                .map(u -> {
+                    String rolle = getPrimaryRole(u.getRollen());
+                    String roleWithoutPrefix = rolle.startsWith("ROLE_") ? rolle.substring("ROLE_".length()) : rolle;
+                    String displayLabel = (u.getVorname() + " " + u.getNachname()).trim() + " (" + roleWithoutPrefix + ")";
+                    return DemoUserItem.builder()
+                            .username(u.getBenutzername())
+                            .rolle(roleWithoutPrefix)
+                            .label(displayLabel)
+                            .mandantId(u.getMandantId())
+                            .build();
+                })
+                .collect(Collectors.toList());
+
+        DemoLoginsResponse response = DemoLoginsResponse.builder()
+                .users(users)
+                .demoPassword(demoPassword)
+                .build();
+
+        return ResponseEntity.ok(ApiResponse.success(response));
+    }
 
     @GetMapping
     public ResponseEntity<ApiResponse<List<BenutzerDto>>> getAllUsers(
@@ -184,5 +225,13 @@ public class UserController {
         } catch (IllegalArgumentException e) {
             return null;
         }
+    }
+
+    private static String getPrimaryRole(Set<String> rollen) {
+        if (rollen == null || rollen.isEmpty()) return "STUDENT";
+        for (String preferred : ROLE_PRIORITY) {
+            if (rollen.contains(preferred)) return preferred;
+        }
+        return rollen.iterator().next();
     }
 }

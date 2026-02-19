@@ -28,7 +28,7 @@ ON CONFLICT (id) DO NOTHING;
 -- =====================================================
 INSERT INTO pruefungsordnungen (id, studiengang_id, version, gueltig_ab, gueltig_bis, berechnungsart) VALUES
     (1, 1, 'PO 2023', '2023-10-01', NULL, 'GEWICHTET'),
-    (2, 2, 'PO 2023', '2023-10-01', NULL, 'ARITHMETISCH_GEMISCHT')
+    (2, 2, 'PO 2022', '2022-10-01', NULL, 'ARITHMETISCH_GEMISCHT')
 ON CONFLICT (id) DO NOTHING;
 
 -- Studiengänge mit aktueller PO verknüpfen

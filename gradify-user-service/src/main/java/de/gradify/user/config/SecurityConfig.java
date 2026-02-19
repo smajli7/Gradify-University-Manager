@@ -37,6 +37,8 @@ public class SecurityConfig {
                 // Swagger/OpenAPI immer erlauben
                 .requestMatchers("/swagger-ui/**", "/swagger-ui.html", "/v3/api-docs/**", "/v3/api-docs.yaml").permitAll()
                 .requestMatchers("/actuator/**").permitAll()
+                // Demo-Logins (nur fuer Testbetrieb; zeigt aktuelle Benutzerliste ohne Passwort)
+                .requestMatchers("/api/users/demo-logins").permitAll()
                 // Rollen-basierte Zugriffskontrolle
                 // Studierende anlegen/lesen: nur Hochschulverwalter, Prüfungsamt, Admin (nicht LEHRENDER)
                 .requestMatchers("/api/students/**").hasAnyRole("ADMIN", "PRUEFUNGSAMT", "HOCHSCHUL_VERWALTER")

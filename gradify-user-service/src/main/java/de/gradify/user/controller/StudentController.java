@@ -8,7 +8,6 @@ import de.gradify.user.dto.UpdateStudentRequest;
 import de.gradify.user.service.StudentService;
 import io.swagger.v3.oas.annotations.Operation;
 import io.swagger.v3.oas.annotations.Parameter;
-import io.swagger.v3.oas.annotations.responses.ApiResponses;
 import io.swagger.v3.oas.annotations.tags.Tag;
 import lombok.RequiredArgsConstructor;
 import lombok.extern.slf4j.Slf4j;
@@ -88,9 +87,18 @@ public class StudentController {
             @RequestParam(value = "mandantKuerzel") String mandantKuerzel) {
         log.info("Creating student for mandant: {}", mandantKuerzel);
         Long effectiveMandantId = SecurityUtils.getEffectiveMandantIdForFilter();
-        if (effectiveMandantId != null && !studentService.mandantKuerzelMatchesMandantId(mandantKuerzel, effectiveMandantId)) {
-            return ResponseEntity.status(HttpStatus.FORBIDDEN)
-                    .body(ApiResponse.error("Kein Zugriff auf andere Hochschulen"));
+        if (effectiveMandantId != null) {
+            // Nicht-Admin-Rollen sind strikt an ihren Mandanten gebunden.
+            if (request.getMandantId() != null && !effectiveMandantId.equals(request.getMandantId())) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Kein Zugriff auf andere Hochschulen"));
+            }
+            if (!studentService.isMandantKuerzelAllowedForMandant(mandantKuerzel, effectiveMandantId)) {
+                return ResponseEntity.status(HttpStatus.FORBIDDEN)
+                        .body(ApiResponse.error("Kein Zugriff auf andere Hochschulen"));
+            }
+            // Erzwinge den Mandanten aus dem JWT, damit Request-Manipulationen wirkungslos sind.
+            request.setMandantId(effectiveMandantId);
         }
         try {
             StudentDto student = studentService.createStudent(request, mandantKuerzel);
