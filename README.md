@@ -33,7 +33,13 @@ Entwickelt im Rahmen des Moduls *Web-basierte Anwendungssysteme* (WiSe 2025/26)<
 
 ---
 
-<sub>[Kurzbeschreibung](#kurzbeschreibung) · [Architektur](#architektur) · [Tech-Stack](#technologie-stack) · [Schnellstart](#schnellstart) · [API-Docs](#api-dokumentation) · [Tests](#tests) · [Deployment](#deployment) · [Dokumentation](#projektdokumentation) · [Struktur](#projektstruktur)</sub>
+<sub>[Video Demo](VIDEO_DEMO.md) · [Kurzbeschreibung](#kurzbeschreibung) · [Architektur](#architektur) · [Tech-Stack](#technologie-stack) · [Schnellstart](#schnellstart) · [API-Docs](#api-dokumentation) · [Tests](#tests) · [Deployment](#deployment) · [Dokumentation](#projektdokumentation) · [Struktur](#projektstruktur)</sub>
+
+---
+
+## Video Demo
+
+Alle Demo-GIFs und Screenshots findest du auf der Seite **[Video Demo](VIDEO_DEMO.md)**.
 
 ---
 
