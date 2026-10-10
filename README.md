@@ -457,6 +457,6 @@ webapp-http-200/
 
 <div align="center">
 
-**Frankfurt University of Applied Sciences** · Web-basierte Anwendungssysteme · WiSe 2025/26
+> **Frankfurt University of Applied Sciences** · Web-basierte Anwendungssysteme · WiSe 2025/26 <
 
 </div>
