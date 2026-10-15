@@ -18,9 +18,6 @@
 [![PWA](https://img.shields.io/badge/PWA-5A0FC8?style=flat-square&logo=pwa&logoColor=white)](#)
 [![Maven](https://img.shields.io/badge/Maven-C71A36?style=flat-square&logo=apachemaven&logoColor=white)](#)
 
----
-
-**Contributors** · **Jakub Naruszko** (1511408) · **Louisa Kristin Bahr** (1508628)
 
 ---
 
